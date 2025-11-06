@@ -2,11 +2,11 @@
 [rewrite_local]
 # 1. 京东订单详情重写 (匹配 orderDetail 接口)
 # 推荐使用 functionId 匹配，更加稳定
-^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=orderDetail url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd.js
+^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=orderDetail url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd1.js
 
 
 # 2. 兼容旧的URL匹配方式 (如果需要)
-^https?:\/\/api\.m\.jd\.com\/client\.action\?t=\d+&loginType=2&loginWQBiz=golden-trade&appid=m_core&client=iPhone&clientVersion=&build url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd.js
+^https?:\/\/api\.m\.jd\.com\/client\.action\?t=\d+&loginType=2&loginWQBiz=golden-trade&appid=m_core&client=iPhone&clientVersion=&build url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd1.js
 
 
 
