@@ -21,6 +21,8 @@ hostname = api.m.jd.com
 // ===================================
 
 // --- 订单列表页 (List) 配置 ---
+// ⚠️ 填写您要修改的订单的【原始订单编号】。如果留空 ""，则修改列表中的第一个订单。
+const LIST_TARGET_ORDER_ID = "345882584156";
 const LIST_NEW_PRICE = "13.88";           // 列表页上显示的新价格
 const LIST_NEW_DATE = "2025-11-02 11:45:20"; // 列表页上的下单时间
 
@@ -54,35 +56,51 @@ try {
     return;
 }
 
-// 判断当前处理的接口是订单列表还是订单详情
+// 判断当前处理的接口
 const isOrderList = obj && obj.orderList;
 const isOrderDetail = obj && obj.body && obj.body.orderCommonVo;
 
 // --- 1. 处理订单列表接口 ---
 if (isOrderList) {
     if (obj.orderList && obj.orderList.length > 0) {
-        const targetOrder = obj.orderList[0]; // 只修改第一个订单
+        
+        let targetOrder = null;
 
-        // 1. 修改订单价格 (orderTotal字段)
-        if (targetOrder.orderTotal) {
-            targetOrder.orderTotal.currentOrderPrice = LIST_NEW_PRICE; 
-            targetOrder.orderTotal.payPrice = LIST_NEW_PRICE; 
+        if (LIST_TARGET_ORDER_ID) {
+            // 查找指定订单号的订单
+            targetOrder = obj.orderList.find(order => 
+                order.orderCommonVo && order.orderCommonVo.orderId === LIST_TARGET_ORDER_ID
+            );
+        } else {
+            // 如果未指定订单号，则修改第一个订单
+            targetOrder = obj.orderList[0];
         }
 
-        // 2. 修改时间 (不修改 orderCommonVo.orderId)
-        if (targetOrder.orderCommonVo) {
-            targetOrder.orderCommonVo.dateSubmit = LIST_NEW_DATE;
-            // ⚠️ 保持订单号不变：targetOrder.orderCommonVo.orderId 不进行修改
-        }
+        if (targetOrder) {
+            console.log(`[JD Rewrite] Modifying list item with ID: ${targetOrder.orderCommonVo.orderId}`);
 
-        // 3. 修改商品列表中的价格和名称显示
-        if (targetOrder.orderWareList && targetOrder.orderWareList.length > 0) {
-            const ware = targetOrder.orderWareList[0];
-            ware.price = LIST_NEW_PRICE; 
-            if (ware.priceList && ware.priceList.length > 0) {
-                ware.priceList[0].price = LIST_NEW_PRICE;
+            // 1. 修改订单价格 (orderTotal字段)
+            if (targetOrder.orderTotal) {
+                targetOrder.orderTotal.currentOrderPrice = LIST_NEW_PRICE; 
+                targetOrder.orderTotal.payPrice = LIST_NEW_PRICE; 
             }
-            ware.name = "【列表修改】您的商品名称已被修改";
+
+            // 2. 修改时间 (不修改 orderCommonVo.orderId)
+            if (targetOrder.orderCommonVo) {
+                targetOrder.orderCommonVo.dateSubmit = LIST_NEW_DATE;
+            }
+
+            // 3. 修改商品列表中的价格和名称显示
+            if (targetOrder.orderWareList && targetOrder.orderWareList.length > 0) {
+                const ware = targetOrder.orderWareList[0];
+                ware.price = LIST_NEW_PRICE; 
+                if (ware.priceList && ware.priceList.length > 0) {
+                    ware.priceList[0].price = LIST_NEW_PRICE;
+                }
+                ware.name = `【列表修改】您的商品名称已被修改 (原ID: ${targetOrder.orderCommonVo.orderId})`;
+            }
+        } else if (LIST_TARGET_ORDER_ID) {
+            console.log(`[JD Rewrite] Order ID ${LIST_TARGET_ORDER_ID} not found in the list.`);
         }
     }
 }
