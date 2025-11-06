@@ -17,17 +17,12 @@ hostname = api.m.jd.com
 // JD 订单列表和订单详情统一重写脚本
 
 // ===================================
-// ⚙️ 用户可配置项 (已集成订单索引)
+// ⚙️ 用户可配置项 (已使用您提供的数值)
 // ===================================
 
 // --- 订单列表页 (List) 配置 ---
-// ⚠️ 填写您要修改的订单的【原始订单编号】。
-//    如果留空 ""，则使用 LIST_TARGET_INDEX 来选择订单。
-const LIST_TARGET_ORDER_ID = ""; // 示例："325329166009"; 留空时禁用此设置
-// ✅ 新增配置：设置要修改第几个订单 (从 1 开始计数)。
-//    如果 LIST_TARGET_ORDER_ID 有效，此设置将被忽略。
-const LIST_TARGET_INDEX = 4; // 1: 修改第一个订单; 2: 修改第二个订单, 以此类推。
-
+// ⚠️ 填写您要修改的订单的【原始订单编号】。如果留空 ""，则修改列表中的第一个订单。
+const LIST_TARGET_ORDER_ID = "325329166009";
 const LIST_NEW_PRICE = "13.88";           // 列表页上显示的新价格
 const LIST_NEW_DATE = "2025-11-02 11:45:20"; // 列表页上的下单时间
 
@@ -71,104 +66,76 @@ if (isOrderList) {
 } else if (isOrderDetail) {
     console.log("✅ [JD Rewrite] INTERFACE: Matched Order DETAIL.");
 } else {
-    // 忽略非订单接口的响应
+    console.log("⚠️ [JD Rewrite] INTERFACE: Response structure not recognized as OrderList or OrderDetail. Exiting.");
     $done({});
     return;
 }
 
-
-// --- 1. 处理订单列表接口 (已优化查找逻辑) ---
+// --- 1. 处理订单列表接口 ---
 if (isOrderList) {
     if (obj.orderList && obj.orderList.length > 0) {
         
         let targetOrder = null;
-        let targetIndex = -1; // 数组索引 (0-based)
 
         if (LIST_TARGET_ORDER_ID) {
-            // 优先级 1: 查找指定订单号
-            targetIndex = obj.orderList.findIndex(order => 
+            // 查找指定订单号的订单
+            targetOrder = obj.orderList.find(order => 
                 order.orderCommonVo && order.orderCommonVo.orderId === LIST_TARGET_ORDER_ID
             );
-            if (targetIndex !== -1) {
-                targetOrder = obj.orderList[targetIndex];
-                console.log(`[JD Rewrite] LIST SEARCH: Found Target ID: ${LIST_TARGET_ORDER_ID} at index ${targetIndex + 1}.`);
-            } else {
-                console.log(`❌ [JD Rewrite] LIST ERROR: Target Order ID ${LIST_TARGET_ORDER_ID} NOT FOUND in this segment. No modification.`);
-            }
-        } else if (LIST_TARGET_INDEX > 0) {
-            // 优先级 2: 使用指定的索引位置 (用户设置是 1-based)
-            targetIndex = LIST_TARGET_INDEX - 1; 
-            
-            if (targetIndex >= 0 && targetIndex < obj.orderList.length) {
-                targetOrder = obj.orderList[targetIndex];
-                console.log(`[JD Rewrite] LIST SEARCH: Modifying order at index ${LIST_TARGET_INDEX} (User setting).`);
-            } else {
-                console.log(`❌ [JD Rewrite] LIST ERROR: Target index ${LIST_TARGET_INDEX} is out of bounds (List length: ${obj.orderList.length}). No modification.`);
-            }
+            // *** ✅ 关键日志：查找目标订单 ***
+            console.log(`[JD Rewrite] LIST SEARCH: Attempting to find order ID: ${LIST_TARGET_ORDER_ID}.`);
         } else {
-            console.log("⚠️ [JD Rewrite] LIST WARNING: Neither Target ID nor Target Index is set/valid. No modification.");
-        }
+            // 如果未指定订单号，则修改第一个订单
+            targetOrder = obj.orderList[0];
+            console.log(`[JD Rewrite] LIST SEARCH: No target ID set. Modifying the FIRST order in the list.`);
+        }
 
-
-        // 执行修改
         if (targetOrder) {
-            const currentID = targetOrder.orderCommonVo ? targetOrder.orderCommonVo.orderId : 'ID_UNKNOWN';
-            
-            console.log(`🎉 [JD Rewrite] LIST MODIFYING: Target ID ${currentID}. New Price: ${LIST_NEW_PRICE}`);
+            const currentID = targetOrder.orderCommonVo ? targetOrder.orderCommonVo.orderId : 'ID_UNKNOWN';
+            console.log(`🎉 [JD Rewrite] LIST FOUND & MODIFYING: ID ${currentID}. New Price: ${LIST_NEW_PRICE}, New Date: ${LIST_NEW_DATE}`);
 
-            // 1. 修改订单价格 (orderTotal字段及其他顶层价格字段)
-            
-            // *** ✅ 关键修改 1: 尝试修改顶层应该支付的字段 ***
-            if (targetOrder.shouldPay) {
-                 targetOrder.shouldPay = LIST_NEW_PRICE; 
-                 console.log(`-> Price fields (shouldPay) set to: ${LIST_NEW_PRICE}`);
-            }
-
-            if (targetOrder.orderTotal) {
-                // 主要价格字段
+            // 1. 修改订单价格 (orderTotal字段)
+            if (targetOrder.orderTotal) {
                 targetOrder.orderTotal.currentOrderPrice = LIST_NEW_PRICE; 
                 targetOrder.orderTotal.payPrice = LIST_NEW_PRICE; 
-                // 增加对其他可能价格字段的覆盖
                 targetOrder.orderTotal.orderActualPrice = LIST_NEW_PRICE;
                 targetOrder.orderTotal.finalPrice = LIST_NEW_PRICE;
-                console.log(`-> Price fields (orderTotal) set to: ${LIST_NEW_PRICE}`);
+                console.log(`-> Price fields (orderTotal) set to: ${LIST_NEW_PRICE}`);
             }
             
             // 2. 修改时间
             if (targetOrder.orderCommonVo) {
                 targetOrder.orderCommonVo.dateSubmit = LIST_NEW_DATE;
-                console.log(`-> Submission Date set to: ${LIST_NEW_DATE}`);
+                console.log(`-> Submission Date set to: ${LIST_NEW_DATE}`);
             }
 
             // 3. 修改商品列表中的价格和名称显示
             if (targetOrder.orderWareList && targetOrder.orderWareList.length > 0) {
                 const ware = targetOrder.orderWareList[0];
-                // 订单商品列表价格
                 ware.price = LIST_NEW_PRICE; 
                 if (ware.priceList && ware.priceList.length > 0) {
                     ware.priceList[0].price = LIST_NEW_PRICE;
                 }
-                // 尝试修改可能用于列表展示的总价格字段
                 if (targetOrder.totalPrice) {
                     targetOrder.totalPrice.value = LIST_NEW_PRICE;
                 }
                 
                 ware.name = `【列表修改】您的商品名称已被修改 (原ID: ${currentID})`;
-                console.log(`-> Ware Name and Price modified in orderWareList.`);
+                console.log(`-> Ware Name and Price modified in orderWareList.`);
             }
             console.log(`✨ [JD Rewrite] LIST SCRIPT COMPLETED.`);
 
-        } else if (!targetOrder) {
-            console.log("⚠️ [JD Rewrite] LIST WARNING: No target order selected for modification.");
-        }
-    } else {
+        } else if (LIST_TARGET_ORDER_ID) {
+            // *** ❌ 关键日志：目标订单未找到 ***
+            console.log(`❌ [JD Rewrite] LIST ERROR: Order ID ${LIST_TARGET_ORDER_ID} NOT FOUND in the current list segment.`);
+        }
+    } else {
         // *** ⚠️ 关键日志：列表为空 ***
         console.log("⚠️ [JD Rewrite] LIST WARNING: orderList array is empty or null. No modifications performed.");
     }
 }
 
-
-// --- 2. 处理订单详情接口 (未修改) ---
+// --- 2. 处理订单详情接口 ---
 else if (isOrderDetail) {
     const data = obj.body;
     console.log(`🎉 [JD Rewrite] DETAIL START: Applying new Order ID ${DETAIL_NEW_ORDER_ID} and Price ${DETAIL_FACT_PRICE}.`);
@@ -185,7 +152,6 @@ else if (isOrderDetail) {
         data.orderPriceInfo.factPrice = DETAIL_FACT_PRICE.toFixed(2); 
         console.log(`-> Fact Price (实付金额) set to: ${DETAIL_FACT_PRICE.toFixed(2)}`);
 
-
         data.orderPriceInfo.billsList.forEach(item => {
             const moneyFloat = parseFloat(item.money.replace(/[^\d.-]/g, ''));
             
@@ -198,15 +164,15 @@ else if (isOrderDetail) {
             } else if (item.title === "促销立减" && moneyFloat === -25.00) {
                 // 确保促销立减的金额是负值，并与计算结果匹配
                 item.money = `- ¥ ${Math.abs(NEW_PROMOTION_REDUCTION_CALCULATED).toFixed(2)}`;
-                console.log(`-> Promotion Reduction (促销立减) modified based on calculation.`);
+                console.log(`-> Promotion Reduction (促销立减) modified based on calculation.`);
             } else if (item.title === "商品优惠" && moneyFloat === -11.00) {
                 item.money = `- ¥ ${DETAIL_DISCOUNT_1.toFixed(2)}`; 
             } else if (item.title === "商品优惠" && moneyFloat === -9.00) {
                 item.money = `- ¥ ${DETAIL_DISCOUNT_2.toFixed(2)}`; 
             }
         });
-        console.log("-> Bills List (价格明细) modification completed.");
     }
+    console.log("-> Bills List (价格明细) modification completed.");
 
     // --- 订单号和时间修改 ---
     
@@ -257,4 +223,7 @@ else if (isOrderDetail) {
         data.shopList[0].shopTotalNum = `¥ ${DETAIL_NEW_PRODUCT_PRICE.toFixed(2)}`; 
         console.log("-> Shop List (商品信息) updated with new name and price.");
     }
-    console.
+    console.log("✨ [JD Rewrite] DETAIL SCRIPT COMPLETED.");
+}
+
+$done({body: JSON.stringify(obj)});
