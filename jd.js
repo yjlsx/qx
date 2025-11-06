@@ -60,6 +60,17 @@ try {
 const isOrderList = obj && obj.orderList;
 const isOrderDetail = obj && obj.body && obj.body.orderCommonVo;
 
+// *** ✅ 关键日志：判断接口类型 ***
+if (isOrderList) {
+    console.log("✅ [JD Rewrite] INTERFACE: Matched Order LIST (functionId=orderList).");
+} else if (isOrderDetail) {
+    console.log("✅ [JD Rewrite] INTERFACE: Matched Order DETAIL.");
+} else {
+    console.log("⚠️ [JD Rewrite] INTERFACE: Response structure not recognized as OrderList or OrderDetail. Exiting.");
+    $done({});
+    return;
+}
+
 // --- 1. 处理订单列表接口 ---
 if (isOrderList) {
     if (obj.orderList && obj.orderList.length > 0) {
@@ -71,64 +82,75 @@ if (isOrderList) {
             targetOrder = obj.orderList.find(order => 
                 order.orderCommonVo && order.orderCommonVo.orderId === LIST_TARGET_ORDER_ID
             );
+            // *** ✅ 关键日志：查找目标订单 ***
+            console.log(`[JD Rewrite] LIST SEARCH: Attempting to find order ID: ${LIST_TARGET_ORDER_ID}.`);
         } else {
             // 如果未指定订单号，则修改第一个订单
             targetOrder = obj.orderList[0];
+            console.log(`[JD Rewrite] LIST SEARCH: No target ID set. Modifying the FIRST order in the list.`);
         }
 
         if (targetOrder) {
-            console.log(`[JD Rewrite] LIST SUCCESS: Modifying item with ID: ${targetOrder.orderCommonVo.orderId}`);
+            const currentID = targetOrder.orderCommonVo ? targetOrder.orderCommonVo.orderId : 'ID_UNKNOWN';
+            console.log(`🎉 [JD Rewrite] LIST FOUND & MODIFYING: ID ${currentID}. New Price: ${LIST_NEW_PRICE}, New Date: ${LIST_NEW_DATE}`);
 
             // 1. 修改订单价格 (orderTotal字段)
             if (targetOrder.orderTotal) {
-                // 主要价格字段
                 targetOrder.orderTotal.currentOrderPrice = LIST_NEW_PRICE; 
                 targetOrder.orderTotal.payPrice = LIST_NEW_PRICE; 
-                // 增加对其他可能价格字段的覆盖
-                targetOrder.orderTotal.orderActualPrice = LIST_NEW_PRICE;
-                targetOrder.orderTotal.finalPrice = LIST_NEW_PRICE;
+                targetOrder.orderTotal.orderActualPrice = LIST_NEW_PRICE;
+                targetOrder.orderTotal.finalPrice = LIST_NEW_PRICE;
+                console.log(`-> Price fields (orderTotal) set to: ${LIST_NEW_PRICE}`);
             }
-            
-            // 2. 修改时间 (不修改 orderCommonVo.orderId)
+            
+            // 2. 修改时间
             if (targetOrder.orderCommonVo) {
                 targetOrder.orderCommonVo.dateSubmit = LIST_NEW_DATE;
+                console.log(`-> Submission Date set to: ${LIST_NEW_DATE}`);
             }
 
             // 3. 修改商品列表中的价格和名称显示
             if (targetOrder.orderWareList && targetOrder.orderWareList.length > 0) {
                 const ware = targetOrder.orderWareList[0];
-                // 订单商品列表价格
                 ware.price = LIST_NEW_PRICE; 
                 if (ware.priceList && ware.priceList.length > 0) {
                     ware.priceList[0].price = LIST_NEW_PRICE;
                 }
-                // 尝试修改可能用于列表展示的总价格字段
-                if (targetOrder.totalPrice) {
-                    targetOrder.totalPrice.value = LIST_NEW_PRICE;
-                }
-                
-                ware.name = `【列表修改】您的商品名称已被修改 (原ID: ${targetOrder.orderCommonVo.orderId})`;
+                if (targetOrder.totalPrice) {
+                    targetOrder.totalPrice.value = LIST_NEW_PRICE;
+                }
+                
+                ware.name = `【列表修改】您的商品名称已被修改 (原ID: ${currentID})`;
+                console.log(`-> Ware Name and Price modified in orderWareList.`);
             }
+            console.log(`✨ [JD Rewrite] LIST SCRIPT COMPLETED.`);
+
         } else if (LIST_TARGET_ORDER_ID) {
-            // 订单未找到时的日志，如果订单号填错，这里会有提示
-            console.log(`[JD Rewrite] LIST ERROR: Order ID ${LIST_TARGET_ORDER_ID} not found in the list.`);
+            // *** ❌ 关键日志：目标订单未找到 ***
+            console.log(`❌ [JD Rewrite] LIST ERROR: Order ID ${LIST_TARGET_ORDER_ID} NOT FOUND in the current list segment.`);
         }
-    }
+    } else {
+        // *** ⚠️ 关键日志：列表为空 ***
+        console.log("⚠️ [JD Rewrite] LIST WARNING: orderList array is empty or null. No modifications performed.");
+    }
 }
 
 // --- 2. 处理订单详情接口 ---
 else if (isOrderDetail) {
     const data = obj.body;
+    console.log(`🎉 [JD Rewrite] DETAIL START: Applying new Order ID ${DETAIL_NEW_ORDER_ID} and Price ${DETAIL_FACT_PRICE}.`);
 
     // --- 价格计算和修改 (先计算确保平衡) ---
     
-    // 价格平衡公式：商品总额 + 运费 + 打包费 - 优惠1 - 优惠2 - 促销立减 = 实付金额
-    // 需计算的促销立减金额：(商品总额 + 运费 + 打包费 - 优惠1 - 优惠2 - 实付金额)
+    // 价格平衡公式：商品总额 + 运费 + 打包费 - 优惠1 - 优惠2 - 促销立减 = 实付金额
+    // 需计算的促销立减金额：(商品总额 + 运费 + 打包费 - 优惠1 - 优惠2 - 实付金额)
     const NEW_PROMOTION_REDUCTION_CALCULATED = DETAIL_NEW_PRODUCT_PRICE + DETAIL_FREIGHT_FEE + DETAIL_PACKAGING_FEE - DETAIL_DISCOUNT_1 - DETAIL_DISCOUNT_2 - DETAIL_FACT_PRICE;
+    console.log(`-> Calculated NEW_PROMOTION_REDUCTION_CALCULATED: ${NEW_PROMOTION_REDUCTION_CALCULATED.toFixed(2)}`);
 
     // 1. 价格信息 orderPriceInfo
     if (data.orderPriceInfo) {
         data.orderPriceInfo.factPrice = DETAIL_FACT_PRICE.toFixed(2); 
+        console.log(`-> Fact Price (实付金额) set to: ${DETAIL_FACT_PRICE.toFixed(2)}`);
 
         data.orderPriceInfo.billsList.forEach(item => {
             const moneyFloat = parseFloat(item.money.replace(/[^\d.-]/g, ''));
@@ -142,6 +164,7 @@ else if (isOrderDetail) {
             } else if (item.title === "促销立减" && moneyFloat === -25.00) {
                 // 确保促销立减的金额是负值，并与计算结果匹配
                 item.money = `- ¥ ${Math.abs(NEW_PROMOTION_REDUCTION_CALCULATED).toFixed(2)}`;
+                console.log(`-> Promotion Reduction (促销立减) modified based on calculation.`);
             } else if (item.title === "商品优惠" && moneyFloat === -11.00) {
                 item.money = `- ¥ ${DETAIL_DISCOUNT_1.toFixed(2)}`; 
             } else if (item.title === "商品优惠" && moneyFloat === -9.00) {
@@ -149,8 +172,9 @@ else if (isOrderDetail) {
             }
         });
     }
+    console.log("-> Bills List (价格明细) modification completed.");
 
-    // --- 订单号和时间修改 (这部分通常不会有问题) ---
+    // --- 订单号和时间修改 ---
     
     // 2. 进度列表 ProgressList (物流/地址)
     if (data.progressList && data.progressList.length > 0) {
@@ -180,6 +204,7 @@ else if (isOrderDetail) {
                 item.content = "饭福星·炭火烤肉拌饭·烤排饭（未来店）"; 
             }
         });
+        console.log("-> Summary List (订单汇总信息) updated with new times and ID.");
     }
 
     // 5. 基础信息 baseInfo
@@ -196,7 +221,9 @@ else if (isOrderDetail) {
 
         // 更新商店下的商品总额显示
         data.shopList[0].shopTotalNum = `¥ ${DETAIL_NEW_PRODUCT_PRICE.toFixed(2)}`; 
+        console.log("-> Shop List (商品信息) updated with new name and price.");
     }
+    console.log("✨ [JD Rewrite] DETAIL SCRIPT COMPLETED.");
 }
 
 $done({body: JSON.stringify(obj)});
