@@ -1,11 +1,10 @@
 /*
 [rewrite_local]
 # 1. 京东订单列表重写 (匹配 orderList 接口)
-^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=orderList url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/jd.js
-
+^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=orderList url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd.js
 
 # 2. 京东订单详情重写 (匹配 orderDetail 接口)
-^https?:\/\/api\.m\.jd\.com\/client\.action\?t=\d+&loginType=2&loginWQBiz=golden-trade&appid=m_core&client=iPhone&clientVersion=&build url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/jd.js
+^https?:\/\/api\.m\.jd\.com\/client\.action\?t=\d+&loginType=2&loginWQBiz=golden-trade&appid=m_core&client=iPhone&clientVersion=&build url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/jd.js
 
 
 [mitm]
