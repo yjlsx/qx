@@ -22,7 +22,7 @@ hostname = api.m.jd.com
 
 // --- 订单列表页 (List) 配置 ---
 // ⚠️ 填写您要修改的订单的【原始订单编号】。如果留空 ""，则修改列表中的第一个订单。
-const LIST_TARGET_ORDER_ID = "325329166009";
+const LIST_TARGET_ORDER_ID = "325331257423";
 const LIST_NEW_PRICE = "13.88";           // 列表页上显示的新价格
 const LIST_NEW_DATE = "2025-11-10 18:34:20"; // 列表页上的下单时间
 
