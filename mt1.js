@@ -20,7 +20,7 @@ hostname = i.waimai.meituan.com, *.meituan.com
 const CUSTOM_ORDER_TIME = "2025-11-10 10:20:25";
 const TARGET_ORDER_ID_NUM = 601856942715101242;
 const TARGET_ARRIVAL_TIME = "11月10日 10:50-11:20";
-const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了(昆明盛高大城店)";
+const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了";
 // ======================
 
 const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
