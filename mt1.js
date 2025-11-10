@@ -1,35 +1,34 @@
 /*
 [rewrite_local]
-# 美团外卖订单列表（只改时间）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt1.js
+# 美团外卖订单列表（改时间 + 店铺名）
+^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt.js
 
 # 美团外卖订单详情（改时间 + 订单号 + 店铺名）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/manager\/v3\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt1.js
+^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/manager\/v3\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt.js
 
 [mitm]
 hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 /**
-* 🧩 美团外卖订单重写（手动设置时间 + 店铺名版）
+* 🧩 美团外卖订单重写（手动设置时间 + 店铺名）
 * 功能：
-*    列表页：改 orderTime / orderTimeSec
-*    详情页：改 order_time + 评论时间 + 订单号 + 店铺名称 + 期望送达时间
-*    你手动设置具体时间与名称
+*    列表页：改 orderTime / orderTimeSec / 店铺名
+*    详情页：改 order_time / 评论时间 / 订单号 / 店铺名 / 期望送达时间
 */
 
 // === 🧭 你只要改这里 ===
-const CUSTOM_ORDER_TIME = "2025-11-10 10:20:25";  //  下单时间（精确到秒）
-const TARGET_ORDER_ID_NUM = 601856942715101242;    // 新订单号（纯数字）
-const TARGET_ARRIVAL_TIME = "11月10日 10:50-11:20"; // 期望送达时间
-const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了(昆明盛高大城店)";  //  自定义店铺名
+const CUSTOM_ORDER_TIME = "2025-11-10 10:20:25";   //  下单时间
+const TARGET_ORDER_ID_NUM = 601856942715101242;     // 🧾 新订单号
+const TARGET_ARRIVAL_TIME = "11月10日 10:50-11:20";  //  期望送达时间
+const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了(昆明盛高大城店)"; //  店铺名称
 // =====================
 
 // 自动生成字符串ID
 const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
 
 /**
-*  转换时间字符串为 Unix 秒时间戳（支持手动输入格式）
+*  转换时间字符串为 Unix 秒时间戳
 */
 function getTimestamp(timeStr) {
   try {
@@ -50,6 +49,7 @@ try {
   const obj = JSON.parse(body);
   if (!obj?.data) return $done({});
 
+  // 区分接口路径
   if (url.includes("/openh5/order/list")) {
     modifyOrderList(obj.data.orderList);
   } else if (url.includes("/openh5/order/manager/v3/detail")) {
@@ -57,28 +57,33 @@ try {
   }
 
   $done({ body: JSON.stringify(obj) });
-
 } catch (e) {
   console.log(`[MT重写错误] ${e.message}`);
   $done({});
 }
 
 /**
-*  列表页：只改时间
+*  列表页：改时间 + 店铺名
 */
 function modifyOrderList(orderList) {
   if (!Array.isArray(orderList)) return;
 
   orderList.forEach((order) => {
+    // 时间
     order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16); // 去掉秒
     order.orderTimeSec = TARGET_TIMESTAMP_SEC;
+
+    // 店铺名字段常见有 wm_poi_name / poiName / wmPoiName
+    if (order.wm_poi_name) order.wm_poi_name = CUSTOM_POI_NAME;
+    if (order.poiName) order.poiName = CUSTOM_POI_NAME;
+    if (order.wmPoiName) order.wmPoiName = CUSTOM_POI_NAME;
   });
 
-  console.log(`[MT列表页] 时间已设为：${CUSTOM_ORDER_TIME}`);
+  console.log(`[MT列表页] 时间：${CUSTOM_ORDER_TIME} | 店铺：${CUSTOM_POI_NAME}`);
 }
 
 /**
-*  详情页：改时间 + 订单号 + 店铺名
+*  详情页：改时间 + 订单号 + 店铺名 + 评论时间 + 送达时间
 */
 function modifyOrderDetail(data) {
   const oldId = data.id || data.id_view || "unknown";
@@ -96,7 +101,7 @@ function modifyOrderDetail(data) {
   if (data.expected_arrival_time)
     data.expected_arrival_time = TARGET_ARRIVAL_TIME;
 
-  // 修改店铺名称（poi_name）
+  // 修改店铺名
   if (data.poi_name) data.poi_name = CUSTOM_POI_NAME;
 
   // 评论时间（主评论 + 回复）
@@ -109,7 +114,7 @@ function modifyOrderDetail(data) {
       });
   }
 
-  // 替换订单号相关链接
+  // 替换旧订单号
   if (data.scheme)
     data.scheme = data.scheme.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
 
@@ -119,5 +124,5 @@ function modifyOrderDetail(data) {
       TARGET_ORDER_ID_STR
     );
 
-  console.log(`[MT详情页] 新订单号 ${TARGET_ORDER_ID_STR} | 时间 ${CUSTOM_ORDER_TIME} | 店铺：${CUSTOM_POI_NAME}`);
+  console.log(`[MT详情页] 订单号 ${TARGET_ORDER_ID_STR} | 时间 ${CUSTOM_ORDER_TIME} | 店铺 ${CUSTOM_POI_NAME}`);
 }
