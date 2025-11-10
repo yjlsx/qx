@@ -11,25 +11,20 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 /**
-* 🧩 美团外卖订单重写（手动设置时间 + 店铺名）
-* 功能：
-*    列表页：改 orderTime / orderTimeSec / 店铺名
-*    详情页：改 order_time / 评论时间 / 订单号 / 店铺名 / 期望送达时间
+* 强化版：美团外卖订单重写（列表+详情）
+* - 列表页：修改 orderTime / orderTimeSec / 多种店铺名字段位置
+* - 详情页：修改 order_time / 评论时间 / 订单号 / poi_name / expected_arrival_time
 */
 
-// === 🧭 你只要改这里 ===
-const CUSTOM_ORDER_TIME = "2025-11-10 10:20:25";   //  下单时间
-const TARGET_ORDER_ID_NUM = 601856942715101242;     // 🧾 新订单号
-const TARGET_ARRIVAL_TIME = "11月10日 10:50-11:20";  //  期望送达时间
-const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了(昆明盛高大城店)"; //  店铺名称
-// =====================
+// === 可修改的配置 ===
+const CUSTOM_ORDER_TIME = "2025-11-10 10:20:25";
+const TARGET_ORDER_ID_NUM = 601856942715101242;
+const TARGET_ARRIVAL_TIME = "11月10日 10:50-11:20";
+const CUSTOM_POI_NAME = "凌晨2点半还要排队的牛腩饭.牛呢.炖了(昆明盛高大城店)";
+// ======================
 
-// 自动生成字符串ID
 const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
 
-/**
-*  转换时间字符串为 Unix 秒时间戳
-*/
 function getTimestamp(timeStr) {
   try {
     const ts = Math.floor(new Date(timeStr.replace(/-/g, "/")).getTime() / 1000);
@@ -49,9 +44,23 @@ try {
   const obj = JSON.parse(body);
   if (!obj?.data) return $done({});
 
-  // 区分接口路径
   if (url.includes("/openh5/order/list")) {
-    modifyOrderList(obj.data.orderList);
+    // 有的接口把列表放在 data.orderList / data.orders / data.order_list 等位置，尽量处理几种常见情况
+    if (Array.isArray(obj.data.orderList)) {
+      modifyOrderList(obj.data.orderList);
+    } else if (Array.isArray(obj.data.orders)) {
+      modifyOrderList(obj.data.orders);
+    } else if (Array.isArray(obj.data.order_list)) {
+      modifyOrderList(obj.data.order_list);
+    } else {
+      // 有时候列表直接是 data（非数组）或嵌套更深，尝试遍历 data 的所有数组字段并处理第一个数组
+      for (const k in obj.data) {
+        if (Array.isArray(obj.data[k])) {
+          modifyOrderList(obj.data[k]);
+          break;
+        }
+      }
+    }
   } else if (url.includes("/openh5/order/manager/v3/detail")) {
     modifyOrderDetail(obj.data);
   }
@@ -63,28 +72,85 @@ try {
 }
 
 /**
-*  列表页：改时间 + 店铺名
-*/
+ * 列表页处理：尽量修改各种可能的店铺名字段，并修改时间
+ */
 function modifyOrderList(orderList) {
   if (!Array.isArray(orderList)) return;
 
-  orderList.forEach((order) => {
-    // 时间
-    order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16); // 去掉秒
-    order.orderTimeSec = TARGET_TIMESTAMP_SEC;
+  orderList.forEach((order, idx) => {
+    // 记录原始常见字段，便于调试
+    const originalNames = {};
 
-    // 店铺名字段常见有 wm_poi_name / poiName / wmPoiName
-    if (order.wm_poi_name) order.wm_poi_name = CUSTOM_POI_NAME;
-    if (order.poiName) order.poiName = CUSTOM_POI_NAME;
-    if (order.wmPoiName) order.wmPoiName = CUSTOM_POI_NAME;
+    // 常见直接字段
+    ["wm_poi_name", "poiName", "wmPoiName", "poi_name", "shopName", "name"].forEach((field) => {
+      if (order[field] !== undefined) originalNames[field] = order[field];
+    });
+
+    // 某些接口把 poi 信息放在子对象：poi / poi_info / wm_poi_info / poiInfo
+    const poiContainers = ["poi", "poi_info", "wm_poi_info", "poiInfo", "wmPoiInfo"];
+    poiContainers.forEach((c) => {
+      if (order[c] && typeof order[c] === "object") {
+        if (order[c].name !== undefined) originalNames[`${c}.name`] = order[c].name;
+        if (order[c].poi_name !== undefined) originalNames[`${c}.poi_name`] = order[c].poi_name;
+        if (order[c].poiName !== undefined) originalNames[`${c}.poiName`] = order[c].poiName;
+      }
+    });
+
+    // 调试输出：显示第一个订单的原始店铺名快照（只打印前 5 条以免日志太长）
+    if (idx < 5) console.log(`[MT列表-原始][idx=${idx}] ${JSON.stringify(originalNames)}`);
+
+    // 修改时间字段
+    if (order.orderTime !== undefined) order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16);
+    if (order.orderTimeSec !== undefined) order.orderTimeSec = TARGET_TIMESTAMP_SEC;
+    if (order.order_time !== undefined) order.order_time = TARGET_TIMESTAMP_SEC;
+
+    // 直接字段修改
+    if (order.wm_poi_name !== undefined) order.wm_poi_name = CUSTOM_POI_NAME;
+    if (order.poiName !== undefined) order.poiName = CUSTOM_POI_NAME;
+    if (order.wmPoiName !== undefined) order.wmPoiName = CUSTOM_POI_NAME;
+    if (order.poi_name !== undefined) order.poi_name = CUSTOM_POI_NAME;
+    if (order.shopName !== undefined) order.shopName = CUSTOM_POI_NAME;
+    if (order.name !== undefined && isLikelyPoiName(order.name)) order.name = CUSTOM_POI_NAME;
+
+    // 子对象内修改
+    poiContainers.forEach((c) => {
+      if (order[c] && typeof order[c] === "object") {
+        if (order[c].name !== undefined) order[c].name = CUSTOM_POI_NAME;
+        if (order[c].poi_name !== undefined) order[c].poi_name = CUSTOM_POI_NAME;
+        if (order[c].poiName !== undefined) order[c].poiName = CUSTOM_POI_NAME;
+      }
+    });
+
+    // 如果订单里包含一个统一的 poi_info 数组（少见），也尝试处理
+    if (Array.isArray(order.poi_info)) {
+      order.poi_info.forEach((p) => {
+        if (p.name !== undefined) p.name = CUSTOM_POI_NAME;
+        if (p.poi_name !== undefined) p.poi_name = CUSTOM_POI_NAME;
+      });
+    }
+
+    // 输出修改后的快照（前5条）
+    if (idx < 5) {
+      const afterNames = {};
+      ["wm_poi_name", "poiName", "wmPoiName", "poi_name", "shopName", "name"].forEach((field) => {
+        if (order[field] !== undefined) afterNames[field] = order[field];
+      });
+      poiContainers.forEach((c) => {
+        if (order[c] && typeof order[c] === "object") {
+          if (order[c].name !== undefined) afterNames[`${c}.name`] = order[c].name;
+          if (order[c].poi_name !== undefined) afterNames[`${c}.poi_name`] = order[c].poi_name;
+        }
+      });
+      console.log(`[MT列表-修改后][idx=${idx}] ${JSON.stringify(afterNames)}`);
+    }
   });
 
-  console.log(`[MT列表页] 时间：${CUSTOM_ORDER_TIME} | 店铺：${CUSTOM_POI_NAME}`);
+  console.log(`[MT列表页] 已尝试设置 店铺名 -> ${CUSTOM_POI_NAME} & 时间 -> ${CUSTOM_ORDER_TIME}`);
 }
 
 /**
-*  详情页：改时间 + 订单号 + 店铺名 + 评论时间 + 送达时间
-*/
+ * 详情页处理（保留原有逻辑）
+ */
 function modifyOrderDetail(data) {
   const oldId = data.id || data.id_view || "unknown";
 
@@ -95,34 +161,42 @@ function modifyOrderDetail(data) {
   });
 
   // 修改下单时间
-  if (data.order_time) data.order_time = TARGET_TIMESTAMP_SEC;
+  if (data.order_time !== undefined) data.order_time = TARGET_TIMESTAMP_SEC;
 
   // 修改期望送达时间
-  if (data.expected_arrival_time)
+  if (data.expected_arrival_time !== undefined)
     data.expected_arrival_time = TARGET_ARRIVAL_TIME;
 
-  // 修改店铺名
-  if (data.poi_name) data.poi_name = CUSTOM_POI_NAME;
+  // 修改店铺名（详情页常见字段）
+  if (data.poi_name !== undefined) data.poi_name = CUSTOM_POI_NAME;
+  if (data.wm_poi_name !== undefined) data.wm_poi_name = CUSTOM_POI_NAME;
+  if (data.poi && typeof data.poi === "object") {
+    if (data.poi.name !== undefined) data.poi.name = CUSTOM_POI_NAME;
+    if (data.poi.poi_name !== undefined) data.poi.poi_name = CUSTOM_POI_NAME;
+  }
 
   // 评论时间（主评论 + 回复）
   if (data.comment) {
-    if (data.comment.comment_time)
-      data.comment.comment_time = TARGET_TIMESTAMP_SEC + 600;
+    if (data.comment.comment_time !== undefined) data.comment.comment_time = TARGET_TIMESTAMP_SEC + 600;
     if (Array.isArray(data.comment.add_comment_list))
       data.comment.add_comment_list.forEach((reply) => {
-        if (reply.time) reply.time = TARGET_TIMESTAMP_SEC + 1200;
+        if (reply.time !== undefined) reply.time = TARGET_TIMESTAMP_SEC + 1200;
       });
   }
 
-  // 替换旧订单号
-  if (data.scheme)
-    data.scheme = data.scheme.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
-
+  // 替换订单号相关链接
+  if (data.scheme) data.scheme = data.scheme.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
   if (data.insurance?.insurance_detail_url)
-    data.insurance.insurance_detail_url = data.insurance.insurance_detail_url.replace(
-      new RegExp(oldId, "g"),
-      TARGET_ORDER_ID_STR
-    );
+    data.insurance.insurance_detail_url = data.insurance.insurance_detail_url.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
 
   console.log(`[MT详情页] 订单号 ${TARGET_ORDER_ID_STR} | 时间 ${CUSTOM_ORDER_TIME} | 店铺 ${CUSTOM_POI_NAME}`);
+}
+
+/**
+ * 简单启发式：判断 name 字段是否更可能是店铺名（避免误改商品名等）
+ */
+function isLikelyPoiName(nameStr) {
+  if (!nameStr || typeof nameStr !== "string") return false;
+  // 含有“店”/“馆”/“饭”/“店名”/括号等关键词更可能是店铺名
+  return /店|馆|饭|楼|馆|(店)|（|）|\(|\)/.test(nameStr) || nameStr.length <= 60;
 }
