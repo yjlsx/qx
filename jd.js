@@ -24,16 +24,16 @@ hostname = api.m.jd.com
 // ⚠️ 填写您要修改的订单的【原始订单编号】。如果留空 ""，则修改列表中的第一个订单。
 const LIST_TARGET_ORDER_ID = "325329166009";  // 不修改
 const LIST_NEW_PRICE = "13.88";           // 列表页上显示的新价格
-const LIST_NEW_DATE = "2025-11-10 18:34:20"; // 列表页上的下单时间
+const LIST_NEW_DATE = "2025-11-11 10:38:20"; // 列表页上的下单时间
 
 // --- 订单详情页 (Detail) 配置 ---
-const DETAIL_NEW_ORDER_ID = "372724564859"; // 详情页显示的新订单编号
-const DETAIL_NEW_DATE_BASE = "2025-11-10";  // 新的日期
-const DETAIL_NEW_TIME_BASE = "18:34:20";   // 新的基本时间 (用于下单时间)
-const DETAIL_NEW_PAY_TIME = "2025-11-10 18:35:12"; // 新的支付时间
-const DETAIL_NEW_COMPLETE_TIME = "2025-11-10 19:12:08"; // 新的订单完成/送达时间
-const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2025-11-10 19:00-19:30"; // 新的期望配送时间
-const DETAIL_NEW_CURRENT_TIME = "2025-11-10 18:35:47"; // 模拟服务器返回的当前时间
+const DETAIL_NEW_ORDER_ID = "372732485714"; // 详情页显示的新订单编号
+const DETAIL_NEW_DATE_BASE = "2025-11-11";  // 新的日期
+const DETAIL_NEW_TIME_BASE = "10:38:20";   // 新的基本时间 (用于下单时间)
+const DETAIL_NEW_PAY_TIME = "2025-11-11 10:39:12"; // 新的支付时间
+const DETAIL_NEW_COMPLETE_TIME = "2025-11-11 11:12:08"; // 新的订单完成/送达时间
+const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2025-11-11 11:00-11:30"; // 新的期望配送时间
+const DETAIL_NEW_CURRENT_TIME = "2025-11-11 10:40:47"; // 模拟服务器返回的当前时间
 const DETAIL_FACT_PRICE = 13.88; // 最终实付金额 (保持不变)
 const DETAIL_NEW_PRODUCT_PRICE = 13.88; // 详情页显示的新商品总额
 
