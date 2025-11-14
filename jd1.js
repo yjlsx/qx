@@ -26,8 +26,8 @@ const DETAIL_NEW_ORDER_ID = "329269148572"; // 详情页显示的新订单编号
 const DETAIL_NEW_DATE_BASE = "2025-11-14";  // 新的日期
 const DETAIL_NEW_TIME_BASE = "10:01:20";   // 新的基本时间 (用于下单时间)
 const DETAIL_NEW_PAY_TIME = "2025-11-14 10:02:55"; // 新的支付时间
-const DETAIL_NEW_COMPLETE_TIME = "2025-11-14 10:50:04"; // 新的订单完成/送达时间
-const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2025-11-14 10:45-11:00"; // 新的期望配送时间
+const DETAIL_NEW_COMPLETE_TIME = "2025-11-14 10:37:04"; // 新的订单完成/送达时间
+const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2025-11-14 10:35-10:50"; // 新的期望配送时间
 const DETAIL_NEW_CURRENT_TIME = "2025-11-14 10:03:22"; // 模拟服务器返回的当前时间
 
 // ===================================
