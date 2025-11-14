@@ -21,7 +21,7 @@ hostname = api.m.jd.com
 // ⚙️ 用户可配置项 (订单详情页)
 // ===================================
 
-const DETAIL_NEW_ORDER_ID = "329269188423"; // 详情页显示的新订单编号
+const DETAIL_NEW_ORDER_ID = "329269188423"; // 详情页显示的新订单号
 
 const DETAIL_NEW_DATE_BASE = "2025-11-14";  // 新的日期
 const DETAIL_NEW_TIME_BASE = "10:45:20";   // 新的基本时间 (用于下单时间)
