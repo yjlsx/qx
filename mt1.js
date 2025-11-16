@@ -17,10 +17,10 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 // === 可修改的配置 ===
-const CUSTOM_ORDER_TIME = "2025-11-15 20:12:15";
-const TARGET_ORDER_ID_NUM = "601864571826517617";
-const TARGET_ARRIVAL_TIME = "11月15日 20:23-20:33";
-const CUSTOM_POI_NAME = "家味道·酸菜红豆饭";
+const CUSTOM_ORDER_TIME = "2025-11-16 10:52:15";
+const TARGET_ORDER_ID_NUM = "601865397241411832";
+const TARGET_ARRIVAL_TIME = "11月16日 11:23-11:38";
+const CUSTOM_POI_NAME = "凌晨2点半都要排队的牛腩饭.牛呢.炖了";   //  ·
 // ======================
 
 const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
