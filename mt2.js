@@ -4,13 +4,12 @@
 # 美团外卖订单
 ^https?:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
 
-
-
 [mitm]
-hostname = i.waimai.meituan.com, *.meituan.com
+# 确保包含 wx-shangou.meituan.com 才能解密！
+hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
+
 */
 
-// 文件名: OrderDetailModify.js
 
 // ----------------------------------------------------------------------
 // 【用户配置区 - 只需修改以下两个变量】
