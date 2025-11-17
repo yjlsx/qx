@@ -24,7 +24,7 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 // ----------------------------------------------------------------------
 
 var CUSTOM_ORDER_ID = "601867382174057863";  // 新订单号（只用于详情页）
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12";  // 新订单时间
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:05:12";  // 新订单时间
 
 function dateToUnixTimestamp(datetimeStr) {
     const date = new Date(datetimeStr.replace(/-/g, '/'));
@@ -55,8 +55,9 @@ try {
     }
 
     // 列表页：只修改时间
-    if (url.includes("order/list") && obj.data.orderList) {
-        for (let order of obj.data.orderList) {
+    if (url.includes("order/list")) {
+        let orders = obj.data.orderList || obj.data.orders || [];
+        for (let order of orders) {
             if (order.orderTimeSec !== undefined) order.orderTimeSec = NEW_ORDER_TIME_SEC;
             if (order.orderTime !== undefined) order.orderTime = NEW_ORDER_TIME_STR;
         }
