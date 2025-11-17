@@ -23,11 +23,11 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 // 【用户配置区 - 请修改这里的两个变量的值】
 // ----------------------------------------------------------------------
 
-var CUSTOM_ORDER_ID = "601867382174057863";  // 新订单号（只用于详情页）
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:05:12";  // 新订单时间
+var CUSTOM_ORDER_ID = "601867382174057863";  // 详情页新订单号
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:06:12";  // 新订单时间
 
 function dateToUnixTimestamp(datetimeStr) {
-    const date = new Date(datetimeStr.replace(/-/g, '/'));
+    var date = new Date(datetimeStr.replace(/-/g, '/'));
     return isNaN(date.getTime()) ? 0 : Math.floor(date.getTime() / 1000);
 }
 
@@ -41,30 +41,29 @@ try {
     var obj = JSON.parse(body);
     if (!obj || obj.code !== 0 || !obj.data) {
         $done({});
-        return;
     }
 
-    // 详情页：修改订单号 + 时间
+    // --- 详情页 ---
     if (url.includes("order/detail")) {
         if (obj.data.id && obj.data.id.startsWith("6018")) obj.data.id = CUSTOM_ORDER_ID;
         if (obj.data.orderId && obj.data.orderId.startsWith("6018")) obj.data.orderId = CUSTOM_ORDER_ID;
         if (obj.data.orderViewId && obj.data.orderViewId.startsWith("6018")) obj.data.orderViewId = CUSTOM_ORDER_ID;
         if (obj.data.display_id && obj.data.display_id.startsWith("6018")) obj.data.display_id = CUSTOM_ORDER_ID;
 
-        if (obj.data.order_time !== undefined) obj.data.order_time = NEW_ORDER_TIME_SEC;
+        if (obj.data.order_time !== undefined) obj.data.order_time = NEW_ORDER_TIME_SEC; // 保证整数
     }
 
-    // 列表页：只修改时间
+    // --- 列表页 ---
     if (url.includes("order/list")) {
-        let orders = obj.data.orderList || obj.data.orders || [];
-        for (let order of orders) {
-            if (order.orderTimeSec !== undefined) order.orderTimeSec = NEW_ORDER_TIME_SEC;
-            if (order.orderTime !== undefined) order.orderTime = NEW_ORDER_TIME_STR;
+        var orders = obj.data.orderList || obj.data.orders || [];
+        for (var i = 0; i < orders.length; i++) {
+            if (orders[i].orderTimeSec !== undefined) orders[i].orderTimeSec = NEW_ORDER_TIME_SEC;
+            if (orders[i].orderTime !== undefined) orders[i].orderTime = NEW_ORDER_TIME_STR;
         }
     }
 
     $done({body: JSON.stringify(obj)});
 } catch (e) {
-    console.log(`[MT] 异常: ${e.name} - ${e.message}`);
+    console.log("[MT] 异常: " + e);
     $done({});
 }
