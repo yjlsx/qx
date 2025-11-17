@@ -19,20 +19,22 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 */
 
 
-// ----------------------------------------------------------------------
-// 【用户配置区 - 请修改这里的两个变量的值】
-// ----------------------------------------------------------------------
 
-var CUSTOM_ORDER_ID = "601867382174057863";  // 详情页新订单号
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:06:12";  // 新订单时间
+// ----------------------------------------------------------------------
+// 【用户配置区】
+var CUSTOM_ORDER_ID = "601867382174057863"; // 只用于详情页 data.id
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; // 列表页和详情页显示时间
 
+// ----------------------------------------------------------------------
+// 【工具函数】将时间字符串转换为 Unix 时间戳
 function dateToUnixTimestamp(datetimeStr) {
-    var date = new Date(datetimeStr.replace(/-/g, '/'));
-    return isNaN(date.getTime()) ? 0 : Math.floor(date.getTime() / 1000);
+    const date = new Date(datetimeStr.replace(/-/g, '/'));
+    if (isNaN(date.getTime())) return 0;
+    return Math.floor(date.getTime() / 1000);
 }
 
 var NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
-var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16);
+var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); // "YYYY-MM-DD HH:MM"
 
 var body = $response.body;
 var url = $request.url;
@@ -41,29 +43,36 @@ try {
     var obj = JSON.parse(body);
     if (!obj || obj.code !== 0 || !obj.data) {
         $done({});
+        return;
     }
 
-    // --- 详情页 ---
-    if (url.includes("order/detail")) {
-        if (obj.data.id && obj.data.id.startsWith("6018")) obj.data.id = CUSTOM_ORDER_ID;
-        if (obj.data.orderId && obj.data.orderId.startsWith("6018")) obj.data.orderId = CUSTOM_ORDER_ID;
-        if (obj.data.orderViewId && obj.data.orderViewId.startsWith("6018")) obj.data.orderViewId = CUSTOM_ORDER_ID;
-        if (obj.data.display_id && obj.data.display_id.startsWith("6018")) obj.data.display_id = CUSTOM_ORDER_ID;
+    // --------------------- 详情页 ---------------------
+    if (url.includes("/order/detail")) {
+        // 修改最顶层订单号
+        if (obj.data.id) obj.data.id = CUSTOM_ORDER_ID;
 
-        if (obj.data.order_time !== undefined) obj.data.order_time = NEW_ORDER_TIME_SEC; // 保证整数
+        // 修改时间字段（Unix 时间戳）
+        if (obj.data.order_time) obj.data.order_time = NEW_ORDER_TIME_SEC;
+
+        console.log(`[MT] 详情页已修改 data.id 和 order_time`);
     }
 
-    // --- 列表页 ---
-    if (url.includes("order/list")) {
-        var orders = obj.data.orderList || obj.data.orders || [];
-        for (var i = 0; i < orders.length; i++) {
-            if (orders[i].orderTimeSec !== undefined) orders[i].orderTimeSec = NEW_ORDER_TIME_SEC;
-            if (orders[i].orderTime !== undefined) orders[i].orderTime = NEW_ORDER_TIME_STR;
+    // --------------------- 列表页 ---------------------
+    if (url.includes("/order/list")) {
+        // 只修改时间，不改订单号
+        if (obj.data.orderList) {
+            for (let order of obj.data.orderList) {
+                if (order.orderTimeSec) order.orderTimeSec = NEW_ORDER_TIME_SEC;
+                if (order.orderTime) order.orderTime = NEW_ORDER_TIME_STR;
+            }
         }
+        console.log(`[MT] 列表页已修改时间`);
     }
 
-    $done({body: JSON.stringify(obj)});
+    body = JSON.stringify(obj, null, 2);
+    $done({body});
+
 } catch (e) {
-    console.log("[MT] 异常: " + e);
+    console.log(`[MT] 运行时异常: ${e.name} - ${e.message}`);
     $done({});
 }
