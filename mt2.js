@@ -14,7 +14,6 @@
 
 
 [mitm]
-# 确保所有涉及的主机名都包含在内
 hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 */
