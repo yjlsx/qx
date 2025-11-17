@@ -20,6 +20,7 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 */
 
 
+// 文件名: mt2.js (最高兼容性版本 - 列表页仅修改 mtOrderViewId)
 
 // ----------------------------------------------------------------------
 // 【用户配置区 - 请修改这里的三个变量的值】
@@ -34,6 +35,7 @@ var TARGET_OLD_ID = "601867372177026569";
 // ----------------------------------------------------------------------
 
 function dateToUnixTimestamp(datetimeStr) {
+    // 将日期字符串转换为 Unix 时间戳 (秒)
     const date = new Date(datetimeStr.replace(/-/g, '/'));
     if (isNaN(date.getTime())) return 0;
     return Math.floor(date.getTime() / 1000);
@@ -55,15 +57,13 @@ try {
     // --- 逻辑判断和执行 ---
     
     if (url.includes("order/detail")) {
-        // 1. 订单详情页接口修改逻辑：尝试多个字段名
-        
-        // ** (A) 订单号字段排查：同时修改所有可能的订单ID字段 **
+        // 1. 订单详情页接口修改逻辑：用于解决“订单号未修改”的问题，同时修改所有可能的字段
         obj.data.id = CUSTOM_ORDER_ID;             
         obj.data.orderId = CUSTOM_ORDER_ID;        
         obj.data.orderViewId = CUSTOM_ORDER_ID;    
         obj.data.display_id = CUSTOM_ORDER_ID;     
         
-        // (B) 订单时间修改 (已确认生效)
+        // 订单时间修改 (已确认生效)
         obj.data.order_time = NEW_ORDER_TIME_SEC;  
         
         console.log(`[MT] 详情页ID/时间已修改: ${CUSTOM_ORDER_ID}`);
@@ -76,9 +76,8 @@ try {
                 // 仅修改 TARGET_OLD_ID 的订单
                 if (order.orderId === TARGET_OLD_ID) {
                     
-                    // 关键修复：只修改用于显示的 ID，不修改 orderId (用于跳转)
+                    // *** 关键：只修改用于显示的 mtOrderViewId ***
                     order.mtOrderViewId = CUSTOM_ORDER_ID; 
-                    // 移除：order.orderId = CUSTOM_ORDER_ID; // <-- 移除此行，确保跳转链接ID不变
                     
                     // 修改时间
                     order.orderTimeSec = NEW_ORDER_TIME_SEC;
@@ -90,6 +89,7 @@ try {
         }
     }
     
+    // 重新打包 JSON 响应体
     body = JSON.stringify(obj, null, 2);
     $done({body});
 
