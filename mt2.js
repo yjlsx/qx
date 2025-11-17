@@ -1,10 +1,10 @@
 /*
 [rewrite_local]
 # 美团外卖订单列表（只改时间）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt.js
+^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/m2t.js
 
 # 美团外卖订单详情（改时间 + 订单号）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/manager\/v3\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt.js
+^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/manager\/v3\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
 
 [mitm]
 hostname = i.waimai.meituan.com, *.meituan.com
@@ -19,9 +19,9 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 // === 🧭 你只要改这里 ===
-const CUSTOM_ORDER_TIME = "2025-11-17 12:38:14"; // 🕐 下单时间（精确到秒）
-const TARGET_ORDER_ID_NUM = "601866984275134463";   // 新订单号6018四位
-const TARGET_ARRIVAL_TIME = "11月17日 13:10-13:25"; // 期望送达时间
+const CUSTOM_ORDER_TIME = "2025-11-11 20:20:21"; // 🕐 下单时间（精确到秒）
+const TARGET_ORDER_ID_NUM = "601857320812998403";   // 新订单号6018四位
+const TARGET_ARRIVAL_TIME = "11月11日 20:55-21:10"; // 期望送达时间
 // =====================
 
 // 自动生成字符串ID
