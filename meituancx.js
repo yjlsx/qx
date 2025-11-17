@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/meituanncx.js
+^https:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/meituancx.js
 
 
 
