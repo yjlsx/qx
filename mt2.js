@@ -20,7 +20,7 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 */
 
 
-// 文件名: mt2.js (最高兼容性版本 - 列表页仅修改 mtOrderViewId)
+// 文件名: mt2.js (最高兼容性版本 - 修复列表页跳转问题)
 
 // ----------------------------------------------------------------------
 // 【用户配置区 - 请修改这里的三个变量的值】
@@ -35,7 +35,6 @@ var TARGET_OLD_ID = "601867372177026569";
 // ----------------------------------------------------------------------
 
 function dateToUnixTimestamp(datetimeStr) {
-    // 将日期字符串转换为 Unix 时间戳 (秒)
     const date = new Date(datetimeStr.replace(/-/g, '/'));
     if (isNaN(date.getTime())) return 0;
     return Math.floor(date.getTime() / 1000);
@@ -57,7 +56,7 @@ try {
     // --- 逻辑判断和执行 ---
     
     if (url.includes("order/detail")) {
-        // 1. 订单详情页接口修改逻辑：用于解决“订单号未修改”的问题，同时修改所有可能的字段
+        // 1. 订单详情页接口修改逻辑：尝试所有可能的订单ID字段
         obj.data.id = CUSTOM_ORDER_ID;             
         obj.data.orderId = CUSTOM_ORDER_ID;        
         obj.data.orderViewId = CUSTOM_ORDER_ID;    
@@ -76,14 +75,14 @@ try {
                 // 仅修改 TARGET_OLD_ID 的订单
                 if (order.orderId === TARGET_OLD_ID) {
                     
-                    // *** 关键：只修改用于显示的 mtOrderViewId ***
-                    order.mtOrderViewId = CUSTOM_ORDER_ID; 
+                    // *** 关键修复：暂时禁用列表页的 ID 修改 ***
+                    // order.mtOrderViewId = CUSTOM_ORDER_ID; // <-- 暂时禁用此行！
                     
                     // 修改时间
                     order.orderTimeSec = NEW_ORDER_TIME_SEC;
                     order.orderTime = NEW_ORDER_TIME_STR;
                     
-                    console.log(`[MT] 列表ID (${TARGET_OLD_ID}) 视图ID/时间已成功替换`);
+                    console.log(`[MT] 列表ID (${TARGET_OLD_ID}) 视图时间已成功替换 (ID修改已禁用)`);
                 }
             }
         }
