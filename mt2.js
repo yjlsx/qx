@@ -1,120 +1,78 @@
 @ -0,0 +1,119 @@
 /*
 [rewrite_local]
-# 美团外卖订单列表（只改时间）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
+# 美团外卖订单
+^https?:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
 
-# 美团外卖订单详情（改时间 + 订单号）
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/manager\/v3\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
+
 
 [mitm]
 hostname = i.waimai.meituan.com, *.meituan.com
 */
 
-/**
-* 🧩 美团外卖订单重写（手动设置时间版）
-* 功能：
-*   ✅ 列表页：改 orderTime / orderTimeSec
-*   ✅ 详情页：改 order_time + 评论时间 + 订单号
-*   ✅ 你手动设置具体时间
-*/
+// 文件名: OrderDetailModify.js
 
-// === 🧭 你只要改这里 ===
-const CUSTOM_ORDER_TIME = "2025-11-11 20:20:21"; // 🕐 下单时间（精确到秒）
-const TARGET_ORDER_ID_NUM = "601857320872998403";   // 新订单号6018四位
-const TARGET_ARRIVAL_TIME = "11月11日 20:55-21:10"; // 期望送达时间
-// =====================
+// ----------------------------------------------------------------------
+// 【用户配置区 - 只需修改以下两个变量】
+// ----------------------------------------------------------------------
 
-// 自动生成字符串ID
-const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
+// 1. **自定义订单号 (id):** //    请设置为一个数字字符串或大整数，以替换响应体中的 "id" 字段。
+const CUSTOM_ORDER_ID = "601867382174057863";
 
-/**
-* 🕐 转换时间字符串为 Unix 秒时间戳（支持手动输入格式）
-*/
-function getTimestamp(timeStr) {
- try {
-   const ts = Math.floor(new Date(timeStr.replace(/-/g, "/")).getTime() / 1000);
-   if (isNaN(ts) || ts <= 0) throw new Error("时间无效");
-   return ts;
- } catch {
-   return Math.floor(Date.now() / 1000);
- }
+// 2. **自定义订单时间 (order_time):**
+//    请设置为您想要的订单日期和时间。格式必须为 YYYY-MM-DD HH:MM:SS。
+//    脚本会根据此设置自动计算出 Unix 时间戳（秒）。
+//    注意：请使用本地时区。
+const CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; 
+
+// ----------------------------------------------------------------------
+// 【脚本逻辑区 - 一般无需修改】
+// ----------------------------------------------------------------------
+
+function dateToUnixTimestamp(datetimeStr) {
+    // 将 YYYY-MM-DD HH:MM:SS 格式的字符串转换为 Date 对象
+    // 注意：Date.parse() 默认按照本地时区解析
+    const date = new Date(datetimeStr.replace(/-/g, '/'));
+    
+    // 返回秒级 Unix 时间戳
+    return Math.floor(date.getTime() / 1000);
 }
-const TARGET_TIMESTAMP_SEC = getTimestamp(CUSTOM_ORDER_TIME);
 
-const url = $request.url;
+// 转换时间配置为 Unix 时间戳（秒）
+const NEW_ORDER_TIME = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
+
+// 获取当前响应体
 let body = $response.body;
-if (!body) $done({});
 
 try {
- const obj = JSON.parse(body);
- if (!obj?.data) return $done({});
-
- if (url.includes("/openh5/order/list")) {
-   modifyOrderList(obj.data.orderList);
- } else if (url.includes("/openh5/order/manager/v3/detail")) {
-   modifyOrderDetail(obj.data);
- }
-
- $done({ body: JSON.stringify(obj) });
+    // 将响应体解析为 JSON 对象
+    let obj = JSON.parse(body);
+    
+    // 检查响应状态码和数据结构
+    if (obj && obj.code === 0 && obj.data) {
+        
+        // 1. 修改 data.id (订单号)
+        obj.data.id = parseInt(CUSTOM_ORDER_ID, 10);
+        console.log(`[OrderDetailModify] 订单号(id)已修改为: ${CUSTOM_ORDER_ID}`);
+        
+        // 2. 修改 data.order_time (订单时间戳)
+        obj.data.order_time = NEW_ORDER_TIME;
+        console.log(`[OrderDetailModify] 订单时间已修改为: ${CUSTOM_ORDER_DATETIME} (时间戳: ${NEW_ORDER_TIME})`);
+        
+        // 重新将修改后的 JSON 对象转换为字符串
+        body = JSON.stringify(obj, null, 2);
+        
+        // 返回修改后的响应体
+        $done({body});
+        
+    } else {
+        // 非预期响应结构，不做修改
+        console.log('[OrderDetailModify] 响应结构不符合预期，未修改。');
+        $done({});
+    }
 
 } catch (e) {
- console.log(`[MT重写错误] ${e.message}`);
- $done({});
-}
-
-/**
-* 📃 列表页：只改时间
-*/
-function modifyOrderList(orderList) {
- if (!Array.isArray(orderList)) return;
-
- orderList.forEach((order) => {
-   order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16); // 去掉秒只显示到分钟
-   order.orderTimeSec = TARGET_TIMESTAMP_SEC;
- });
-
- console.log(`[MT列表页] 时间已设为：${CUSTOM_ORDER_TIME}`);
-}
-
-/**
-* 📦 详情页：改时间 + 订单号
-*/
-function modifyOrderDetail(data) {
- const oldId = data.id || data.id_view || "unknown";
-
- // 修改订单号
- ["id", "id_view", "id_text"].forEach((key) => {
-   if (data[key] !== undefined)
-     data[key] = key === "id" ? TARGET_ORDER_ID_NUM : TARGET_ORDER_ID_STR;
- });
-
- // 修改下单时间
- if (data.order_time) data.order_time = TARGET_TIMESTAMP_SEC;
-
- // 修改期望送达时间
- if (data.expected_arrival_time)
-   data.expected_arrival_time = TARGET_ARRIVAL_TIME;
-
- // 评论时间
- if (data.comment) {
-   if (data.comment.comment_time)
-     data.comment.comment_time = TARGET_TIMESTAMP_SEC + 600;
-   if (Array.isArray(data.comment.add_comment_list))
-     data.comment.add_comment_list.forEach((reply) => {
-       if (reply.time) reply.time = TARGET_TIMESTAMP_SEC + 1200;
-     });
- }
-
- // 替换旧订单号
- if (data.scheme)
-   data.scheme = data.scheme.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
-
- if (data.insurance?.insurance_detail_url)
-   data.insurance.insurance_detail_url = data.insurance.insurance_detail_url.replace(
-     new RegExp(oldId, "g"),
-     TARGET_ORDER_ID_STR
-   );
-
- console.log(`[MT详情页] 新订单号 ${TARGET_ORDER_ID_STR} | 时间 ${CUSTOM_ORDER_TIME}`);
+    // 解析 JSON 失败，不做修改
+    console.log(`[OrderDetailModify] JSON 解析失败: ${e.message}`);
+    $done({});
 }
