@@ -22,16 +22,16 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 
 // ----------------------------------------------------------------------
-// 【用户配置区 - 请根据您的需求修改这里的三个常量】
+// 【用户配置区 - 请根据您的需求修改这里的三个变量】
 // ----------------------------------------------------------------------
 
-// 1. **新的自定义订单号 (用于显示):** const CUSTOM_ORDER_ID = "601867382174057863";
+// 确保使用 var 关键字，以避免在某些脚本环境中的作用域 (ReferenceError) 问题
+var CUSTOM_ORDER_ID = "601867382174057863"; 
 
 // 2. **新的自定义订单时间 (用于显示):** 格式必须为 YYYY-MM-DD HH:MM:SS
-const CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; 
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; 
 
-// 3. **要被替换的原始订单ID (列表中的):** //    脚本只修改列表中 orderId 等于这个 TARGET_OLD_ID 的订单
-const TARGET_OLD_ID = "601867372177026569"; 
+// 3. **要被替换的原始订单ID (列表中的):** var TARGET_OLD_ID = "601867372177026569"; 
 
 // ----------------------------------------------------------------------
 // 【脚本逻辑区 - 无需修改】
@@ -39,21 +39,21 @@ const TARGET_OLD_ID = "601867372177026569";
 
 function dateToUnixTimestamp(datetimeStr) {
     // 将日期字符串转换为 Unix 时间戳 (秒)
-    // 兼容 Safari/JS 的日期格式
     const date = new Date(datetimeStr.replace(/-/g, '/'));
     if (isNaN(date.getTime())) return 0;
     return Math.floor(date.getTime() / 1000);
 }
 
-const NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
+// 注意：这里使用 var 是因为配置变量已改为 var
+var NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
 // 提取到分钟的字符串，例如 "2025-11-17 19:04"
-const NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); 
+var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); 
 
-let body = $response.body;
-const url = $request.url;
+var body = $response.body;
+var url = $request.url;
 
 try {
-    let obj = JSON.parse(body);
+    var obj = JSON.parse(body);
     // 检查响应数据是否有效
     if (!obj || obj.code !== 0 || !obj.data) {
         $done({});
@@ -64,8 +64,8 @@ try {
     
     if (url.includes("order/detail")) {
         // 1. 订单详情页接口修改逻辑 (wx-shangou.meituan.com)
-        obj.data.id = CUSTOM_ORDER_ID;             // 修改订单号
-        obj.data.order_time = NEW_ORDER_TIME_SEC;  // 修改订单时间 (Unix秒)
+        obj.data.id = CUSTOM_ORDER_ID;             // 订单号修改
+        obj.data.order_time = NEW_ORDER_TIME_SEC;  // 订单时间修改
         console.log(`[MT] 详情页ID/时间已修改: ${CUSTOM_ORDER_ID}`);
 
     } else if (url.includes("order/list")) {
@@ -96,6 +96,5 @@ try {
 } catch (e) {
     // *** 修复了 console.error 异常：使用 console.log 代替 ***
     console.log(`[MT] 运行时异常: ${e.name} - ${e.message}`);
-    // 如果您需要弹出通知提醒，可以替换为 $notify("MT 脚本异常", e.name, e.message);
     $done({});
 }
