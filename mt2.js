@@ -1,3 +1,4 @@
+
 /*
 ####################################################################
 # 配置区 (此部分内容请粘贴到您的重写工具配置文件中，例如 Quantumult X 的 [rewrite_local] 区)
@@ -5,16 +6,19 @@
 
 [rewrite_local]
 # 1. 订单详情接口 (用于展示订单ID和时间)
-^https?:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail\?.* url script-response-body mt2.js
+^https?:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
+
 
 # 2. 订单列表接口 (用于修改列表中的订单ID和时间)
-^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body mt2.js
+^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/list\?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
+
 
 [mitm]
 # 确保所有涉及的主机名都包含在内
 hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 */
+
 
 
 // ----------------------------------------------------------------------
