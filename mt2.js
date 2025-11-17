@@ -25,13 +25,8 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 // 【用户配置区 - 请修改这里的三个变量的值】
 // ----------------------------------------------------------------------
 
-// 确保使用 var 关键字，以最大程度地兼容脚本环境的作用域
 var CUSTOM_ORDER_ID = "601867382174057863"; 
-
-// 2. 新的自定义订单时间: 格式必须为 YYYY-MM-DD HH:MM:SS
 var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; 
-
-// 3. 要被替换的原始订单ID (列表中的): 
 var TARGET_OLD_ID = "601867372177026569"; 
 
 // ----------------------------------------------------------------------
@@ -39,14 +34,12 @@ var TARGET_OLD_ID = "601867372177026569";
 // ----------------------------------------------------------------------
 
 function dateToUnixTimestamp(datetimeStr) {
-    // 将日期字符串转换为 Unix 时间戳 (秒)
     const date = new Date(datetimeStr.replace(/-/g, '/'));
     if (isNaN(date.getTime())) return 0;
     return Math.floor(date.getTime() / 1000);
 }
 
 var NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
-// 提取到分钟的字符串
 var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); 
 
 var body = $response.body;
@@ -62,15 +55,15 @@ try {
     // --- 逻辑判断和执行 ---
     
     if (url.includes("order/detail")) {
-        // 1. 订单详情页接口修改逻辑 (wx-shangou.meituan.com)
+        // 1. 订单详情页接口修改逻辑：尝试多个字段名
         
-        // ** 订单号字段排查：同时修改所有可能的订单ID字段，直到找到生效的 **
+        // ** (A) 订单号字段排查：同时修改所有可能的订单ID字段 **
         obj.data.id = CUSTOM_ORDER_ID;             
         obj.data.orderId = CUSTOM_ORDER_ID;        
         obj.data.orderViewId = CUSTOM_ORDER_ID;    
         obj.data.display_id = CUSTOM_ORDER_ID;     
         
-        // 订单时间修改 (已确认生效)
+        // (B) 订单时间修改 (已确认生效)
         obj.data.order_time = NEW_ORDER_TIME_SEC;  
         
         console.log(`[MT] 详情页ID/时间已修改: ${CUSTOM_ORDER_ID}`);
@@ -80,12 +73,12 @@ try {
         if (obj.data.orderList) {
             for (let order of obj.data.orderList) {
                 
-                // 仅修改目标旧 ID 的订单
+                // 仅修改 TARGET_OLD_ID 的订单
                 if (order.orderId === TARGET_OLD_ID) {
                     
-                    // 列表 ID (通常是 mtOrderViewId 或 orderId)
+                    // 关键修复：只修改用于显示的 ID，不修改 orderId (用于跳转)
                     order.mtOrderViewId = CUSTOM_ORDER_ID; 
-                    order.orderId = CUSTOM_ORDER_ID;
+                    // 移除：order.orderId = CUSTOM_ORDER_ID; // <-- 移除此行，确保跳转链接ID不变
                     
                     // 修改时间
                     order.orderTimeSec = NEW_ORDER_TIME_SEC;
@@ -97,12 +90,10 @@ try {
         }
     }
     
-    // 重新打包 JSON 响应体
     body = JSON.stringify(obj, null, 2);
     $done({body});
 
 } catch (e) {
-    // 修复了 console.error 异常
     console.log(`[MT] 运行时异常: ${e.name} - ${e.message}`);
     $done({});
 }
