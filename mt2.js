@@ -23,21 +23,16 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 // 【用户配置区 - 请修改这里的两个变量的值】
 // ----------------------------------------------------------------------
 
-var CUSTOM_ORDER_ID = "601867382174057863"; // 新订单ID
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; // 新订单时间
-
-// ----------------------------------------------------------------------
-// 【工具函数】
-// ----------------------------------------------------------------------
+var CUSTOM_ORDER_ID = "601867382174057863";  // 新订单号（只用于详情页）
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12";  // 新订单时间
 
 function dateToUnixTimestamp(datetimeStr) {
     const date = new Date(datetimeStr.replace(/-/g, '/'));
-    if (isNaN(date.getTime())) return 0;
-    return Math.floor(date.getTime() / 1000);
+    return isNaN(date.getTime()) ? 0 : Math.floor(date.getTime() / 1000);
 }
 
 var NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
-var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); 
+var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16);
 
 var body = $response.body;
 var url = $request.url;
@@ -48,36 +43,27 @@ try {
         $done({});
         return;
     }
-    
-    // --- 统一修改逻辑 ---
-    
-    if (url.includes("order/detail") || url.includes("order/list")) {
-        // 1. 统一修改订单ID字段
-        obj.data.id = CUSTOM_ORDER_ID;             
-        obj.data.orderId = CUSTOM_ORDER_ID;        
-        obj.data.orderViewId = CUSTOM_ORDER_ID;    
-        obj.data.display_id = CUSTOM_ORDER_ID;     
 
-        // 2. 统一修改订单时间
-        obj.data.order_time = NEW_ORDER_TIME_SEC;  
+    // 详情页：修改订单号 + 时间
+    if (url.includes("order/detail")) {
+        if (obj.data.id && obj.data.id.startsWith("6018")) obj.data.id = CUSTOM_ORDER_ID;
+        if (obj.data.orderId && obj.data.orderId.startsWith("6018")) obj.data.orderId = CUSTOM_ORDER_ID;
+        if (obj.data.orderViewId && obj.data.orderViewId.startsWith("6018")) obj.data.orderViewId = CUSTOM_ORDER_ID;
+        if (obj.data.display_id && obj.data.display_id.startsWith("6018")) obj.data.display_id = CUSTOM_ORDER_ID;
 
-        // 3. 如果是列表页，统一修改所有列表里的订单时间
-        if (obj.data.orderList) {
-            for (let order of obj.data.orderList) {
-                order.orderId = CUSTOM_ORDER_ID;       // 列表页显示ID
-                order.orderViewId = CUSTOM_ORDER_ID;   // 列表页显示ID
-                order.orderTimeSec = NEW_ORDER_TIME_SEC;
-                order.orderTime = NEW_ORDER_TIME_STR;
-            }
-        }
-
-        console.log(`[MT] 所有订单ID和时间已统一修改为 ${CUSTOM_ORDER_ID} / ${CUSTOM_ORDER_DATETIME}`);
+        if (obj.data.order_time !== undefined) obj.data.order_time = NEW_ORDER_TIME_SEC;
     }
 
-    body = JSON.stringify(obj, null, 2);
-    $done({body});
+    // 列表页：只修改时间
+    if (url.includes("order/list") && obj.data.orderList) {
+        for (let order of obj.data.orderList) {
+            if (order.orderTimeSec !== undefined) order.orderTimeSec = NEW_ORDER_TIME_SEC;
+            if (order.orderTime !== undefined) order.orderTime = NEW_ORDER_TIME_STR;
+        }
+    }
 
+    $done({body: JSON.stringify(obj)});
 } catch (e) {
-    console.log(`[MT] 运行时异常: ${e.name} - ${e.message}`);
+    console.log(`[MT] 异常: ${e.name} - ${e.message}`);
     $done({});
 }
