@@ -19,15 +19,12 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 */
 
 
-// 文件名: mt2.js (最高兼容性版本 - 修复列表页跳转问题)
-
 // ----------------------------------------------------------------------
-// 【用户配置区 - 请修改这里的三个变量的值】
+// 【用户配置区 - 请修改这里的两个变量的值】
 // ----------------------------------------------------------------------
 
-var CUSTOM_ORDER_ID = "601867382174057863"; 
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; 
-var TARGET_OLD_ID = "601867372177026569"; 
+var CUSTOM_ORDER_ID = "601867382174057863"; // 新订单ID
+var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; // 新订单时间
 
 // ----------------------------------------------------------------------
 // 【工具函数】
@@ -52,42 +49,31 @@ try {
         return;
     }
     
-    // --- 逻辑判断和执行 ---
+    // --- 统一修改逻辑 ---
     
-    if (url.includes("order/detail")) {
-        // 1. 订单详情页接口修改逻辑：尝试所有可能的订单ID字段
+    if (url.includes("order/detail") || url.includes("order/list")) {
+        // 1. 统一修改订单ID字段
         obj.data.id = CUSTOM_ORDER_ID;             
         obj.data.orderId = CUSTOM_ORDER_ID;        
         obj.data.orderViewId = CUSTOM_ORDER_ID;    
         obj.data.display_id = CUSTOM_ORDER_ID;     
-        
-        // 订单时间修改 (已确认生效)
-        obj.data.order_time = NEW_ORDER_TIME_SEC;  
-        
-        console.log(`[MT] 详情页ID/时间已修改: ${CUSTOM_ORDER_ID}`);
 
-    } else if (url.includes("order/list")) {
-        // 2. 订单列表页接口修改逻辑 (i.waimai.meituan.com)
+        // 2. 统一修改订单时间
+        obj.data.order_time = NEW_ORDER_TIME_SEC;  
+
+        // 3. 如果是列表页，统一修改所有列表里的订单时间
         if (obj.data.orderList) {
             for (let order of obj.data.orderList) {
-                
-                // 仅修改 TARGET_OLD_ID 的订单
-                if (order.orderId === TARGET_OLD_ID) {
-                    
-                    // *** 关键修复：暂时禁用列表页的 ID 修改 ***
-                    // order.mtOrderViewId = CUSTOM_ORDER_ID; // <-- 暂时禁用此行！
-                    
-                    // 修改时间
-                    order.orderTimeSec = NEW_ORDER_TIME_SEC;
-                    order.orderTime = NEW_ORDER_TIME_STR;
-                    
-                    console.log(`[MT] 列表ID (${TARGET_OLD_ID}) 视图时间已成功替换 (ID修改已禁用)`);
-                }
+                order.orderId = CUSTOM_ORDER_ID;       // 列表页显示ID
+                order.orderViewId = CUSTOM_ORDER_ID;   // 列表页显示ID
+                order.orderTimeSec = NEW_ORDER_TIME_SEC;
+                order.orderTime = NEW_ORDER_TIME_STR;
             }
         }
+
+        console.log(`[MT] 所有订单ID和时间已统一修改为 ${CUSTOM_ORDER_ID} / ${CUSTOM_ORDER_DATETIME}`);
     }
-    
-    // 重新打包 JSON 响应体
+
     body = JSON.stringify(obj, null, 2);
     $done({body});
 
