@@ -20,8 +20,6 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 
 
-// 文件名: mt.js (最终精简稳定版，列表ID保持不变)
-
 // === 🧭 你只要改这里 ===
 const CUSTOM_ORDER_TIME = "2025-11-18 19:32:39";    // 🕐 下单时间（精确到秒）
 const TARGET_ORDER_ID_NUM = "601868603714852472";   // 新订单号（用于详情页显示）
