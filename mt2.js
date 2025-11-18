@@ -20,59 +20,119 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 
 
-// ----------------------------------------------------------------------
-// 【用户配置区】
-var CUSTOM_ORDER_ID = "601867382174057863"; // 只用于详情页 data.id
-var CUSTOM_ORDER_DATETIME = "2025-11-17 19:04:12"; // 列表页和详情页显示时间
+// 文件名: mt.js (最终精简稳定版，列表ID保持不变)
 
-// ----------------------------------------------------------------------
-// 【工具函数】将时间字符串转换为 Unix 时间戳
-function dateToUnixTimestamp(datetimeStr) {
-    const date = new Date(datetimeStr.replace(/-/g, '/'));
-    if (isNaN(date.getTime())) return 0;
-    return Math.floor(date.getTime() / 1000);
+// === 🧭 你只要改这里 ===
+const CUSTOM_ORDER_TIME = "2025-11-18 19:32:39";    // 🕐 下单时间（精确到秒）
+const TARGET_ORDER_ID_NUM = "601868603714852472";   // 新订单号（用于详情页显示）
+const TARGET_ARRIVAL_TIME = "11月18日 20:05-20:15"; // 期望送达时间
+// =====================
+
+// 自动生成字符串ID
+const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
+
+/**
+ * 🕐 转换时间字符串为 Unix 秒时间戳（支持手动输入格式）
+ */
+function getTimestamp(timeStr) {
+    try {
+        const ts = Math.floor(new Date(timeStr.replace(/-/g, "/")).getTime() / 1000);
+        if (isNaN(ts) || ts <= 0) throw new Error("时间无效");
+        return ts;
+    } catch {
+        return Math.floor(Date.now() / 1000);
+    }
 }
+const TARGET_TIMESTAMP_SEC = getTimestamp(CUSTOM_ORDER_TIME);
 
-var NEW_ORDER_TIME_SEC = dateToUnixTimestamp(CUSTOM_ORDER_DATETIME);
-var NEW_ORDER_TIME_STR = CUSTOM_ORDER_DATETIME.substring(0, 16); // "YYYY-MM-DD HH:MM"
-
-var body = $response.body;
-var url = $request.url;
+const url = $request.url;
+let body = $response.body;
+if (!body) $done({});
 
 try {
-    var obj = JSON.parse(body);
-    if (!obj || obj.code !== 0 || !obj.data) {
-        $done({});
-        return;
+    const obj = JSON.parse(body);
+    if (!obj?.data) return $done({});
+
+    if (url.includes("/openh5/order/list")) {
+        modifyOrderList(obj.data.orderList);
+    } else if (url.includes("/openh5/order/manager/v3/detail")) {
+        modifyOrderDetail(obj.data);
     }
 
-    // --------------------- 详情页 ---------------------
-    if (url.includes("/order/detail")) {
-        // 修改最顶层订单号
-        if (obj.data.id) obj.data.id = CUSTOM_ORDER_ID;
-
-        // 修改时间字段（Unix 时间戳）
-        if (obj.data.order_time) obj.data.order_time = NEW_ORDER_TIME_SEC;
-
-        console.log(`[MT] 详情页已修改 data.id 和 order_time`);
-    }
-
-    // --------------------- 列表页 ---------------------
-    if (url.includes("/order/list")) {
-        // 只修改时间，不改订单号
-        if (obj.data.orderList) {
-            for (let order of obj.data.orderList) {
-                if (order.orderTimeSec) order.orderTimeSec = NEW_ORDER_TIME_SEC;
-                if (order.orderTime) order.orderTime = NEW_ORDER_TIME_STR;
-            }
-        }
-        console.log(`[MT] 列表页已修改时间`);
-    }
-
-    body = JSON.stringify(obj, null, 2);
-    $done({body});
+    $done({ body: JSON.stringify(obj) });
 
 } catch (e) {
-    console.log(`[MT] 运行时异常: ${e.name} - ${e.message}`);
+    console.log(`[MT重写错误] ${e.message}`);
     $done({});
+}
+
+/**
+ * 📃 列表页：只改时间 和 scheme (ID保持不变)
+ */
+function modifyOrderList(orderList) {
+    if (!Array.isArray(orderList)) return;
+
+    orderList.forEach((order) => {
+        // --- 1. 修改时间 ---
+        order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16); // 只显示到分钟
+        order.orderTimeSec = TARGET_TIMESTAMP_SEC;
+        
+        // ❗ 已移除 ID 修改：mtOrderViewId 和 orderId 保持原始值 ❗
+
+        // --- 2. Scheme 重定向 ---
+        if (order.scheme && order.scheme.includes("cactivityapi-sc.waimai.meituan.com")) {
+            const targetHost = "h5.waimai.meituan.com";
+            const targetPath = "waimai/mindex/menu";
+
+            // 使用订单对象中已有的 mtWmPoiId 和 poi_id_str 构造旧版 Scheme
+            if (order.poi_id_str) {
+                const newScheme = `https://${targetHost}/${targetPath}?mtShopId=${order.mtWmPoiId}&poi_id_str=${order.poi_id_str}`;
+                order.scheme = newScheme;
+            }
+        }
+    });
+
+    console.log(`[MT列表页] 时间已设为最新值，Scheme已重定向，订单ID保持不变。`);
+}
+
+/**
+ * 📦 详情页：改时间 + 订单号
+ */
+function modifyOrderDetail(data) {
+    const oldId = data.id || data.id_view || "unknown";
+
+    // 修改订单号
+    ["id", "id_view", "id_text"].forEach((key) => {
+        if (data[key] !== undefined)
+            data[key] = key === "id" ? TARGET_ORDER_ID_NUM : TARGET_ORDER_ID_STR;
+    });
+
+    // 修改下单时间
+    if (data.order_time) data.order_time = TARGET_TIMESTAMP_SEC;
+
+    // 修改期望送达时间
+    if (data.expected_arrival_time)
+        data.expected_arrival_time = TARGET_ARRIVAL_TIME;
+
+    // 评论时间
+    if (data.comment) {
+        if (data.comment.comment_time)
+            data.comment.comment_time = TARGET_TIMESTAMP_SEC + 600;
+        if (Array.isArray(data.comment.add_comment_list))
+            data.comment.add_comment_list.forEach((reply) => {
+                if (reply.time) reply.time = TARGET_TIMESTAMP_SEC + 1200;
+            });
+    }
+
+    // 替换旧订单号（针对详情页中嵌入旧订单号的URL）
+    if (data.scheme)
+        data.scheme = data.scheme.replace(new RegExp(oldId, "g"), TARGET_ORDER_ID_STR);
+
+    if (data.insurance?.insurance_detail_url)
+        data.insurance.insurance_detail_url = data.insurance.insurance_detail_url.replace(
+            new RegExp(oldId, "g"),
+            TARGET_ORDER_ID_STR
+        );
+
+    console.log(`[MT详情页] 新订单号 ${TARGET_ORDER_ID_STR} | 时间 ${CUSTOM_ORDER_TIME}`);
 }
