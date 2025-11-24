@@ -1,6 +1,7 @@
 /*
 [rewrite_local]
-^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-response-body xiaocan_close_popup.js
+^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocan.js
+
 
 [mitm]
 hostname = gw.xiaocantech.com
