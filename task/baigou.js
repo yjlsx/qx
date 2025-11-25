@@ -26,7 +26,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 你要求的补位规则：不足 3 位补 3 位，不足 4 位不补
+// 不足 3 位补 3 位，不足 4 位不补
 function generateCode(i) {
     const num = i.toString();
     if (num.length === 1) return "TB00" + num;
@@ -45,7 +45,7 @@ function generateCode(i) {
     for (let i = START; i <= END; i++) {
 
         let code = generateCode(i);
-        console.log(`  正在尝试优惠码：${code}`);
+        console.log(`\n  正在尝试优惠码：${code}`);
 
         let body = JSON.stringify({
             code: code,
@@ -63,34 +63,34 @@ function generateCode(i) {
             let response = await $task.fetch(request);
             let text = response.body || "";
 
-            // 日志显示服务器返回内容
+            // 显示服务器返回内容
             console.log(` 返回：${text}`);
 
-            // 找到有效优惠码（判断只认 “无效” 字样无出现）
+            // 判断有效：不包含 “无效” 字样
             if (!text.includes("无效")) {
+
                 console.log("\n==========================");
                 console.log(" 发现有效优惠码！");
                 console.log(` 优惠码：${code}`);
                 console.log(` 返回信息：${text}`);
                 console.log("==========================\n");
 
-                // 通知
+                // 通知，不停止任务
                 $notify(
                     " 找到有效优惠码",
                     code,
                     text
                 );
-
-                break; // 停止继续探测
             }
 
         } catch (e) {
             console.log(` 请求失败：${e}`);
         }
 
+        // 间隔
         await sleep(DELAY);
     }
 
-    console.log("==== 检测结束 ====");
+    console.log("\n==== 检测结束 ====");
     $done();
 })();
