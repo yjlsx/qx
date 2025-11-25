@@ -2,7 +2,7 @@
 const START = 1;
 const END = 9999;
 const PLAN_ID = 1;  // 基础6
-const CONCURRENCY = 3;  // 每批并发数量
+const CONCURRENCY = 10;  // 每批并发数量
 const TIMEOUT = 10000;  // 每条请求超时时间 ms
 
 // 固定信息
