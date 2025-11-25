@@ -38,6 +38,8 @@ function generateCode(i) {
 
 // ====== 主逻辑 ======
 (async () => {
+    let validCodes = [];  // 存放找到的有效券码
+
     console.log("==== 优惠码暴力检测脚本启动 ====");
     console.log(`范围：TB001 至 TB9999`);
     console.log("================================");
@@ -52,45 +54,57 @@ function generateCode(i) {
             plan_id: 6
         });
 
-        let request = {
-            url: url,
-            method: "POST",
-            headers: headers,
-            body: body
-        };
-
         try {
-            let response = await $task.fetch(request);
-            let text = response.body || "";
+            let response = await $task.fetch({
+                url: url,
+                method: "POST",
+                headers: headers,
+                body: body
+            });
 
-            // 显示服务器返回内容
+            let text = response.body || "";
             console.log(` 返回：${text}`);
 
-            // 判断有效：不包含 “无效” 字样
-            if (!text.includes("无效")) {
+            // 尝试解析 JSON
+            let obj = {};
+            try { obj = JSON.parse(text); } catch (e) {}
 
-                console.log("\n==========================");
-                console.log(" 发现有效优惠码！");
+            // 判断是否无效
+            if (obj.message && obj.message.includes("无效")) {
+                // 无效，不记录
+            } else {
+                // 视为有效
+                validCodes.push({
+                    code: code,
+                    response: text
+                });
+
+                console.log("\n====== 找到有效优惠码 ======");
                 console.log(` 优惠码：${code}`);
                 console.log(` 返回信息：${text}`);
-                console.log("==========================\n");
-
-                // 通知，不停止任务
-                $notify(
-                    " 找到有效优惠码",
-                    code,
-                    text
-                );
+                console.log("===========================\n");
             }
 
         } catch (e) {
             console.log(` 请求失败：${e}`);
         }
 
-        // 间隔
         await sleep(DELAY);
     }
 
     console.log("\n==== 检测结束 ====");
+
+    // 最终汇报
+    if (validCodes.length === 0) {
+        $notify("优惠码扫描完成", "未找到有效优惠码", "");
+    } else {
+        let summary = validCodes.map(v => `${v.code}`).join(", ");
+        $notify(
+            "优惠码扫描完成",
+            `共找到 ${validCodes.length} 个有效优惠码`,
+            summary
+        );
+    }
+
     $done();
 })();
