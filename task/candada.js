@@ -10,58 +10,66 @@ hostname = app.candashi.cn
 
 
 /*
- * 餐大大 - 抓取 + 自动签到合并脚本
- * 只要触发请求自动抓取；定时任务执行签到
+ * 餐大大 - 抓取字段 + 自动签到（单文件）
+ * 打开 APP 即自动抓取（包含通知）
+ * 定时任务即自动签到并显示时间戳和北京时间
  */
 
 const KEY = "cdd_sign_data";
 
-// 判断模式：抓包 or 定时任务
+// 判断是抓包还是运行任务
 if (typeof $request !== "undefined") {
-    // ========== 抓取模式 ==========
-    captureData();
+    grab();
 } else {
-    // ========== 签到模式 ==========
     sign();
 }
 
-// ---------- 抓取 ----------
-function captureData() {
+/* ==========  抓取模式  ========== */
+function grab() {
     let headers = $request.headers || {};
     let body = $request.body || "";
 
     let save = {
-        timestamp: headers["timestamp"],
-        nonce: headers["nonce"],
-        traceid: headers["traceid"],
-        sign: headers["sign"],
-        token: headers["token"],
-        body: body
+        timestamp: headers["timestamp"] || "",
+        nonce: headers["nonce"] || "",
+        traceid: headers["traceid"] || "",
+        sign: headers["sign"] || "",
+        token: headers["token"] || "",
+        body: body || ""
     };
 
     $prefs.setValueForKey(JSON.stringify(save), KEY);
+
+    let msg = `timestamp: ${save.timestamp}
+nonce: ${save.nonce}
+traceid: ${save.traceid}
+sign: ${save.sign}
+token: ${save.token}
+body: ${save.body.substring(0, 40)}...`;
+
+    // 【重点】通知一定弹出
+    $notify("餐大大", "已抓取最新动态字段", msg);
 
     console.log("【餐大大】已抓取字段：\n" + JSON.stringify(save, null, 2));
     $done({});
 }
 
-// ---------- 签到 ----------
+/* ==========  签到模式  ========== */
 function sign() {
     let data = JSON.parse($prefs.valueForKey(KEY) || "{}");
 
     if (!data.token || !data.body) {
-        console.log("【餐大大】未找到抓取的数据，请先打开 App 触发一次请求！");
-        $done();
-        return;
+        $notify("餐大大", "签到失败", "未找到抓包数据，请先打开 APP 抓取！");
+        console.log(" 未抓取到数据，请先打开 APP！");
+        return $done();
     }
 
-    // 生成当前时间
     const nowTs = Date.now();
     const nowStr = new Date(nowTs).toLocaleString("zh-CN", { hour12: false });
 
     console.log(`【餐大大 · 签到】
 当前时间戳: ${nowTs}
-北京时间:   ${nowStr}
+对应北京时间: ${nowStr}
 -----------------------------`);
 
     const url = "https://app.candashi.cn/api/api/v2/user/api_user_sign_in";
@@ -69,15 +77,11 @@ function sign() {
     const headers = {
         "content-type": "application/json;charset=UTF-8",
         "system": "iOS",
-
-        // 动态字段：使用抓取到的
         "timestamp": data.timestamp,
         "nonce": data.nonce,
         "traceid": data.traceid,
         "sign": data.sign,
         "token": data.token,
-
-        // 固定字段
         "appversion": "4.0.30",
         "application": "cdd-app",
         "accept-encoding": "gzip",
@@ -88,19 +92,23 @@ function sign() {
     };
 
     const req = {
-        url,
+        url: url,
         method: "POST",
-        headers,
+        headers: headers,
         body: data.body
     };
 
-    $task.fetch(req).then(resp => {
-        console.log(" 状态码: " + resp.statusCode);
-        console.log(" 响应内容:\n" + resp.body);
-        console.log("【餐大大 · 签到结束】");
+    $task.fetch(req).then(response => {
+        console.log(" 状态码：" + response.statusCode);
+        console.log(" 响应内容：" + response.body);
+
+        $notify("餐大大签到", `北京时间：${nowStr}`, response.body);
         $done();
-    }, err => {
-        console.log(" 请求失败：" + err.error);
+
+    }, reason => {
+        console.log(" 请求失败：" + reason.error);
+        $notify("餐大大签到失败", "", reason.error);
         $done();
     });
 }
+
