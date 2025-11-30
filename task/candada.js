@@ -8,83 +8,63 @@ hostname = app.candashi.cn
 
 */
 
-/*
- * 餐大大（自动抓参数 + 自动签到）
- * 抓包接口：api_user_info_one
- * 签到接口：api_user_sign_in
- */
 
-const STORE_KEY = "cdd_sign_data";
-const TITLE = "餐大大签到";
+const KEY = "cdd_info_raw";
+const SIGN_URL = "https://app.candashi.cn/api/api/v2/user/api_user_sign_in";
 
-function Env() {
-  return {
-    isQX: typeof $task !== "undefined",
-    isRequest: typeof $request !== "undefined",
-    get: (k) => $prefs.valueForKey(k),
-    set: (v, k) => $prefs.setValueForKey(v, k),
-    notify: (t, s, m) => $notify(t, s, m),
-    log: (m) => console.log(m),
-    done: (o) => $done(o)
-  };
-}
+const $ = {
+  isRequest: typeof $request !== "undefined",
+  notify: (t,s,m)=>$notify(t,s,m),
+  get: (k)=>$prefs.valueForKey(k),
+  set: (v,k)=>$prefs.setValueForKey(v,k),
+  log: (m)=>console.log(m),
+  done: (o)=>$done(o),
+};
 
-const $ = Env();
 
-// ========== 抓包阶段 ==========
+/******** ① 抓包写入 info 参数 ********/
 if ($.isRequest) {
   const data = {
     headers: $request.headers,
-    body: $request.body
+    body: $request.body || ""
   };
-
-  $.set(JSON.stringify(data), STORE_KEY);
-  $.notify(TITLE, "参数抓取成功", "已写入参数，可关闭抓包");
-  $.log(`[抓取成功]：\n${JSON.stringify(data, null, 2)}`);
-  $.done();
+  $.set(JSON.stringify(data), KEY);
+  $.notify("餐大大", "参数抓取成功", "已记录 info 参数");
+  $.done({});
   return;
 }
 
-// ========== 定时签到阶段 ==========
+
+/******** ② 定时签到任务 ********/
 (async () => {
-  const raw = $.get(STORE_KEY);
+  const raw = $.get(KEY);
   if (!raw) {
-    $.notify(TITLE, "未发现参数", "请先抓包一次 /api_user_info_one");
-    $.done();
-    return;
+    $.notify("餐大大", "未找到 info 参数", "请先抓包一次 /api_user_info_one");
+    return $.done();
   }
 
-  const data = JSON.parse(raw);
+  const info = JSON.parse(raw);
 
-  //  自动生成时间戳（毫秒）
-  const ts = Date.now().toString();
+  // headers/body 直接复制
+  const headers = { ...info.headers };
+  const body = info.body;
 
-  // 在 headers 中更新 timestamp（其它不动）
-  const headers = data.headers;
-  if (headers.timestamp) headers.timestamp = ts;
-
-  // JSON body 通常也是加密字符串，不要改，只替换 timestamp
-  let body = data.body;
-  body = body.replace(/"timestamp"\s*:\s*"\d+"/, `"timestamp":"${ts}"`);
-  body = body.replace(/"timestamp"\s*:\s*\d+/, `"timestamp":${ts}`);
+  // timestamp 自动更新
+  headers.timestamp = Date.now().toString();
 
   const req = {
-    url: "https://app.candashi.cn/api/api/v2/user/api_user_sign_in",
+    url: SIGN_URL,
     method: "POST",
-    headers: headers,
-    body: body
+    headers,
+    body
   };
 
-  $.log(`开始签到，timestamp=${ts}`);
-
   try {
-    const res = await $task.fetch(req);
-    $.notify(TITLE, "签到完成", res.body);
-    $.log(`[返回结果]\n${res.body}`);
+    const resp = await $task.fetch(req);
+    $.notify("餐大大", "签到结果", resp.body);
+    $.done();
   } catch (e) {
-    $.notify(TITLE, "签到失败", e);
-    $.log(`[错误] ${e}`);
+    $.notify("餐大大", "签到失败", String(e));
+    $.done();
   }
-
-  $.done();
 })();
