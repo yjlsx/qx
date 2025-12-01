@@ -5,7 +5,7 @@
 ####################################################################
 
 [rewrite_local]
-^https:\/\/wmapp-api\.waimaimingtang\.com\/fission\/account\/balance\/ url script-response-body wm_balance.js
+^https:\/\/wmapp-api\.waimaimingtang\.com\/fission\/account\/balance\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/write/wm.js
 
 [mitm]
 hostname = wmapp-api.waimaimingtang.com
