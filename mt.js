@@ -21,9 +21,9 @@ hostname = i.waimai.meituan.com, *.meituan.com, wx-shangou.meituan.com
 
 
 // === 🧭 你只要改这里 ===
-const CUSTOM_ORDER_TIME = "2025-12-05 17:38:11";    // 🕐 下单时间（精确到秒）
-const TARGET_ORDER_ID_NUM = "601892848567146673";   // 新订单号（用于详情页显示）
-const TARGET_ARRIVAL_TIME = "12月05日 18:13-18:28"; // 送达时间
+const CUSTOM_ORDER_TIME = "2025-12-05 19:08:52";    // 🕐 下单时间（精确到秒）
+const TARGET_ORDER_ID_NUM = "601893758841185669";   // 新订单号（用于详情页显示）
+const TARGET_ARRIVAL_TIME = "12月05日 19:40-19:55"; // 送达时间
 // =====================
 
 // 自动生成字符串ID
