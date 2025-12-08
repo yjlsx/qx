@@ -17,9 +17,9 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 // === 可修改的配置 ===
-const CUSTOM_ORDER_TIME = "2025-12-08 11:17:56";
-const TARGET_ORDER_ID_NUM = "601897151712047464";
-const TARGET_ARRIVAL_TIME = "12月08日 11:42-11:57";
+const CUSTOM_ORDER_TIME = "2025-12-08 11:20:56";
+const TARGET_ORDER_ID_NUM = "601897151725087197";
+const TARGET_ARRIVAL_TIME = "12月08日 11:48-12:03";
 const CUSTOM_POI_NAME = "新疆馕坑烤牛羊肉(润城店)";   //  ·
 // ======================
 
