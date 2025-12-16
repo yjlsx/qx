@@ -1,8 +1,6 @@
 
-#!name=酷狗音乐调试
 #!desc=功能调试
 #!category=KuGoumusic
-#!author=bb
 
 [Rule]
 # > (静态资源/弹窗拒绝)
