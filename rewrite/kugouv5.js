@@ -10,40 +10,34 @@ hostname = gateway.kugou.com, kg.zzxu.de
  */
 
 
-// Quantumult X - script-request
-// 目标：v5 → kg.zzxu.de，仅保留必要参数
 
 if (!$request || !$request.url) {
   $done({});
 }
 
 const url = new URL($request.url);
-const p = Object.fromEntries(url.searchParams.entries());
+const p = url.searchParams;
 
 // 必要参数校验
-if (!p.hash || !p.album_audio_id) {
+if (!p.get("hash") || !p.get("album_audio_id")) {
   console.log("[KG_v5] missing required params");
   $done({});
 }
 
-// 只保留「确定有用」的字段
-const params = {
-  hash: p.hash,
-  album_audio_id: p.album_audio_id,
-  album_id: p.album_id || "",
-  quality: p.quality || "",
-  need_ogg: p.need_ogg || ""
-};
-
-// 拼接 query
-const query = Object.keys(params)
-  .filter(k => params[k] !== "")
-  .map(k => `${k}=${encodeURIComponent(params[k])}`)
-  .join("&");
+// 按「模板顺序」手动拼接
+let query = [
+  `hash=${encodeURIComponent(p.get("hash"))}`,
+  `mode=raw`,
+  p.get("quality") ? `quality=${encodeURIComponent(p.get("quality"))}` : "",
+  `fallback=0`,
+  `debug=0`,
+  p.get("album_id") ? `album_id=${encodeURIComponent(p.get("album_id"))}` : "",
+  `album_audio_id=${encodeURIComponent(p.get("album_audio_id"))}`
+].filter(Boolean).join("&");
 
 const newUrl = `https://kg.zzxu.de/api/v5url?${query}`;
 
-// 日志（用于确认行为）
+// 日志确认
 console.log(
   `[KG_Replace] 正在请求替换源: ${newUrl}`
 );
