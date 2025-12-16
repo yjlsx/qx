@@ -51,3 +51,6 @@ $done({
   method: "GET",
   headers: newHeaders
 });
+
+console.log("[KG_V5] script-request 命中");
+
