@@ -6,7 +6,7 @@
 
 [rewrite_local]
 ^https:\/\/wmapp-api\.waimaimingtang\.com\/fission\/account\/balance\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/write/wm.js
-^https:\/\/wmapp-api\.waimaimingtang\.com\/api\/api\/v2\/user\/cancelAccount$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/write/wm.js
+^https:\/\/wmapp-api\.waimaimingtang\.com\/api\/api\/v2\/user\/cancelAccount$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/wm.js
 
 [mitm]
 hostname = wmapp-api.waimaimingtang.com

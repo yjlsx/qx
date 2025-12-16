@@ -6,7 +6,7 @@
 
 [rewrite_local]
 # ============== SayHi 翻译 Pro 解锁 & 去广告 ==============
-^https:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/all-in-one-translator-337ac\/namespaces\/firebase:fetch.*$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/write/sayhi.js
+^https:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/all-in-one-translator-337ac\/namespaces\/firebase:fetch.*$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/sayhi.js
 
 [mitm]
 hostname = firebaseremoteconfig.googleapis.com
