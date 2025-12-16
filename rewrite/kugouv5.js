@@ -12,60 +12,56 @@ hostname = gateway.kugou.com, kg.zzxu.de
 
 
 
-/**
- * Quantumult X
- * script-request
- */
-
-if (typeof $request === "undefined") {
+if (!$response || !$response.body) {
+  console.log("[KG_V5] 无响应体，跳过");
   $done({});
   return;
 }
 
-const oldUrl = $request.url;
-
-if (!oldUrl.includes("/tracker/v5/url")) {
-  $done({});
-  return;
-}
-
-console.log("[KG_V5] script-request 命中");
-console.log("[KG_V5] 原始 URL:", oldUrl);
-
-let p;
+let obj;
 try {
-  const u = new URL(oldUrl);
-  p = Object.fromEntries(u.searchParams.entries());
+  obj = JSON.parse($response.body);
 } catch (e) {
-  console.log("[KG_V5] URL 解析失败");
+  console.log("[KG_V5] JSON 解析失败");
   $done({});
   return;
 }
 
-// 必要参数校验
-if (!p.hash || !p.album_audio_id) {
-  console.log("[KG_V5] 缺少必要参数");
+// 确认是我们要的接口
+if (!obj.data) {
+  console.log("[KG_V5] 无 data 字段，非目标响应");
   $done({});
   return;
 }
 
+// 取原请求参数
+const reqUrl = new URL($request.url);
+const p = Object.fromEntries(reqUrl.searchParams.entries());
 
+// 构造替换地址（顺序与你给的一致）
 const newUrl =
   "https://kg.zzxu.de/api/v5url" +
-  "?hash=" + encodeURIComponent(p.hash) +
+  "?hash=" + p.hash +
   "&mode=raw" +
-  "&quality=" + encodeURIComponent(p.quality || "") +
+  "&quality=" + p.quality +
   "&fallback=0" +
   "&debug=0" +
-  "&album_id=" + encodeURIComponent(p.album_id || "") +
-  "&album_audio_id=" + encodeURIComponent(p.album_audio_id);
+  "&album_id=" + p.album_id +
+  "&album_audio_id=" + p.album_audio_id;
 
-console.log("[KG_V5] 目标 URL(逻辑):", newUrl);
+// ⭐ 核心日志 1：命中
+console.log("[KG_V5] 命中 v5 接口");
 
-// Quantumult X：这里只能安全返回 headers / method
+// ⭐ 核心日志 2：原地址
+console.log("[KG_V5] 原 play_url = " + (obj.data.play_url || "none"));
+
+// 替换
+obj.data.play_url = newUrl;
+obj.data.backup_url = [newUrl];
+
+// ⭐ 核心日志 3：新地址
+console.log("[KG_V5] 新 play_url = " + newUrl);
+
 $done({
-  method: "GET",
-  headers: $request.headers
+  body: JSON.stringify(obj)
 });
-
-
