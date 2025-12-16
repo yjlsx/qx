@@ -10,6 +10,9 @@ hostname = gateway.kugou.com, kg.zzxu.de
  */
 
 
+// Quantumult X - script-request
+// 目标：v5 → kg.zzxu.de，仅保留必要参数
+
 if (!$request || !$request.url) {
   $done({});
 }
@@ -17,22 +20,19 @@ if (!$request || !$request.url) {
 const url = new URL($request.url);
 const p = Object.fromEntries(url.searchParams.entries());
 
-// 必要参数
+// 必要参数校验
 if (!p.hash || !p.album_audio_id) {
+  console.log("[KG_v5] missing required params");
   $done({});
 }
 
-// 原样透传官方参数（不猜、不改）
+// 只保留「确定有用」的字段
 const params = {
   hash: p.hash,
-  album_id: p.album_id || "",
   album_audio_id: p.album_audio_id,
+  album_id: p.album_id || "",
   quality: p.quality || "",
-  need_ogg: p.need_ogg || "",
-  vipdl: p.vipdl || "",
-  vipType: p.vipType || "",
-  mode: "raw",
-  fallback: "0"
+  need_ogg: p.need_ogg || ""
 };
 
 // 拼接 query
@@ -41,10 +41,12 @@ const query = Object.keys(params)
   .map(k => `${k}=${encodeURIComponent(params[k])}`)
   .join("&");
 
-// 新请求地址
 const newUrl = `https://kg.zzxu.de/api/v5url?${query}`;
 
-// 🔴 关键点：直接替换请求 URL
-$done({
-  url: newUrl
-});
+// 日志（用于确认行为）
+console.log(
+  `[KG_Replace] 正在请求替换源: ${newUrl}`
+);
+
+// 替换请求
+$done({ url: newUrl });
