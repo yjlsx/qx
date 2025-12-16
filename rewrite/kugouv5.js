@@ -11,36 +11,42 @@ hostname = gateway.kugou.com, kg.zzxu.de
 
 
 
-if (!$request || !$request.url) {
+if (!$request) {
   $done({});
 }
 
-const url = new URL($request.url);
-const p = url.searchParams;
+const oldUrl = $request.url;
 
-// 必要参数校验
-if (!p.get("hash") || !p.get("album_audio_id")) {
-  console.log("[KG_v5] missing required params");
+// 只处理 v5 接口
+if (!oldUrl.includes("/tracker/v5/url")) {
   $done({});
 }
 
-// 按「模板顺序」手动拼接
-let query = [
-  `hash=${encodeURIComponent(p.get("hash"))}`,
-  `mode=raw`,
-  p.get("quality") ? `quality=${encodeURIComponent(p.get("quality"))}` : "",
-  `fallback=0`,
-  `debug=0`,
-  p.get("album_id") ? `album_id=${encodeURIComponent(p.get("album_id"))}` : "",
-  `album_audio_id=${encodeURIComponent(p.get("album_audio_id"))}`
-].filter(Boolean).join("&");
+const urlObj = new URL(oldUrl);
+const p = Object.fromEntries(urlObj.searchParams.entries());
 
-const newUrl = `https://kg.zzxu.de/api/v5url?${query}`;
+// 构造新 URL（顺序与你日志一致）
+const newUrl =
+  "https://kg.zzxu.de/api/v5url" +
+  "?hash=" + p.hash +
+  "&mode=raw" +
+  "&quality=" + p.quality +
+  "&fallback=0" +
+  "&debug=0" +
+  "&album_id=" + p.album_id +
+  "&album_audio_id=" + p.album_audio_id;
 
-// 日志确认
-console.log(
-  `[KG_Replace] 正在请求替换源: ${newUrl}`
-);
+// ⭐ headers：必须整包返回（不能只改一部分）
+const newHeaders = Object.assign({}, $request.headers, {
+  "Host": "kg.zzxu.de",
+  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+  "Accept": "*/*",
+  "Referer": "",
+  "Origin": ""
+});
 
-// 替换请求
-$done({ url: newUrl });
+$done({
+  url: newUrl,
+  method: "GET",
+  headers: newHeaders
+});
