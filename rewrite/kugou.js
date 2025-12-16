@@ -1,4 +1,4 @@
-/*
+
 #!desc=去广告 + v5 下载
 #!category=KuGoumusic
 
@@ -24,6 +24,5 @@
 
 
 [mitm]
-hostname = %APPEND% *.kugou.com, *.*.kugou.com, kg.zzxu.d
+hostname = %APPEND% *.kugou.com, *.*.kugou.com, kg.zzxu.de
 
-*/
