@@ -1,7 +1,7 @@
 /**
 
 [rewrite_local]
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url$ url script-request https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
+^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url$ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 
 [mitm]
 hostname = gateway.kugou.com, kg.zzxu.de
