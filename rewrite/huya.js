@@ -17,11 +17,12 @@ host, sniper.huya.com, reject
 
 [rewrite_local]
 # 拦截直播间广告配置、启动广告及 Banner
-^https?:\/\/.*huya\.com\/(main\/getRoomAds|config\/getStartupAds|main\/getBannerList|vapi\/getLivingInfo) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/huya.js
-
+^https?:\/\/zt\.huya\.com\/.*\/mobile\/index\.html url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/huya.js
+^https?+:\/\/business\.msstatic\.com\/advertiser\/ - reject-200
+^https?:\/\/cdnfile1\.msstatic\.com\/cdnfile\/appad\/ - reject-img
 
 [mitm]
-hostname = *.huya.com, analytics.huya.com, business.huya.com
+hostname = *.huya.com, analytics.huya.com, business.huya.com, cdnfile1.msstatic.com
 
 
 
@@ -32,53 +33,59 @@ hostname = *.huya.com, analytics.huya.com, business.huya.com
  * 仅移除广告
  */
 
+
 let body = $response.body;
-let obj;
 
-try {
-    obj = JSON.parse(body);
+// 1. 注入强力隐藏 CSS (预防性屏蔽)
+const styleInject = `
+<style>
+    /* 借鉴你提供的选择器 */
+    .pic.J_pic, #ab-banner, .small-handle-tip, .common-popup, 
+    .room-sidebar-top, .room-mod-ggTop, #J_roomGgTop, .room-gg-top,
+    div[data-is-ad="true"], .competition_cont_center_wrap {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+</style>
+`;
 
-    // 1. 处理直播间信息接口 (重点修正：只删广告字段)
-    if ($request.url.indexOf('getLivingInfo') !== -1 || $request.url.indexOf('getRoomAds') !== -1) {
-        if (obj.data) {
-            // --- 精准删除广告字段 ---
-            delete obj.data.ad_config;      // 广告配置
-            delete obj.data.business_ad;   // 商业广告
-            delete obj.data.v_ads;         // 视频流插播广告
-            
-            // --- 仅清空列表，不删除父节点 ---
-            if (obj.data.banner) obj.data.banner = [];
-            if (obj.data.pendant) obj.data.pendant = [];
-            
-            // --- 过滤组件中的广告项，保留弹幕人数等组件 ---
-            if (obj.data.components && Array.isArray(obj.data.components)) {
-                obj.data.components = obj.data.components.filter(item => {
-                    return !item.name.includes("广告") && !item.name.includes("推广");
-                });
+// 2. 注入你的 JS 逻辑 (动态监控并模拟点击)
+const scriptInject = `
+<script>
+(function() {
+    'use strict';
+    const closeButtonSelectors = ['.ps.ps_close.J_close', '.close-btn', '.popup-close-btn', '.css-9pa8cd'];
+    
+    function killAds() {
+        // 尝试模拟点击关闭按钮
+        closeButtonSelectors.forEach(selector => {
+            const btn = document.querySelector(selector);
+            if (btn && typeof btn.click === 'function') {
+                btn.click();
             }
-            console.log(" 已精准清理直播间广告字段，保留核心数据");
-        }
+        });
+        
+        // 针对某些顽固 iframe，直接移除
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(f => {
+            if (!f.id.includes('login')) f.remove();
+        });
     }
 
-    // 2. 处理首页 Banner
-    if ($request.url.indexOf('getBannerList') !== -1) {
-        if (obj.data && obj.data.list) obj.data.list = [];
-    }
+    // 每秒执行一次，持续检测
+    const timerId = setInterval(killAds, 1000);
+    
+    // 5秒后如果还没关掉，尝试强制隐藏主体
+    setTimeout(() => {
+        document.querySelectorAll('.common-popup').forEach(el => el.style.display = 'none');
+    }, 5000);
+})();
+</script>
+`;
 
-    // 3. 处理开屏广告
-    if ($request.url.indexOf('getStartupAds') !== -1) {
-        if (obj.data) {
-            obj.data.ads = [];
-            obj.data.ad_list = [];
-        }
-    }
-
-    body = JSON.stringify(obj);
-} catch (e) {
-    // 针对 M3U8 视频索引的正则清理 (保持不变)
-    if (body.indexOf('#EXTM3U') !== -1) {
-        body = body.replace(/#EXT-X-DISCONTINUITY[\s\S]*?#EXT-X-DISCONTINUITY/g, "");
-    }
-}
+// 插入到 HTML 结构中
+body = body.replace('</head>', styleInject + '</head>');
+body = body.replace('</body>', scriptInject + '</body>');
 
 $done({ body });
