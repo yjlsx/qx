@@ -54,6 +54,8 @@
 ^https:\/\/gateway\.kugou\.com\/player\/v1\/model\/list url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https:\/\/gateway\.kugou\.com\/media\.store\/v1\/album\/check_buy url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/favor\/list\? url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
+
 
 
 
