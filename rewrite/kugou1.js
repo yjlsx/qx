@@ -57,6 +57,7 @@
 ^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
 //图标
 ^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
 
 
