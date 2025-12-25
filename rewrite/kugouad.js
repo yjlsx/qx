@@ -8,7 +8,6 @@
 URL-REGEX, ^https:\/\/vipssr\.kugou\.com\/static\/js\/async\/flexPayPopup, REJECT
 URL-REGEX, ^https:\/\/fx\.service\.kugou\.com\/fx\/activity\/register\/center\/sidebar\/configV2$, REJECT
 URL-REGEX, ^https:\/\/service1\.fanxing\.kugou\.com\/video\/mo\/live\/pull\/mutiline\/cfg, REJECT
-URL-REGEX, ^http:\/\/log\.web\.kugou\.com\/postEvent\.php$, REJECT
 
 # > (广告域名拒绝)
 DOMAIN, webvoobssdl.kugou.com, REJECT
