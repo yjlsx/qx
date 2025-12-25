@@ -63,7 +63,8 @@
 ^https?:\/\/nbcollect\.kugou\.com\/v3\/post url reject
 ^https?:\/\/sentry\.kugou\.com\/api url reject
 ^https?:\/\/gateway\.kugou\.com\/aterouter\/v.\/get_dialog url reject
-
+^https?:\/\/tmead\.y\.qq\.com\/mareportsimp\/ReportSimpleBatch url reject
+^https?:\/\/.*\.y\.qq\.com\/.*report url reject
 
 
 *
