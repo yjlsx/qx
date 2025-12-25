@@ -58,12 +58,15 @@
 //图标
 ^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
-
+# 拒绝风控
+^https?:\/\/gateway\.kugou\.com\/aterouter\/v1\/report_unexpose url reject
+^https?:\/\/nbcollect\.kugou\.com\/v3\/post url reject
+^https?:\/\/sentry\.kugou\.com\/api url reject
 
 
 *
 [mitm]
-hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com
+hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com
  */
 
 const timestamp = Math.floor(Date.now() / 1000);
