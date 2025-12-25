@@ -8,7 +8,6 @@
 URL-REGEX, ^https:\/\/vipssr\.kugou\.com\/static\/js\/async\/flexPayPopup, REJECT
 URL-REGEX, ^https:\/\/gateway\.kugou\.com\/vipssr\/prepay_ios\.html, REJECT
 URL-REGEX, ^https:\/\/staticssl\.kugou\.com\/common\/js-lib\/vip\/dlg_ctrler_v2\.js$, REJECT
-URL-REGEX, ^https:\/\/h5\.kugou\.com\/apps\/vipcenter\/_next\/static\/css, REJECT
 URL-REGEX, ^https:\/\/vipssr\.kugou\.com\/static\/js\/vip\/newUi\/vipPageUnionIosContent-, REJECT
 URL-REGEX, ^https:\/\/fx\.service\.kugou\.com\/fx\/activity\/register\/center\/sidebar\/configV2$, REJECT
 URL-REGEX, ^https:\/\/service1\.fanxing\.kugou\.com\/video\/mo\/live\/pull\/mutiline\/cfg, REJECT
