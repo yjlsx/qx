@@ -59,6 +59,10 @@
 ^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/set_user_nameplate url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+# 拦截铭牌列表接口
+^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/get_nameplate_list url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+
+
 # 拒绝风控
 ^https?:\/\/.*\.kugou\.com\/.*report_unexpose url reject
 ^https?:\/\/nbcollect\.kugou\.com\/v3\/post url reject
