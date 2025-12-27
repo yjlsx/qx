@@ -1,9 +1,9 @@
 /**
 [rewrite_local]
 # 1. 装扮、铭牌、图标、唱片架、弹窗 
-^https?:\/\/(gateway|gatewayretry|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+^https?:\/\/(gateway|gatewayretry|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
-# 2. 其他用户信息与 VIP 逻辑 
+# --- 用户信息
 ^https?:\/\/(gateway|gatewayretry|vip|m)\.kugou\.com\/(v\d\/(fusion\/userinfo|user\/get_userinfo|login_by_token|get_my_info|get_res_privilege|get_b_info|consumption|get_buy_info|search\/mixed|url)|mobile\/vipinfoV2|v2\/get_login_extend_info|promotionvip\/v3\/vip_level\/(detail|welfare_list|welfare_recv)|app\/i\/getSongInfo\.php) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 
 # 3. 唱片架与主题 (ocean/tools.mobile)
