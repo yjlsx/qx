@@ -1,28 +1,25 @@
-[rewrite_local]
 /**
-# 1. 铭牌与弹窗 (welfare.kugou.com)
+[rewrite_local]
+# 1. 图标、装扮权限与铭牌 (welfare/vipdress)
+# 涵盖了：图标授权列表、装扮检测、铭牌列表、铭牌设置
+^https?:\/\/(gateway|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
-# 涵盖了：获取列表、设置铭牌、弹窗信息
-^https?:\/\/welfare\.kugou\.com\/(nameplate\/v1\/(get_nameplate_list|set_user_nameplate)|popup\/v1\/info|pendant\/v2\/get_user_pendant) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
-
-# 2. 用户中心与 VIP 状态 (gateway/gatewayretry/vip/m)
-# 涵盖了：用户信息、VIP等级、登录扩展、配额领取、资产查询等
+# 2. 用户中心、VIP状态与歌曲信息 (gateway/gatewayretry/vip/m)
+# 涵盖了：用户信息、VIP等级(V9)、会员中心、歌曲播放信息
 ^https?:\/\/(gateway|gatewayretry|vip|m)\.kugou\.com\/(v\d\/(fusion\/userinfo|user\/get_userinfo|login_by_token|get_my_info|get_res_privilege|get_b_info|consumption|get_buy_info|search\/mixed|url)|mobile\/vipinfoV2|v2\/get_login_extend_info|promotionvip\/v3\/vip_level\/(detail|welfare_list|welfare_recv)|app\/i\/getSongInfo\.php) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 
-# 3. 装扮与皮肤 (vipdress/ocean/tools.mobile)
-# 涵盖了：主题列表、头像框、唱片架、皮肤授权等
+# 3. 唱片架与主题 (ocean/tools.mobile)
 ^https?:\/\/(gateway\.kugou\.com\/(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|vipdress\/v1\/record_rack\/set_user_record_rack)|vipdress\.kugou\.com\/v1\/(dress_sales\/get_dress_by_version|record_rack\/get_record_rack_list)) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
-# 4. 资产下载配额 (mediastoreretry/goodsmstore)
+# 4. 配额与资产下载
 ^https?:\/\/(mediastoreretry|gateway)\.kugou\.com\/(goodsmstore\/)?v1\/get_remain_quota url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 
-# 5. 特殊 Header 处理 (针对需要修改请求头的接口)
+# 5. Header 修正
 ^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v5\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
 
-# 6. 屏蔽与风控 (Reject)
+# 6. 广告与风险过滤
 ^https?:\/\/(sentry|nbcollect)\.kugou\.com\/api url reject
-^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple) url reject
-^https?:\/\/tmead\.y\.qq\.com url reject
+^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
 
 ---
 
