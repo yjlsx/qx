@@ -613,18 +613,6 @@ if (url.includes('/app/i/getSongInfo\.php')) {
 }
 
 
-  // --- 铭牌佩戴权限绕过 
-   if (url.includes("nameplate/v1/set_user_nameplate")) {
-        console.log("检测到铭牌设置请求，正在强制授权...");
-        obj.status = 1;
-        obj.error_code = 0;
-        if (obj.data) {
-            obj.data.intro = "已成功佩戴限定铭牌";
-            obj.data.button_txt = "已拥有";
-            // 某些情况下需要强制 nameplate_type 匹配，通常 5 是动态限定
-            obj.data.nameplate_type = 5; 
-        }
-    }
 
 
 
