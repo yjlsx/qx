@@ -234,8 +234,8 @@ if (url.includes("/vip/v1/fusion/userinfo")) {
         let d = obj.data.get_vip_info_v3.data;
         
         d.is_vip = 1;
-        d.vip_type = 4;        // 豪华VIP
-        d.user_type = 20;      // SVIP标志
+        d.vip_type = 6;        // 豪华VIP
+        d.user_type = 29;      // SVIP标志
         d.svip_level = 9;      // V9
         d.svip_score = 999999;
         
@@ -335,7 +335,7 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     obj.data.has_authority = true;    
     obj.data.access = 1;              
     obj.data.is_buy = 1;           
-    obj.data.vip_type = 4;                
+    obj.data.vip_type = 6;                
     obj.data.need_popup = false;
     obj.data.popup_type = 0;
     obj.data.popup_content = "";

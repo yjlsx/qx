@@ -31,7 +31,7 @@ const body = $response.body;
 let obj = JSON.parse(body);
 
 if (url.includes('v5/login_by_token')) {
-    obj.data.user_type = 20;
+    obj.data.user_type = 29;
     obj.data.vip_end_time = "2099-12-31 15:14:48";
     obj.data.su_vip_end_time = "2099-12-31 15:14:48";
     obj.data.m_end_time = "2099-12-31 15:14:48";
@@ -42,12 +42,12 @@ if (url.includes('v5/login_by_token')) {
     obj.data.su_vip_begin_time = "2024-07-26 15:14:09";
     obj.data.is_vip = 1;
     obj.data.m_type = 1;
-    obj.data.vip_type = 4;   
+    obj.data.vip_type = 6;   
 }
 
 if (url.includes('/v1/userinfo')) {
-    obj.data.vip_type = 4;   
-    obj.data.user_type = 20;
+    obj.data.vip_type = 6;   
+    obj.data.user_type = 29;
     obj.data.m_type = 1;
     obj.data.vip_end_time = "2099-12-31 15:14:48";
     obj.data.su_vip_y_endtime = "2099-12-31 15:14:48";
@@ -65,15 +65,15 @@ if (url.includes('/v2/get_login_extend_info')) {
     obj.data.vipinfo.su_vip_y_endtime = "2099-12-31 23:59:59";
     obj.data.vipinfo.su_vip_begin_time = "2024-07-26 15:14:09";
     obj.data.vipinfo.su_vip_clearday = "2024-07-26 15:14:09";
-    obj.data.vipinfo.user_type = 20;
+    obj.data.vipinfo.user_type = 29;
     obj.data.vipinfo.svip_level = 9;
     obj.data.vipinfo.m_type = 1;
-    obj.data.vipinfo.vip_type = 4;
+    obj.data.vipinfo.vip_type = 6;
 if(obj.data.vipinfo.svip_score){
     obj.data.vipinfo.svip_score = 999999;
       }
 if(obj.data.vipinfo.vip_type){
-    obj.data.vipinfo.vip_type = 4;
+    obj.data.vipinfo.vip_type = 6;
       }
 if(obj.data.vipinfo.svip_level){
     obj.data.vipinfo.svip_level = 9;
@@ -191,9 +191,9 @@ if (url.includes('/mobile/vipinfoV2')) {
         }
         obj.data.vip_y_endtime = "2099-12-31 23:59:59";
         obj.data.m_type = 1;
-        obj.data.vip_type = 4;
-        obj.data.viptype = 4;
-        obj.data.user_type = 20;
+        obj.data.vip_type = 6;
+        obj.data.viptype = 6;
+        obj.data.user_type = 29;
         obj.data.su_vip_upgrade_days = 99999;
         obj.data.vip_begin_time = "2024-07-26 15:14:09";
         obj.data.svip_begin_time = "2024-07-26 15:14:09";
@@ -222,7 +222,7 @@ if (url.includes('/mobile/vipinfoV2')) {
         obj.error.vip_clearday = "2024-07-26 15:14:09";
         obj.error.su_vip_clearday = "2024-07-26 15:14:09";
         obj.error.vip_y_endtime = "2099-12-31 23:59:59";
-        obj.error.user_type = 20;
+        obj.error.user_type = 29;
         obj.error.m_type = 1;
         obj.error.su_vip_upgrade_days = 99999;
         obj.error.super_vip_upgrade_month = 9999;
@@ -298,13 +298,13 @@ if (url.includes('/v1/fusion/userinfo')) {
         }
 
         // 更新 vip_info_v3 的其他属性
-        obj.data.get_vip_info_v3.data.vip_type = 4;
+        obj.data.get_vip_info_v3.data.vip_type = 6;
         obj.data.get_vip_info_v3.data.vip_y_endtime = "2099-12-31 23:59:59";
         obj.data.get_vip_info_v3.data.vip_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.svip_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.m_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.m_type = 1;
-        obj.data.get_vip_info_v3.data.user_type = 20;
+        obj.data.get_vip_info_v3.data.user_type = 29;
         obj.data.get_vip_info_v3.data.su_vip_upgrade_days = 9999;
         obj.data.get_vip_info_v3.data.super_vip_upgrade_month = 9999;
         obj.data.get_vip_info_v3.data.svip_upgrade_month = 9999;
@@ -344,12 +344,12 @@ if (url.includes('/updateservice/v1/get_dev_user')) {
     if (obj && obj.data && obj.data.list) {
        obj.data.list.forEach(user => {
     user.vipinfo.is_vip = 1;         // 将 is_vip 设置为 1
-    user.vipinfo.vip_type = 4;       // 自定义 VIP 类型
+    user.vipinfo.vip_type = 6;       // 自定义 VIP 类型
     user.vipinfo.m_type = 1;         // 自定义会员类型
     user.vipinfo.svip_level = 9;     // 超级会员等级设为 5
     user.vipinfo.svip_score = 999999;  // 超级会员积分设为 999999
     user.vipinfo.vip_statu = 1;      // VIP 状态设为已开通
-    user.vipinfo.user_type = 20;      // 用户类型设为 VIP
+    user.vipinfo.user_type = 29;      // 用户类型设为 VIP
     user.vipinfo.user_y_type = 1;    // 额外类型设为 VIP
               });
        }
@@ -359,8 +359,8 @@ if (url.includes('/v3/get_my_info')) {
     if (obj.data) {
         obj.data.svip_score = 999999;
         obj.data.svip_level = 9;
-        obj.data.vip_type = 4;
-        obj.data.user_type = 20;
+        obj.data.vip_type = 6;
+        obj.data.user_type = 29;
         obj.data.musical_visible = 1;
         obj.data.timbre_visible = 1;
         obj.data["1ting_visible"] = 1;
@@ -474,8 +474,8 @@ if (url.includes('/v1/get_res_privilege')) {
 
 if (url.includes('/user/vipinfo')) {
     obj.data.is_vip = 1;   
-    obj.data.vip_type = 4;   
-    obj.data.user_type = 20;
+    obj.data.vip_type = 6;   
+    obj.data.user_type = 29;
     obj.data.m_type = 1;
     obj.data.m_y_endtime = "2099-12-31 15:14:48";
     obj.data.h_y_endtime = "2099-12-31 15:14:48";
