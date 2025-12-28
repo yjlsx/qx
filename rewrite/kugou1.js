@@ -2,28 +2,28 @@
 /**
  [rewrite_local]
 # Kugou Music Rewrite Rules
-^https://gateway\.kugou\.com/tools.mobile/v2/theme/info url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/ocean/v6/theme/category url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/promotionvip/v3/vip_level/welfare_list url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/ocean/v6/theme/get_res_privilege url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/ocean/v6/theme/list url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/ocean/v6/theme/record_save url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/v3/search/mixed url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/record_rack\/set_user_record_rack url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/vipdress\.kugou\.com\/v1\/record_rack\/get_record_rack_list url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/vipdress\.kugou\.com\/v1\/dress_sales\/get_dress_by_version url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https://gateway\.kugou\.com/vip/v1/fusion/userinfo url script-response-bodygithubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/gateway\.kugou\.com\/player\/v1\/model\/list url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/gateway\.kugou\.com\/media\.store\/v1\/album\/check_buy url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/favor\/list\? url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/tools.mobile/v2/theme/info url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/ocean/v6/theme/category url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/promotionvip/v3/vip_level/welfare_list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/ocean/v6/theme/get_res_privilege url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/ocean/v6/theme/list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/ocean/v6/theme/record_save url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/v3/search/mixed url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/record_rack\/set_user_record_rack url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/vipdress\.kugou\.com\/v1\/record_rack\/get_record_rack_list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/vipdress\.kugou\.com\/v1\/dress_sales\/get_dress_by_version url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https://gateway\.kugou\.com/vip/v1/fusion/userinfo url script-response-bodyhttps://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/gateway\.kugou\.com\/player\/v1\/model\/list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/gateway\.kugou\.com\/media\.store\/v1\/album\/check_buy url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/favor\/list\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 拦截铭牌列表接口
-^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/get_nameplate_list url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/set_user_nameplate url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/get_nameplate_list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/set_user_nameplate url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-^https?:\/\/(gateway|gatewayretry|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/(gateway|gatewayretry|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 
 
