@@ -1,37 +1,23 @@
 /**
 [rewrite_local]
-# 1. 核心权限校验 
 ^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/(?!(vip\/))v\d\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
-# 2. 唱片架与播放器模型
-^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+# --- 其他装扮类接口 ---
+^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy|nameplate|pendant|popup\/v1\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list|search\/mixed|vip_level\/welfare_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 3. 铭牌与挂件
-^https?:\/\/.*\.kugou\.com\/.*(nameplate|pendant|popup\/v1\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+# --- 其他基础信息接口 ---
+^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|v\d\/url|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
-# 4. 主题皮肤与装扮
-^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-
-# 5. 搜索与福利列表 
-^https?:\/\/.*\.kugou\.com\/.*(search\/mixed|vip_level\/welfare_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-
-# 1. 用户基础信息^https?:\/\/.*\.kugou\.com\/.*(v\d\/fusion\/userinfo|login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-
-
-# 2. 歌曲资产与配额^https?:\/\/.*\.kugou\.com\/.*(get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-
-
-# 3. 其他功能 (背景图、中心入口)
-^https?:\/\/.*\.kugou\.com\/.*(get_kg_bg_pics|vip_center_user_info|v\d\/url|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-
-#  Header 修正
+# --- 其他修正与过滤 ---
 ^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v\d\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
+^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
 
-#  广告与风险过滤
+# --- 下载匹配 ---
+^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 ^https?:\/\/(sentry|nbcollect)\.kugou\.com\/api url reject
 ^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
-
 ---
 
 [mitm]
