@@ -1,26 +1,36 @@
 /**
 [rewrite_local]
-# 1. 核心权限校验 
-^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+# 1. 核心权限校验 (强制走 kugou1.js 解锁 skins/dress 设置权限)
+^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 2. 皮肤、装扮、唱片架设置与查询
-^https?:\/\/(vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list|set_user_record_rack) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
-^https?:\/\/gateway\.kugou\.com\/(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+# 2. 唱片架与播放器模型 (Record Rack & Model)
+^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 3. 基础等级与会员信息
-^https?:\/\/(gateway|m)\.kugou\.com\/v\d\/(fusion\/userinfo|user\/get_userinfo|login_by_token|get_my_info|get_login_extend_info|vipinfoV2) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
-^https?:\/\/gateway\.kugou\.com\/.*(get_res_privilege|get_b_info|consumption|get_buy_info|search\/mixed|vip_level\/(detail|welfare_list|welfare_recv)) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+# 3. 铭牌与挂件 (Nameplate & Pendant)
+^https?:\/\/.*\.kugou\.com\/.*(nameplate|pendant|popup\/v1\/info) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 4. 配额与资产下载
-^https?:\/\/(mediastoreretry|gateway)\.kugou\.com\/(goodsmstore\/)?v1\/get_remain_quota url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+# 4. 主题皮肤与装扮 (Theme & Dress)
+^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 5. Header 修正与 URL 处理
-^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v5\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
+# 5. 搜索与福利列表 (Search & Welfare)
+^https?:\/\/.*\.kugou\.com\/.*(search\/mixed|vip_level\/welfare_list) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+
+# 1. 用户基础信息^https?:\/\/.*\.kugou\.com\/.*(v\d\/fusion\/userinfo|login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+
+
+# 2. 歌曲资产与配额^https?:\/\/.*\.kugou\.com\/.*(get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+
+
+# 3. 其他功能 (背景图、中心入口)
+^https?:\/\/.*\.kugou\.com\/.*(get_kg_bg_pics|vip_center_user_info|v\d\/url|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+
+#  Header 修正
+^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v\d\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
 ^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 
-# 6. 广告、性能采集与日志屏蔽 (Reject)
-^https?:\/\/.*\.kugou\.com\/.*(report|collect|sentry|nbcollect|monitor|log|aterouter|report_unexpose|report_simple) url reject
-
+#  广告与风险过滤
+^https?:\/\/(sentry|nbcollect)\.kugou\.com\/api url reject
+^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
 
 ---
 
