@@ -1,18 +1,18 @@
 /**
 [rewrite_local]
-# 1. 核心权限校验 (强制走 kugou1.js 解锁 skins/dress 设置权限)
+# 1. 核心权限校验 
 ^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 2. 唱片架与播放器模型 (Record Rack & Model)
+# 2. 唱片架与播放器模型
 ^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 3. 铭牌与挂件 (Nameplate & Pendant)
+# 3. 铭牌与挂件
 ^https?:\/\/.*\.kugou\.com\/.*(nameplate|pendant|popup\/v1\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 4. 主题皮肤与装扮 (Theme & Dress)
+# 4. 主题皮肤与装扮
 ^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
-# 5. 搜索与福利列表 (Search & Welfare)
+# 5. 搜索与福利列表 
 ^https?:\/\/.*\.kugou\.com\/.*(search\/mixed|vip_level\/welfare_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 1. 用户基础信息^https?:\/\/.*\.kugou\.com\/.*(v\d\/fusion\/userinfo|login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
