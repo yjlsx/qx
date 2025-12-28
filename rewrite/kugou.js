@@ -1,19 +1,19 @@
 /**
 [rewrite_local]
 # 1. 核心权限校验 (强制走 kugou1.js 解锁 skins/dress 设置权限)
-^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 2. 唱片架与播放器模型 (Record Rack & Model)
-^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(record_rack|model\/list|album\/check_buy) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 3. 铭牌与挂件 (Nameplate & Pendant)
-^https?:\/\/.*\.kugou\.com\/.*(nameplate|pendant|popup\/v1\/info) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(nameplate|pendant|popup\/v1\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 4. 主题皮肤与装扮 (Theme & Dress)
-^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/get_dress_authority_list|check_user_dress|favor\/list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 5. 搜索与福利列表 (Search & Welfare)
-^https?:\/\/.*\.kugou\.com\/.*(search\/mixed|vip_level\/welfare_list) url script-response-body githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(search\/mixed|vip_level\/welfare_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
 
 # 1. 用户基础信息^https?:\/\/.*\.kugou\.com\/.*(v\d\/fusion\/userinfo|login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
@@ -22,7 +22,7 @@
 
 
 # 3. 其他功能 (背景图、中心入口)
-^https?:\/\/.*\.kugou\.com\/.*(get_kg_bg_pics|vip_center_user_info|v\d\/url|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+^https?:\/\/.*\.kugou\.com\/.*(get_kg_bg_pics|vip_center_user_info|v\d\/url|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
 #  Header 修正
 ^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v\d\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
