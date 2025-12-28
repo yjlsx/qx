@@ -1,24 +1,26 @@
 /**
 [rewrite_local]
-# 1. 装扮、铭牌、图标、唱片架、弹窗 
-^https?:\/\/(gateway|gatewayretry|vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+# 1. 核心权限校验 
+^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
-# 2.等级信息
-^https?:\/\/(gateway|gatewayretry|vip|m)\.kugou\.com\/(v\d\/(fusion\/userinfo|user\/get_userinfo|login_by_token|get_my_info|get_res_privilege|get_b_info|consumption|get_buy_info|search\/mixed)|mobile\/vipinfoV2|v2\/get_login_extend_info|promotionvip\/v3\/vip_level\/(detail|welfare_list|welfare_recv)) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+# 2. 皮肤、装扮、唱片架设置与查询
+^https?:\/\/(vipdress|welfare)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress|get_nameplate_list|set_user_nameplate|popup\/v1\/info|get_user_pendant|record_rack|get_record_rack_list|set_user_record_rack) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 
-# 3. 唱片架与主题 (ocean/tools.mobile)
-^https?:\/\/(gateway\.kugou\.com\/(ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|vipdress\/v1\/record_rack\/set_user_record_rack)|vipdress\.kugou\.com\/v1\/(dress_sales\/get_dress_by_version|record_rack\/get_record_rack_list)) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
+# 3. 基础等级与会员信息
+^https?:\/\/(gateway|m)\.kugou\.com\/v\d\/(fusion\/userinfo|user\/get_userinfo|login_by_token|get_my_info|get_login_extend_info|vipinfoV2) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
+^https?:\/\/gateway\.kugou\.com\/.*(get_res_privilege|get_b_info|consumption|get_buy_info|search\/mixed|vip_level\/(detail|welfare_list|welfare_recv)) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 
 # 4. 配额与资产下载
 ^https?:\/\/(mediastoreretry|gateway)\.kugou\.com\/(goodsmstore\/)?v1\/get_remain_quota url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 
-# 5. Header 修正
+# 5. Header 修正与 URL 处理
 ^https?:\/\/gateway\.kugou\.com\/(vipcenter\/ios|v5\/url) url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
 ^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 
-# 6. 广告与风险过滤
-^https?:\/\/(sentry|nbcollect)\.kugou\.com\/api url reject
-^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
+# 6. 广告、性能采集与日志屏蔽 (Reject)
+^https?:\/\/.*\.kugou\.com\/.*(report|collect|sentry|nbcollect|monitor|log|aterouter|report_unexpose|report_simple) url reject
+
 
 ---
 
