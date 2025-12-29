@@ -308,15 +308,18 @@ if (url.includes('/v1/authority/check_user_dress')) {
 }
 
 
+// --- 播放页皮肤/模型列表处理 ---
 if (url.includes("/player/v1/model/list")) {
     if (obj.data) {
         let str = JSON.stringify(obj.data);
-        // 全局替换：开启权限、设为免费、开启使用开关
-        str = str.replace(/"is_free":\s?"\d"/g, '"is_free":"1"')
-                 .replace(/"can_use":\s?0/g, '"can_use":1')
+        str = str.replace(/"is_free":\s?"\d"/g, '"is_free":"0"');
+        str = str.replace(/"free_type":\s?\d+/g, '"free_type":0');
+        str = str.replace(/"model_label":\s?"\d"/g, '"model_label":"0"');
+        str = str.replace(/"can_use":\s?0/g, '"can_use":1')
                  .replace(/"has_authority":\s?false/g, '"has_authority":true')
-                 .replace(/"free_type":\s?\d/g, '"free_type":1')
                  .replace(/"is_buy":\s?0/g, '"is_buy":1');
+        str = str.replace(/"is_vip":\s?1/g, '"is_vip":0')
+                 .replace(/"is_limit":\s?1/g, '"is_limit":0');
         obj.data = JSON.parse(str);
     }
 }
