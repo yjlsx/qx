@@ -3,7 +3,7 @@
 # --- 下载接口 ---
 ^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body 
+^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
 # --- 核心权限分流---
 ^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
@@ -735,7 +735,6 @@ if (url.includes('v1/audio/client_bg')) {
                         let q = item.copyright.qualities[key];
                         q.privilege = 10;
                         q.raw_privilege = 10;
-                        // 将 sale_mode 全部清零（改为非购买模式）
                         q.sale_mode = {
                             "play": 0,
                             "raw_play": 0,
