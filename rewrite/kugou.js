@@ -719,7 +719,7 @@ if (url.includes('api/v5url')) {
 }
 
 
-// --- 3. 歌曲后台详情处理 (关键：处理解密与权限标志) ---
+// --- 3. 歌曲后台详情处理  ---
 if (url.includes('v1/audio/client_bg')) {
     if (data.data && Array.isArray(data.data)) {
         data.data.forEach((item) => {
