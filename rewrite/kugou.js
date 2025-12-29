@@ -3,6 +3,7 @@
 # --- 下载接口 ---
 ^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body 
 
 # --- 核心权限分流---
 ^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
@@ -24,7 +25,7 @@
 ^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
 
 [mitm]
-hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de
+hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com
 */
 
 const timestamp = Math.floor(Date.now() / 1000);
@@ -717,6 +718,44 @@ if (url.includes('api/v5url')) {
     }
 }
 
+
+// --- 3. 歌曲后台详情处理 (关键：处理解密与权限标志) ---
+if (url.includes('v1/audio/client_bg')) {
+    if (data.data && Array.isArray(data.data)) {
+        data.data.forEach((item) => {
+            if (item.copyright) {
+                item.copyright.all_quality_free = 1;
+                item.copyright.audio_pay_type = 0;
+                item.copyright.album_pay_type = 0;
+                item.copyright.audio_price = 0;
+                item.copyright.album_price = 0;
+                
+                if (item.copyright.qualities) {
+                    Object.keys(item.copyright.qualities).forEach(key => {
+                        let q = item.copyright.qualities[key];
+                        q.privilege = 10;
+                        q.raw_privilege = 10;
+                        // 将 sale_mode 全部清零（改为非购买模式）
+                        q.sale_mode = {
+                            "play": 0,
+                            "raw_play": 0,
+                            "download": 0,
+                            "raw_download": 0
+                        };
+                    });
+                }
+
+                if (item.copyright.trans_param) {
+                    item.copyright.trans_param.classmap = { "attr0": 234881032 };
+                    item.copyright.trans_param.pay_block_tpl = 1;
+                }
+            }
+            if (item.base) {
+                item.base.is_publish = 1;
+            }
+        });
+    }
+}
 
 
 
