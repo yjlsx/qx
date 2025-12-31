@@ -316,7 +316,7 @@ if (url.includes("/player/v1/model/list")) {
             // 修正：is_free 必须为 "0"
             if (key === 'is_free') data[key] = "0";
             // 修正：free_type 必须为 0
-            if (key === 'free_type') data[key] = 0;
+            if (key === 'free_type') data[key] = 4;
             if (key === 'is buy') data[key] = 1;
             if (key === 'can_use') data[key] = 1;
             if (key === 'has_authority') data[key] = true;
