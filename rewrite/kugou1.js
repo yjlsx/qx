@@ -317,7 +317,7 @@ if (url.includes("/player/v1/model/list")) {
             if (key === 'is_free') data[key] = "0";
             // 修正：free_type 必须为 0
             if (key === 'free_type') data[key] = 0;
-            // 权限全开
+            if (key === 'is buy') data[key] = 1;
             if (key === 'can_use') data[key] = 1;
             if (key === 'has_authority') data[key] = true;
             if (key === 'model_label') data[key] = "0";
