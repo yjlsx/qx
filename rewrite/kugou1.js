@@ -310,19 +310,21 @@ if (url.includes('/v1/authority/check_user_dress')) {
 
 // --- 播放页皮肤/模型列表处理 ---
 if (url.includes("/player/v1/model/list")) {
-    if (obj.data) {
-        let str = JSON.stringify(obj.data);
-        str = str.replace(/"is_free":\s?"\d"/g, '"is_free":"0"')
-                 .replace(/"free_type":\s?\d+/g, '"free_type":0');
-        str = str.replace(/"model_label":\s?"\d"/g, '"model_label":"0"');
-        str = str.replace(/"can_use":\s?0/g, '"can_use":1')
-                 .replace(/"has_authority":\s?false/g, '"has_authority":true')
-                 .replace(/"is_buy":\s?0/g, '"is_buy":1');
-        str = str.replace(/"label_name":\s?".*?"/g, '"label_name":""')
-                 .replace(/"tip_text":\s?".*?"/g, '"tip_text":""');
-
-        obj.data = JSON.parse(str);
-    }
+    const unlock = (data) => {
+        if (typeof data !== 'object' || data === null) return;
+        for (let key in data) {
+            // 修正：is_free 必须为 "0"
+            if (key === 'is_free') data[key] = "0";
+            // 修正：free_type 必须为 0
+            if (key === 'free_type') data[key] = 0;
+            // 权限全开
+            if (key === 'can_use') data[key] = 1;
+            if (key === 'has_authority') data[key] = true;
+            if (key === 'model_label') data[key] = "0";
+            unlock(data[key]);
+        }
+    };
+    if (obj.data) unlock(obj.data);
 }
 
 
