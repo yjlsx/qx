@@ -11,61 +11,71 @@ hostname = gateway.kugou.com, kg.zzxu.de
  */
 
 
+/**
+ * 修正版：确保音质对齐 + 错误响应拦截
+ */
+
 if (!$response || !$request) {
   $done({});
 }
 
-// 1. 从 App 原始请求中精准提取当前选择的音质
-const p = Object.fromEntries(new URL($request.url).searchParams.entries());
-const selectedQuality = p.quality || "high"; 
+const url = $request.url;
+const p = Object.fromEntries(new URL(url).searchParams.entries());
 
-// 2. 构造第三方接口，确保 quality 参数原样传递
-const api = `https://kg.zzxu.de/api/v5url?hash=${p.hash}&mode=raw&quality=${selectedQuality}&fallback=0&debug=0&album_id=${p.album_id || ""}&album_audio_id=${p.album_audio_id}`;
+let targetQuality = p.quality || "high";
+
+// 2. 构造第三方接口
+const api = `https://kg.zzxu.de/api/v5url?hash=${p.hash}&mode=raw&quality=${targetQuality}&fallback=0&debug=0&album_id=${p.album_id || ""}&album_audio_id=${p.album_audio_id}`;
+
+console.log("[KG_Replace] 请求音质: " + targetQuality);
 
 $task.fetch({
   url: api,
   method: "GET",
-  headers: { "User-Agent": "Mozilla/5.0", "Accept": "*/*" }
-}).then(resp => {
-  let obj = JSON.parse(resp.body);
-
-  // 3. 只有当第三方接口返回 status: 0 时才执行结构补救
-  if (obj.status === 0 && obj.attempts && obj.attempts[0]) {
-    let att = obj.attempts[0];
-    obj.status = 1;
-    obj.error = "";
-    att.status = 1;
-    att.ok = true;
-    
-    if (att.target) {
-      // 这里的参数替换是为了确保后端接口能正确识别请求权限
-      const fixedUrl = att.target
-        .replace(/vipType=0/g, "vipType=6")
-        .replace(/IsFreePart=1/g, "IsFreePart=0");
-
-      // 4. 自动匹配文件格式：只要是 viper 或 super 级别，强制指定为 flac
-      const finalFmt = (selectedQuality.includes("viper") || selectedQuality === "super") ? "flac" : "mp3";
-
-      obj.data = {
-        "url": [fixedUrl],
-        "status": 1,
-        "fmt": finalFmt,
-        "hash": p.hash
-      };
-      att.target = fixedUrl;
-
-      // 日志输出：确认音质对齐情况
-      console.log(`[音质替换] 目标音质: ${selectedQuality} -> 对应格式: ${finalFmt}`);
-      console.log(`[音质替换] 替换源: ${fixedUrl}`);
-    }
+  headers: {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    "Accept": "*/*"
   }
-
-  $done({
-    status: 200,
-    headers: $response.headers,
-    body: JSON.stringify(obj)
-  });
+}).then(resp => {
+  let body = resp.body;
+  try {
+    let obj = JSON.parse(body);
+    
+    // --- 关键补救逻辑 ---
+    // 如果第三方返回 status: 0 (all attempts failed)，我们手动修正它，防止 App 报错
+    if (obj.status === 0 && obj.attempts && obj.attempts[0]) {
+        console.log("[KG_Replace] 检测到第三方报错，正在尝试注入 VIP 参数补救...");
+        let att = obj.attempts[0];
+        obj.status = 1;
+        obj.error = "";
+        att.status = 1;
+        att.ok = true;
+        // 这里的 vipToken 建议你在脚本顶部定义一个，或使用默认占位
+        if (att.target) {
+            att.target = att.target
+                .replace(/vipType=0/g, "vipType=6")
+                .replace(/IsFreePart=1/g, "IsFreePart=0");
+            
+            // 构造 data 节点
+            obj.data = {
+                "url": [att.target],
+                "status": 1,
+                "fmt": targetQuality === "viper_clear" ? "flac" : "mp3",
+                "hash": p.hash
+            };
+        }
+        body = JSON.stringify(obj);
+    }
+    
+    $done({
+      status: 200,
+      headers: $response.headers,
+      body: body
+    });
+  } catch (e) {
+    // 解析失败回落官方
+    $done({});
+  }
 }, _ => {
   $done({});
 });
-
