@@ -95,13 +95,23 @@ const vipFields = {
 function traverse(obj) {
     if (typeof obj !== "object" || obj === null) return;
     
-    for (let key in obj) {
-        // VIP状态相关字段
-        if (["is_vip", "vip_type", "m_type", "y_type", "user_type", "is_special_vip", "vip_switch", "bookvip_valid", "vip_statu"].includes(key)) {
-            if (key === "vip_type") obj[key] = 6;
-            else if (key === "user_type") obj[key] = 29;
-            else obj[key] = 1;
-        }
+
+for (let key in obj) {
+    // 1. 先处理 VIP 状态，把 bookvip_valid 从数组里删掉
+    if (["is_vip", "vip_type", "m_type", "y_type", "user_type", "is_special_vip", "vip_switch"].includes(key)) {
+        if (key === "vip_type") obj[key] = 6;
+        else if (key === "user_type") obj[key] = 29;
+        else obj[key] = 1;
+    }
+    // 2. 增加一个单独的判断，把听书 VIP设为 0
+    else if (key === "bookvip_valid") {
+        obj[key] = 0;
+    }
+    else if (key === "bookvip_end_time") {
+        obj[key] = "2024-01-01 00:00:00";
+    }
+    // ... 后续的 Token、时间等逻辑保持不变
+
         // Token相关字段
         else if (["vip_token", "auth_token"].includes(key)) {
             obj[key] = vipToken;
