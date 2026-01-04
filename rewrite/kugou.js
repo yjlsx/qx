@@ -33,7 +33,6 @@ let body = $response.body;
 
 const vipDate = "2099-12-31 23:59:59";
 const beginDate = "2024-07-26 15:14:09";
-const expiredDate = "1990-01-01 00:00:00"; // 彻底过期时间
 const vipToken = "1234567890abcdef";
 
 const vipFields = {
@@ -52,14 +51,11 @@ const vipFields = {
     su_vip_begin_time: beginDate,
     su_vip_y_endtime: vipDate,
     roam_end_time: vipDate,
-    listen_end_time: vipDate,
     su_vip_clearday: vipDate,
     roam_type: 1,
     is_first: 0,
     svip_level: 9,
     svip_score: 999999,
-    //bookvip_valid: 1, // 强制关闭
-    //bookvip_end_time: expiredDate, // 强制过期
     m_reset_time: vipDate,
     vip_clearday: beginDate,
     m_clearday: beginDate,
@@ -73,10 +69,8 @@ const vipFields = {
     roam_begin_time: beginDate,
     h_begin_time: beginDate,
     h_end_time: vipDate,
-    listen_begin_time: beginDate,
     m_is_old: 0,
     h_type: 0,
-    listen_type: 0,
     user_y_type: 0,
     autotype: 0,
     autoChargeType: 0,
@@ -97,30 +91,40 @@ function traverse(obj) {
     if (typeof obj !== "object" || obj === null) return;
     
     for (let key in obj) {
-        // 1. 核心状态：排除听书相关的 key
+        // 核心VIP状态
         if (["is_vip", "vip_type", "m_type", "y_type", "user_type", "is_special_vip", "vip_switch"].includes(key)) {
             if (key === "vip_type") obj[key] = 6;
             else if (key === "user_type") obj[key] = 29;
             else obj[key] = 1;
         }
-        // 2. 听书彻底隐藏逻辑
-        else if (key === "bookvip_valid" || key === "book_vip_status") {
-            obj[key] = 0;
-        }
-        // 3. 其他 VIP 常规逻辑
         else if (["vip_token", "auth_token"].includes(key)) {
             obj[key] = vipToken;
         }
-        else if (key.endsWith("_end_time") || key.endsWith("_endtime") || ["su_vip_clearday", "m_reset_time"].includes(key)) {
+        // 结束时间（排除听书相关）
+        else if ((key.endsWith("_end_time") || key.endsWith("_endtime") || ["su_vip_clearday", "m_reset_time"].includes(key)) && !key.includes("book") && !key.includes("listen")) {
             obj[key] = vipDate;
         }
-        else if (key.endsWith("_begin_time") || ["reg_time", "upgrade_time"].includes(key)) {
+        // 开始时间（排除听书相关）
+        else if ((key.endsWith("_begin_time") || ["reg_time", "vip_clearday", "m_clearday", "upgrade_time", "annual_fee_begin_time", "svip_begin_time", "dual_su_vip_begin_time", "roam_begin_time", "h_begin_time"].includes(key)) && !key.includes("listen")) {
             obj[key] = beginDate;
         }
-        else if (["privilege", "raw_privilege", "audio_privilege"].includes(key)) {
+        else if (["valid", "is_original"].includes(key)) {
+            obj[key] = true;
+        }
+        else if (key === "privilege" || key === "raw_privilege") {
             obj[key] = 10;
         }
-        else if (["pay_type", "price", "pkg_price"].includes(key)) {
+        else if (key === "pay_type" || key === "price") {
+            obj[key] = 0;
+        }
+        else if (key === "svip_level") {
+            obj[key] = 9;
+        }
+        // 广告处理
+        else if ((key === "ads" && !url.includes("search_no_focus_word")) || ["ad_info", "mobile_link", "blindbox_list"].includes(key)) {
+            obj[key] = [];
+        }
+        else if (key.includes("ad_value") || key.includes("audioad") || key.includes("expire_prompt")) {
             obj[key] = 0;
         }
         
@@ -128,40 +132,79 @@ function traverse(obj) {
     }
 }
 
+const processThemes = (themes) => {
+    if (!themes) return;
+    for (let theme of themes) {
+        theme.vip_level = 6;
+        theme.price = 0;
+        if (theme.limit_free_info) {
+            theme.limit_free_info.limit_free_status = 1;
+            theme.limit_free_info.free_end_time = 4092599349;
+        }
+        if (theme.themes) processThemes(theme.themes);
+    }
+};
+
 function main() {
     if (!body) return null;
     try {
         let data = JSON.parse(body);
 
-        // 屏蔽福利列表中的听书会员
-        if (url.includes('v2/super/welfarelist')) {
-            if (data.data && data.data.book) {
-                data.data.book.status = 0;
-                data.data.book.is_vip = 0;
+        // 资源权限 (Lite)
+        if (url.includes('get_res_privilege/lite')) {
+            data.status = 1;
+            data.vip_user_type = 3;
+            if (data.userinfo) {
+                data.userinfo.vip_type = 6;
+                data.userinfo.m_type = 1;
+            }
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(item => {
+                    item.privilege = 10;
+                    item.status = 1;
+                    if (item.trans_param) {
+                        item.trans_param.all_quality_free = 1;
+                        item.trans_param.classmap = {attr0: 234881032};
+                    }
+                });
             }
         }
-
-        // 正常的 VIP 深度覆盖
-        if (url.includes('login_by_token') || url.includes('v1/userinfo') || url.includes('fusion/userinfo')) {
+        // 超级VIP福利 (去掉听书)
+        else if (url.includes('v2/super/welfarelist')) {
+            data.data.close_time = vipDate;
+            if (data.data.qqksong) data.data.qqksong.status = 1;
+            if (data.data.iot) {
+                data.data.iot.status = 1;
+                if (data.data.iot.iot_info) {
+                    data.data.iot.iot_info.forEach(info => info.end_time = vipDate);
+                }
+            }
+            // 已删除 data.data.book 逻辑
+        }
+        // 用户中心与登录
+        else if (url.includes('fusion/userinfo') || url.includes('login_by_token') || url.includes('vipinfoV2')) {
             traverse(data);
-            if (data.data) Object.assign(data.data, vipFields);
+            if (data.data && data.data.vipinfo) Object.assign(data.data.vipinfo, vipFields);
+        }
+        // 主题皮肤
+        else if (url.includes('theme/category') || url.includes('theme/info')) {
+            if (data.data) {
+                if (data.data.info) data.data.info.forEach(item => { if(item.themes) processThemes(item.themes) });
+                if (data.data.themes) processThemes(data.data.themes);
+            }
+        }
+        else {
+            traverse(data);
         }
 
-        traverse(data);
-
         let result = JSON.stringify(data);
-
-        // 全局替换：只针对明确不是听书会员的 key 进行替换
-        // 修正：避免把 bookvip_valid 的 0 替换成 1
-        result = result.replace(/"is_vip"\s*:\s*0/g, (match, offset, str) => {
-            // 如果前面紧跟着 book 字样，保持 0
-            return str.substring(offset - 10, offset).includes("book") ? '"is_vip":0' : '"is_vip":1';
-        });
-
-        result = result.replace(/"vip_type"\s*:\s*0/g, '"vip_type":6')
-                      .replace(/"user_type"\s*:\s*0/g, '"user_type":29')
-                      .replace(/"svip_level"\s*:\s*\d+/g, '"svip_level":9')
-                      .replace(/"privilege"\s*:\s*[08]/g, '"privilege":10');
+        
+        // 全局字符串替换 (排除听书字段)
+        result = result.replace(/"is_vip"\s*:\s*0/g, '"is_vip":1')
+                      .replace(/"vip_type"\s*:\s*0/g, '"vip_type":6')
+                      .replace(/"m_type"\s*:\s*0/g, '"m_type":1')
+                      .replace(/"privilege"\s*:\s*[08]/g, '"privilege":10')
+                      .replace(/"pay_type"\s*:\s*3/g, '"pay_type":0');
 
         return {body: result};
     } catch (e) {
