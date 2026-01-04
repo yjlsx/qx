@@ -28,189 +28,148 @@
 hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com
 */
 
+const timestamp = Math.floor(Date.now() / 1000);
 const url = $request.url;
-let body = $response.body;
+const body = $response.body;
+let obj = JSON.parse(body);
 
-const vipDate = "2099-12-31 23:59:59";
-const beginDate = "2024-07-26 15:14:09";
-const vipToken = "1234567890abcdef";
-
-const vipFields = {
-    is_vip: 1,
-    vip_type: 6,
-    y_type: 1,
-    user_type: 29,
-    m_type: 1,
-    vip_token: vipToken,
-    auth_token: vipToken,
-    vip_end_time: vipDate,
-    vip_begin_time: beginDate,
-    m_end_time: vipDate,
-    m_begin_time: beginDate,
-    su_vip_end_time: vipDate,
-    su_vip_begin_time: beginDate,
-    su_vip_y_endtime: vipDate,
-    roam_end_time: vipDate,
-    su_vip_clearday: vipDate,
-    roam_type: 1,
-    is_first: 0,
-    svip_level: 9,
-    svip_score: 999999,
-    m_reset_time: vipDate,
-    vip_clearday: beginDate,
-    m_clearday: beginDate,
-    upgrade_time: beginDate,
-    annual_fee_begin_time: beginDate,
-    annual_fee_end_time: vipDate,
-    svip_begin_time: beginDate,
-    svip_end_time: vipDate,
-    dual_su_vip_begin_time: beginDate,
-    dual_su_vip_end_time: vipDate,
-    roam_begin_time: beginDate,
-    h_begin_time: beginDate,
-    h_end_time: vipDate,
-    m_is_old: 0,
-    h_type: 0,
-    user_y_type: 0,
-    autotype: 0,
-    autoChargeType: 0,
-    producttype: 0,
-    autostatus: 0,
-    autoVipType: 0,
-    lottery_status: 0,
-    first_svip: 0,
-    signed_svip_before: 0,
-    promotion_tag: 0,
-    ios_products_sub_tag: 0,
-    promotion_offer_tag: 0,
-    su_vip_upgrade_days: 999,
-    super_vip_upgrade_month: 999
-};
-
-function traverse(obj) {
-    if (typeof obj !== "object" || obj === null) return;
-    
-    for (let key in obj) {
-        // 核心VIP状态
-        if (["is_vip", "vip_type", "m_type", "y_type", "user_type", "is_special_vip", "vip_switch"].includes(key)) {
-            if (key === "vip_type") obj[key] = 6;
-            else if (key === "user_type") obj[key] = 29;
-            else obj[key] = 1;
-        }
-        else if (["vip_token", "auth_token"].includes(key)) {
-            obj[key] = vipToken;
-        }
-        // 结束时间（排除听书相关）
-        else if ((key.endsWith("_end_time") || key.endsWith("_endtime") || ["su_vip_clearday", "m_reset_time"].includes(key)) && !key.includes("book") && !key.includes("listen")) {
-            obj[key] = vipDate;
-        }
-        // 开始时间（排除听书相关）
-        else if ((key.endsWith("_begin_time") || ["reg_time", "vip_clearday", "m_clearday", "upgrade_time", "annual_fee_begin_time", "svip_begin_time", "dual_su_vip_begin_time", "roam_begin_time", "h_begin_time"].includes(key)) && !key.includes("listen")) {
-            obj[key] = beginDate;
-        }
-        else if (["valid", "is_original"].includes(key)) {
-            obj[key] = true;
-        }
-        else if (key === "privilege" || key === "raw_privilege") {
-            obj[key] = 10;
-        }
-        else if (key === "pay_type" || key === "price") {
-            obj[key] = 0;
-        }
-        else if (key === "svip_level") {
-            obj[key] = 9;
-        }
-        // 广告处理
-        else if ((key === "ads" && !url.includes("search_no_focus_word")) || ["ad_info", "mobile_link", "blindbox_list"].includes(key)) {
-            obj[key] = [];
-        }
-        else if (key.includes("ad_value") || key.includes("audioad") || key.includes("expire_prompt")) {
-            obj[key] = 0;
-        }
-        
-        traverse(obj[key]);
-    }
+// --- 登录令牌处理 ---
+if (url.includes('v5/login_by_token')) {
+    obj.data.user_type = 29;
+    obj.data.vip_end_time = "2099-12-31 15:14:48";
+    obj.data.su_vip_end_time = "2099-12-31 15:14:48";
+    obj.data.m_end_time = "2099-12-31 15:14:48";
+    obj.data.su_vip_y_endtime = "2099-12-31 15:14:48";
+    obj.data.su_vip_clearday = "2024-07-26 15:14:09";
+    obj.data.vip_begin_time = "2024-07-26 15:14:09";
+    obj.data.m_begin_time = "2024-07-26 15:14:09";
+    obj.data.su_vip_begin_time = "2024-07-26 15:14:09";
+    obj.data.is_vip = 1;
+    obj.data.m_type = 1;
+    obj.data.vip_type = 6;   
 }
 
-const processThemes = (themes) => {
-    if (!themes) return;
-    for (let theme of themes) {
-        theme.vip_level = 6;
-        theme.price = 0;
-        if (theme.limit_free_info) {
-            theme.limit_free_info.limit_free_status = 1;
-            theme.limit_free_info.free_end_time = 4092599349;
-        }
-        if (theme.themes) processThemes(theme.themes);
-    }
-};
+// --- 用户信息 V1 ---
+if (url.includes('/v1/userinfo')) {
+    obj.data.vip_type = 6;   
+    obj.data.user_type = 29;
+    obj.data.m_type = 1;
+    obj.data.vip_end_time = "2099-12-31 15:14:48";
+    obj.data.su_vip_y_endtime = "2099-12-31 15:14:48";
+    obj.data.su_vip_end_time = "2099-12-31 15:14:48";
+    obj.data.su_vip_begin_time = "2024-07-26 15:14:09";
+    obj.data.svip_level = 9;
+    obj.data.svip_score = 999999;
+    obj.data.su_vip_clearday = "2024-07-26 15:14:09";
+    obj.data.m_end_time = "2099-12-31 15:14:48";
+}
 
-function main() {
-    if (!body) return null;
-    try {
-        let data = JSON.parse(body);
+// --- 扩展登录信息 (已移除听书字段) ---
+if (url.includes('/v2/get_login_extend_info')) {
+    obj.data.vipinfo.su_vip_end_time = "2099-12-31 23:59:59";
+    obj.data.vipinfo.su_vip_y_endtime = "2099-12-31 23:59:59";
+    obj.data.vipinfo.su_vip_begin_time = "2024-07-26 15:14:09";
+    obj.data.vipinfo.su_vip_clearday = "2024-07-26 15:14:09";
+    obj.data.vipinfo.user_type = 29;
+    obj.data.vipinfo.svip_level = 9;
+    obj.data.vipinfo.m_type = 1;
+    obj.data.vipinfo.vip_type = 6;
+    if(obj.data.vipinfo.svip_score) obj.data.vipinfo.svip_score = 999999;
+}
 
-        // 资源权限 (Lite)
-        if (url.includes('get_res_privilege/lite')) {
-            data.status = 1;
-            data.vip_user_type = 3;
-            if (data.userinfo) {
-                data.userinfo.vip_type = 6;
-                data.userinfo.m_type = 1;
-            }
-            if (data.data && Array.isArray(data.data)) {
-                data.data.forEach(item => {
-                    item.privilege = 10;
-                    item.status = 1;
-                    if (item.trans_param) {
-                        item.trans_param.all_quality_free = 1;
-                        item.trans_param.classmap = {attr0: 234881032};
-                    }
+// --- 移动端 VIP 详情列表 ---
+if (url.includes('/mobile/vipinfoV2')) {
+    if (obj.data) {
+        // VIP, Music, HiFi 列表统一处理
+        const lists = ['vip_list', 'm_list', 'h_list'];
+        lists.forEach(listKey => {
+            if (!Array.isArray(obj.data[listKey])) obj.data[listKey] = [];
+            if (obj.data[listKey].length === 0) {
+                obj.data[listKey].push({ end_time: "2099-12-31 23:59:59", type: 1, begin_time: "2024-07-26 15:14:09" });
+            } else {
+                obj.data[listKey].forEach(item => {
+                    item.end_time = "2099-12-31 23:59:59";
+                    item.type = 1;
+                    item.begin_time = "2024-07-26 15:14:09";
                 });
             }
-        }
-        // 超级VIP福利 (去掉听书)
-        else if (url.includes('v2/super/welfarelist')) {
-            data.data.close_time = vipDate;
-            if (data.data.qqksong) data.data.qqksong.status = 1;
-            if (data.data.iot) {
-                data.data.iot.status = 1;
-                if (data.data.iot.iot_info) {
-                    data.data.iot.iot_info.forEach(info => info.end_time = vipDate);
-                }
-            }
-            // 已删除 data.data.book 逻辑
-        }
-        // 用户中心与登录
-        else if (url.includes('fusion/userinfo') || url.includes('login_by_token') || url.includes('vipinfoV2')) {
-            traverse(data);
-            if (data.data && data.data.vipinfo) Object.assign(data.data.vipinfo, vipFields);
-        }
-        // 主题皮肤
-        else if (url.includes('theme/category') || url.includes('theme/info')) {
-            if (data.data) {
-                if (data.data.info) data.data.info.forEach(item => { if(item.themes) processThemes(item.themes) });
-                if (data.data.themes) processThemes(data.data.themes);
-            }
-        }
-        else {
-            traverse(data);
-        }
+        });
 
-        let result = JSON.stringify(data);
-        
-        // 全局字符串替换 (排除听书字段)
-        result = result.replace(/"is_vip"\s*:\s*0/g, '"is_vip":1')
-                      .replace(/"vip_type"\s*:\s*0/g, '"vip_type":6')
-                      .replace(/"m_type"\s*:\s*0/g, '"m_type":1')
-                      .replace(/"privilege"\s*:\s*[08]/g, '"privilege":10')
-                      .replace(/"pay_type"\s*:\s*3/g, '"pay_type":0');
+        // 音质权限信息
+        obj.data.tone_info = {
+            user_right_type: 1,
+            user_right_list: [
+                { "begin_time": "2024-07-26 15:14:09", "asset_id": "tone_mudai", "type": 1, "end_time": "2099-12-31 23:59:59", "valid": true },
+                { "begin_time": "2024-07-26 15:14:09", "asset_id": "tone_chaoqing", "type": 2, "end_time": "2099-12-31 23:59:59", "valid": true },
+                { "begin_time": "2024-07-26 15:14:09", "asset_id": "tone_quanjing", "type": 4, "end_time": "2099-12-31 23:59:59", "valid": true }
+            ]
+        };
 
-        return {body: result};
-    } catch (e) {
-        return null;
+        // 统一赋值状态
+        const target = obj.data;
+        const err = obj.error || {};
+        [target, err].forEach(o => {
+            o.vip_type = 6; o.user_type = 29; o.m_type = 1; o.is_vip = 1; o.svip_level = 9; o.svip_score = 999999;
+            o.vip_end_time = "2099-12-31 23:59:59"; o.su_vip_end_time = "2099-12-31 23:59:59"; o.m_end_time = "2099-12-31 23:59:59";
+        });
     }
 }
 
-let res = main();
-res ? $done(res) : $done({});
+// --- 个人中心 V3 ---
+if (url.includes('/v1/fusion/userinfo')) {
+    if (obj.data && obj.data.get_vip_info_v3) {
+        let v3 = obj.data.get_vip_info_v3.data;
+        ['vip_list', 'm_list', 'h_list'].forEach(key => {
+            if (!Array.isArray(v3[key])) v3[key] = [];
+            if (v3[key].length === 0) v3[key].push({ end_time: "2099-12-31 23:59:59", type: 1, begin_time: "2024-07-26 15:14:09" });
+            else v3[key].forEach(i => { i.end_time = "2099-12-31 23:59:59"; i.begin_time = "2024-07-26 15:14:09"; });
+        });
+        Object.assign(v3, {
+            vip_type: 6, m_type: 1, user_type: 29, is_vip: 1, svip_level: 9, svip_score: 999999,
+            vip_end_time: "2099-12-31 23:59:59", su_vip_end_time: "2099-12-31 23:59:59"
+        });
+    }
+}
+
+// --- 我的信息 (已移除听书 bookvip_valid) ---
+if (url.includes('/v3/get_my_info')) {
+    if (obj.data) {
+        Object.assign(obj.data, {
+            svip_score: 999999, svip_level: 9, vip_type: 6, m_type: 1, y_type: 1, user_type: 29,
+            musical_visible: 1, timbre_visible: 1, usermedal_visible: 1,
+            su_vip_end_time: "2099-12-31 23:59:59"
+        });
+        obj.data["1ting_visible"] = 1;
+        obj.data["1video_visible"] = 1;
+    }
+}
+
+// --- 歌曲资源权限处理 (Lite) ---
+if (url.includes('v1/get_res_privilege/lite')) {
+    obj.status = 1; obj.vip_user_type = 3;
+    const applyFields = (item) => {
+        if (!item) return;
+        item.privilege = 10; item.status = 1; item.pay_type = 0; item.price = 0;
+        item.expire = 4102444799;
+        if (item.trans_param) {
+            item.trans_param.all_quality_free = 1;
+            item.trans_param.is_super_vip = 1;
+            item.trans_param.classmap = { "attr0": 234881032 };
+        }
+    };
+    if (Array.isArray(obj.data)) {
+        obj.data.forEach(audioItem => {
+            applyFields(audioItem);
+            if (audioItem.relate_goods) audioItem.relate_goods.forEach(applyFields);
+        });
+    }
+}
+
+// --- 其他通用处理 (配额、等级、背景等) ---
+if (url.includes('/v1/get_remain_quota')) { obj.data.remain = 99998; obj.data.m_type = 1; }
+if (url.includes('/vip_level/detail')) { obj.data.grade = 9; obj.data.growth = 999999; }
+if (url.includes('/v2/get_kg_bg_pics')) {
+    if (obj.data && obj.data.lists) obj.data.lists.forEach(l => l.pics && l.pics.forEach(p => p.is_suvip = 1));
+}
+
+$done({ body: JSON.stringify(obj) });
