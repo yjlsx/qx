@@ -15,14 +15,13 @@ if (!$response || !$request) {
   $done({});
 }
 
-const p = Object.fromEntries(new URL($request.url).searchParams.entries());
-
-const originalQuality = p.quality || "high";
+const url = $request.url;
+const p = Object.fromEntries(new URL(url).searchParams.entries());
 
 const api = "https://kg.zzxu.de/api/v5url" +
   "?hash=" + (p.hash || "") +
   "&mode=raw" +
-  "&quality=high" + // 锁定请求 high 以确保接口不报错
+  "&quality=" + (p.quality || "") +
   "&fallback=0" +
   "&debug=0" +
   "&album_id=" + (p.album_id || "") +
@@ -40,35 +39,28 @@ $task.fetch({
 }).then(resp => {
   let obj = JSON.parse(resp.body);
 
-  if (obj.status === 0 || !obj.data) {
-    let att = (obj.attempts && obj.attempts[0]) ? obj.attempts[0] : {};
+  if (obj.status === 0 && obj.attempts && obj.attempts[0]) {
+    let att = obj.attempts[0];
     obj.status = 1;
     obj.error = "";
+    att.status = 1;
+    att.ok = true;
     
-    let targetUrl = att.target || "";
+    if (att.target) {
+      const fixedUrl = att.target
+        .replace(/vipType=0/g, "vipType=6")
+        .replace(/IsFreePart=1/g, "IsFreePart=0");
 
-    if (targetUrl) {
-      // 修正权限参数
-      const fixedUrl = targetUrl
-        .replace(/vipType=\d+/g, "vipType=6")
-        .replace(/IsFreePart=\d+/g, "IsFreePart=0");
-
-      const finalFmt = (originalQuality.includes("viper") || originalQuality === "super") ? "flac" : "mp3";
+      const q = p.quality || "";
+      const finalFmt = (q.includes("viper") || q === "super") ? "flac" : "mp3";
 
       obj.data = {
         "url": [fixedUrl],
         "status": 1,
         "fmt": finalFmt,
-        "hash": p.hash,
-        "quality": originalQuality // 伪装回原始音质
+        "hash": p.hash
       };
-
-      // 修正 attempts 内部信息
-      if (obj.attempts && obj.attempts[0]) {
-        obj.attempts[0].status = 1;
-        obj.attempts[0].ok = true;
-        obj.attempts[0].target = fixedUrl;
-      }
+      att.target = fixedUrl;
     }
   }
 
