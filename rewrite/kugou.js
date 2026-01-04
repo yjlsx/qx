@@ -32,7 +32,7 @@ const url = $request.url;
 let body = $response.body;
 
 const vipDate = "2099-12-31 23:59:59";
-const beginDate = "2024-01-01 00:00:00";
+const beginDate = "2024-07-26 15:14:09";
 const vipToken = "1234567890abcdef";
 
 const vipFields = {
@@ -52,13 +52,13 @@ const vipFields = {
     su_vip_y_endtime: vipDate,
     roam_end_time: vipDate,
     listen_end_time: vipDate,
-    bookvip_end_time: vipDate,
+    //bookvip_end_time: vipDate,
     su_vip_clearday: vipDate,
     roam_type: 1,
     is_first: 0,
     svip_level: 9,
     svip_score: 999999,
-    bookvip_valid: 1,
+    //bookvip_valid: 1,
     m_reset_time: vipDate,
     vip_clearday: beginDate,
     m_clearday: beginDate,

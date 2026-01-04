@@ -83,7 +83,7 @@ const body = $response.body;
 let obj = JSON.parse(body);
 
 if (url.includes('v5/login_by_token')) {
-    obj.data.user_type = 20;
+    obj.data.user_type = 29;
     obj.data.vip_end_time = "2099-12-31 15:14:48";
     obj.data.su_vip_end_time = "2099-12-31 15:14:48";
     obj.data.m_end_time = "2099-12-31 15:14:48";
@@ -94,12 +94,12 @@ if (url.includes('v5/login_by_token')) {
     obj.data.su_vip_begin_time = "2024-07-26 15:14:09";
     obj.data.is_vip = 1;
     obj.data.m_type = 1;
-    obj.data.vip_type = 4;   
+    obj.data.vip_type = 6;   
 }
 
 if (url.includes('/v1/userinfo')) {
-    obj.data.vip_type = 4;   
-    obj.data.user_type = 20;
+    obj.data.vip_type = 6;   
+    obj.data.user_type = 29;
     obj.data.m_type = 1;
     obj.data.vip_end_time = "2099-12-31 15:14:48";
     obj.data.su_vip_y_endtime = "2099-12-31 15:14:48";
@@ -117,15 +117,15 @@ if (url.includes('/v2/get_login_extend_info')) {
     obj.data.vipinfo.su_vip_y_endtime = "2099-12-31 23:59:59";
     obj.data.vipinfo.su_vip_begin_time = "2024-07-26 15:14:09";
     obj.data.vipinfo.su_vip_clearday = "2024-07-26 15:14:09";
-    obj.data.vipinfo.user_type = 20;
+    obj.data.vipinfo.user_type = 29;
     obj.data.vipinfo.svip_level = 9;
     obj.data.vipinfo.m_type = 1;
-    obj.data.vipinfo.vip_type = 4;
+    obj.data.vipinfo.vip_type = 6;
 if(obj.data.vipinfo.svip_score){
     obj.data.vipinfo.svip_score = 999999;
       }
 if(obj.data.vipinfo.vip_type){
-    obj.data.vipinfo.vip_type = 4;
+    obj.data.vipinfo.vip_type = 6;
       }
 if(obj.data.vipinfo.svip_level){
     obj.data.vipinfo.svip_level = 9;
@@ -243,9 +243,9 @@ if (url.includes('/mobile/vipinfoV2')) {
         }
         obj.data.vip_y_endtime = "2099-12-31 23:59:59";
         obj.data.m_type = 1;
-        obj.data.vip_type = 4;
-        obj.data.viptype = 4;
-        obj.data.user_type = 20;
+        obj.data.vip_type = 6;
+        obj.data.viptype = 6;
+        obj.data.user_type = 29;
         obj.data.su_vip_upgrade_days = 99999;
         obj.data.vip_begin_time = "2024-07-26 15:14:09";
         obj.data.svip_begin_time = "2024-07-26 15:14:09";
@@ -274,7 +274,7 @@ if (url.includes('/mobile/vipinfoV2')) {
         obj.error.vip_clearday = "2024-07-26 15:14:09";
         obj.error.su_vip_clearday = "2024-07-26 15:14:09";
         obj.error.vip_y_endtime = "2099-12-31 23:59:59";
-        obj.error.user_type = 20;
+        obj.error.user_type = 29;
         obj.error.m_type = 1;
         obj.error.su_vip_upgrade_days = 99999;
         obj.error.super_vip_upgrade_month = 9999;
@@ -350,13 +350,13 @@ if (url.includes('/v1/fusion/userinfo')) {
         }
 
         // 更新 vip_info_v3 的其他属性
-        obj.data.get_vip_info_v3.data.vip_type = 4;
+        obj.data.get_vip_info_v3.data.vip_type = 6;
         obj.data.get_vip_info_v3.data.vip_y_endtime = "2099-12-31 23:59:59";
         obj.data.get_vip_info_v3.data.vip_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.svip_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.m_begin_time = "2024-07-26 15:14:09";
         obj.data.get_vip_info_v3.data.m_type = 1;
-        obj.data.get_vip_info_v3.data.user_type = 20;
+        obj.data.get_vip_info_v3.data.user_type = 29;
         obj.data.get_vip_info_v3.data.su_vip_upgrade_days = 9999;
         obj.data.get_vip_info_v3.data.super_vip_upgrade_month = 9999;
         obj.data.get_vip_info_v3.data.svip_upgrade_month = 9999;
@@ -396,12 +396,12 @@ if (url.includes('/updateservice/v1/get_dev_user')) {
     if (obj && obj.data && obj.data.list) {
        obj.data.list.forEach(user => {
     user.vipinfo.is_vip = 1;         // 将 is_vip 设置为 1
-    user.vipinfo.vip_type = 4;       // 自定义 VIP 类型
+    user.vipinfo.vip_type = 6;       // 自定义 VIP 类型
     user.vipinfo.m_type = 1;         // 自定义会员类型
     user.vipinfo.svip_level = 9;     // 超级会员等级设为 5
     user.vipinfo.svip_score = 999999;  // 超级会员积分设为 999999
     user.vipinfo.vip_statu = 1;      // VIP 状态设为已开通
-    user.vipinfo.user_type = 20;      // 用户类型设为 VIP
+    user.vipinfo.user_type = 29;      // 用户类型设为 VIP
     user.vipinfo.user_y_type = 1;    // 额外类型设为 VIP
               });
        }
@@ -411,9 +411,12 @@ if (url.includes('/v3/get_my_info')) {
     if (obj.data) {
         obj.data.svip_score = 999999;
         obj.data.svip_level = 9;
-        obj.data.vip_type = 4;
-        obj.data.user_type = 20;
+        obj.data.vip_type = 6;
+        obj.data.m_type = 1;
+        obj.data.y_type = 1;
+        obj.data.user_type = 29;
         obj.data.musical_visible = 1;
+        obj.data.bookvip_valid = 1;
         obj.data.timbre_visible = 1;
         obj.data["1ting_visible"] = 1;
         obj.data["1video_visible"] = 1;
@@ -460,13 +463,67 @@ if (url.includes('/listening/coupon_package')) {
 }
 
 if (url.includes('/v1/get_res_privilege/lite')) {
-    if(obj.userinfo) {
-    obj.userinfo.m_type = 1;
-    obj.userinfo.vip_type = 4;
-    obj.userinfo.quota_remain = 999999;
-      }
+    // 1. 全局状态修正
+    obj.status = 1;
+    obj.error_code = 0;
     obj.vip_user_type = 3;
+    if (obj.userinfo) {
+        obj.userinfo.m_type = 1;
+        obj.userinfo.vip_type = 4;
+        obj.userinfo.quota_remain = 999999;
+    }
+
+    // 2. 核心处理函数：严格按照你提供的参考内容赋值
+    const handleAudioItem = (item) => {
+        if (!item) return;
+
+        // --- 基础权限设置 ---
+        item.privilege = 10;
+        item.status = 1;
+        item.fail_process = 0;
+        item.pay_type = 0;
+        item.price = 0;
+        item.pkg_price = 0;
+        item.buy_count = 1;
+        item.buy_count_vip = 1;
+        item.buy_count_kubi = 1;
+        item.buy_count_audios = 1;
+        item.is_publish = 1;
+        item.publish = 1;
+        item.expire = 4102444799;         
+        // 移除弹窗限制
+        if (item.popup) delete item.popup;
+        
+        // 设置成功消息
+        item._msg = "Allow: the audio is free(copyright).";
+        item._errno = 0;
+        
+        // --- trans_param 内部字段设置 ---
+        if (item.trans_param) {
+            item.trans_param.musicpack_advance = 0;  // 0=不需要音乐包
+            item.trans_param.pay_block_tpl = 1;      // 1=会员标识
+            item.trans_param.display = 0;            // 0=不显示付费提示
+            item.trans_param.display_rate = 0;       // 0=不显示费率
+            item.trans_param.free_limited = 0;       // 0=不限制免费
+            item.trans_param.all_quality_free = 1;   // 1=所有音质免费
+            item.trans_param.download_privilege = 8; // 8=下载权限
+            item.trans_param.is_super_vip = 1;
+        }
+    };
+
+    if (obj.data && Array.isArray(obj.data)) {
+        obj.data.forEach(audioItem => {
+            handleAudioItem(audioItem); // 处理主条目 (album/audio)
+
+            if (audioItem.relate_goods && Array.isArray(audioItem.relate_goods)) {
+                audioItem.relate_goods.forEach(goods => {
+                    handleAudioItem(goods);
+                });
+            }
+        });
+    }
 }
+
 
 if (url.includes('/v1/b_res_vip')) {
     obj.error_code = 0;
@@ -482,52 +539,104 @@ if (url.includes('/v5/url')) {
     obj.status = 1;
 }
 
-if (url.includes('/v1/get_res_privilege')) {
-    function modifyFields(item) {
-        // 修改指定的字段
-        item.trans_param.cpy_level = 1;
-        item.trans_param.cpy_grade = 20; //有5
-        item.trans_param.musicpack_advance = 1;  //0修改
-        item._msg = "Allow: the audio is paid by VIP.";
-        item.privilege = 1;
-        item.buy_count_vip = 1;
-        item.buy_count = 1;
-        item.rebuy_pay_type = 2;
-        item.status = 2;
-        item.price = 0;
-        item.pkg_price = 1;
-        item.pay_type = 2;
-        item.fail_process = 0;
-        item.pay_block_tpl = 1;
-        item.buy_count_kubi = 999999;
-        item.expire = 4102444799;
-        delete item.popup;
+// --- 资源权限处理 (lite 接口) ---
+if (url.includes('v1/get_res_privilege/lite')) {
+    // 1. 设置顶层字段
+    obj.status = 1;
+    obj.error_code = 0;
+    obj.message = "";
+    obj.appid_group = 1;  
+    obj.should_cache = 1;
+    obj.vip_user_type = 3;
+    
+    // 2. 处理用户信息与配额
+    if (obj.userinfo) {
+        obj.userinfo.vip_type = 4; // 豪华 VIP 标识
+        obj.userinfo.m_type = 1;
+        obj.userinfo.vip_user_type = 3;
+        obj.userinfo.quota_remain = 999999;
     }
 
-    if (obj && obj.data && Array.isArray(obj.data)) {
-        obj.data.forEach(item => {
-            // 修改主对象的字段
-            modifyFields(item);
+    // 3. 处理音频数据列表 (包含专辑、单曲、关联音质)
+    if (obj.data && Array.isArray(obj.data)) {
+        obj.data.forEach((audioItem) => {
+            // 定义一个内部函数，严格按照你提供的参考值进行赋值
+            const applyFields = (item) => {
+                if (!item) return;
+                // 基础权限设置
+                item.privilege = 10;
+                item.status = 1;
+                item.fail_process = 0;
+                item.pay_type = 0;
+                item.price = 0;
+                item.pkg_price = 0;
+                item.buy_count = 1;
+                item.buy_count_vip = 1;
+                item.buy_count_kubi = 1;
+                item.buy_count_audios = 1;
+                item.is_publish = 1;
+                item.publish = 1;
+                item.expire = 4102444799; // 永不过期
+                
+                if (item.popup) delete item.popup;
+                item._msg = "Allow: the audio is free(copyright).";
+                item._errno = 0;
+                
+                // trans_param 内部核心权限
+                if (item.trans_param) {
+                    item.trans_param.is_super_vip = 1;
+                    item.trans_param.audio_privilege = 10;
+                    item.trans_param.musicpack_advance = 0;
+                    item.trans_param.pay_block_tpl = 1;
+                    item.trans_param.display = 0;
+                    item.trans_param.display_rate = 0;
+                    item.trans_param.free_limited = 0;
+                    item.trans_param.all_quality_free = 1;
+                    item.trans_param.download_privilege = 8;
+                    
+                    // 注入关键 classmap 与 appid
+                    item.trans_param.classmap = { "attr0": 234881032 };
+                    item.trans_param.appid_block = "3124";
+                }
+            };
 
-            // 修改 relate_goods 数组中每个对象的字段
-            if (item.relate_goods && Array.isArray(item.relate_goods)) {
-                item.relate_goods.forEach(good => {
-                    modifyFields(good);
+            // 处理主节点
+            applyFields(audioItem);
+            
+            // 处理嵌套的音质节点 (relate_goods)
+            if (audioItem.relate_goods && Array.isArray(audioItem.relate_goods)) {
+                audioItem.relate_goods.forEach((goods) => {
+                    applyFields(goods);
                 });
             }
         });
     }
+}
 
-    // 修改顶层的 vip_user_type 字段
-    if (obj.vip_user_type) {
-        obj.vip_user_type = 3;
+// --- 价格提示处理 (get_tips 接口) ---
+else if (url.includes('v4/price/get_tips')) {
+    if (obj.data && obj.data.get_tips) {
+        obj.data.get_tips.forEach(tip => {
+            tip.user_type = 29;
+            tip.price = 0;
+            tip.next_price = 0;
+            tip.price_text = "0";
+            if (tip.tips) {
+                tip.tips.forEach(tipItem => {
+                    tipItem.originalPrice = "0";
+                    tipItem.discount = "10";
+                    tipItem.discountText = "免费享受";
+                });
+            }
+        });
     }
 }
 
+
 if (url.includes('/user/vipinfo')) {
     obj.data.is_vip = 1;   
-    obj.data.vip_type = 4;   
-    obj.data.user_type = 20;
+    obj.data.vip_type = 6;   
+    obj.data.user_type = 29;
     obj.data.m_type = 1;
     obj.data.m_y_endtime = "2099-12-31 15:14:48";
     obj.data.h_y_endtime = "2099-12-31 15:14:48";
@@ -590,17 +699,19 @@ if (url.includes('/audio/get_buy_info?')) {
     obj.status = 1;
     obj.error_code = 0;
     obj.message = " ";
-     // 修改 data 数组中所有元素的购买状态
-  if (Array.isArray(obj.data)) {
-    obj.data.forEach(item => {
-      item.buy = 1;      
-      item.pay_type = 0;  
-      item.is_super_vip = 1; 
-    });
-  }
-
-
+    if (Array.isArray(obj.data)) {
+        obj.data.forEach(item => {
+            item.buy = 1;               
+            item.pay_type = 1;          
+            item.is_super_vip = 1;      
+            item.asset_type = 1;        
+            item.expire = 4102444799;   
+            item.addtime = 1735447856;  
+            item.buy_type = "1";        
+        });
+    }
 }
+
 
 if (url.includes('/app/i/getSongInfo\.php')) {
    if(obj && obj.privilege === 10)  {
@@ -616,6 +727,86 @@ if (url.includes('/app/i/getSongInfo\.php')) {
   }
 }
 
+// --- 播放地址补救处理 (针对 Tracker 解析失败的情况) ---
+if (url.includes('api/v5url')) {
+    // 逻辑：仅在 Tracker 返回状态非 1（即失败），或 data 数据缺失时执行补救
+    if (data.status !== 1 || !data.data || (Array.isArray(data.data) && data.data.length === 0)) {
+        
+        // 检查 attempts 数组中是否存在原始请求目标 (target)
+        if (data.attempts && data.attempts.length > 0) {
+            let attempt = data.attempts[0];
+            let originalTarget = attempt.target || "";
+
+            if (originalTarget) {
+                // 1. 强制将响应状态修正为成功
+                data.status = 1;
+                data.error = ""; 
+
+                // 2. 核心补救：翻转 Target 链接中的会员和计费字段
+                let fixedUrl = originalTarget
+                    .replace(/vipType=\d+/g, "vipType=6")
+                    .replace(/IsFreePart=\d+/g, "IsFreePart=0")
+                    .replace(/vipToken=0/g, "vipToken=1234567890abcdef");
+
+                // 3. 动态提取当前请求的 Hash 和 音质 (Quality)
+                let currentHash = url.match(/hash=([a-fA-F0-9]+)/) ? url.match(/hash=([a-fA-F0-9]+)/)[1] : "";
+                let currentQuality = url.match(/quality=(\d+)/) ? parseInt(url.match(/quality=(\d+)/)[1]) : 128;
+
+                // 4. 构建并注入 data 节点，使 App 能够直连修正后的官方接口
+                data.data = {
+                    "url": [fixedUrl],
+                    "status": 1,
+                    "hash": currentHash,
+                    "bitrate": currentQuality,
+                    "fmt": "mp3",
+                };
+
+                // 5. 同步修正 attempts 辅助信息
+                attempt.ok = true;
+                attempt.upstream_status = 200;
+                attempt.target = fixedUrl;
+            }
+        }
+    }
+}
+
+
+// --- 3. 歌曲后台详情处理  ---
+if (url.includes('v1/audio/client_bg')) {
+    if (data.data && Array.isArray(data.data)) {
+        data.data.forEach((item) => {
+            if (item.copyright) {
+                item.copyright.all_quality_free = 1;
+                item.copyright.audio_pay_type = 0;
+                item.copyright.album_pay_type = 0;
+                item.copyright.audio_price = 0;
+                item.copyright.album_price = 0;
+                
+                if (item.copyright.qualities) {
+                    Object.keys(item.copyright.qualities).forEach(key => {
+                        let q = item.copyright.qualities[key];
+                        q.privilege = 10;
+                        q.raw_privilege = 10;
+                        q.sale_mode = {
+                            "play": 0,
+                            "raw_play": 0,
+                            "download": 0,
+                            "raw_download": 0
+                        };
+                    });
+                }
+
+                if (item.copyright.trans_param) {
+                    item.copyright.trans_param.classmap = { "attr0": 234881032 };
+                    item.copyright.trans_param.pay_block_tpl = 1;
+                }
+            }
+            if (item.base) {
+                item.base.is_publish = 1;
+            }
+        });
+    }
+}
 
 
 
