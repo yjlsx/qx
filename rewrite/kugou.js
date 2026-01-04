@@ -58,8 +58,8 @@ const vipFields = {
     is_first: 0,
     svip_level: 9,
     svip_score: 999999,
-    bookvip_valid: 0, // 强制关闭
-    bookvip_end_time: expiredDate, // 强制过期
+    //bookvip_valid: 1, // 强制关闭
+    //bookvip_end_time: expiredDate, // 强制过期
     m_reset_time: vipDate,
     vip_clearday: beginDate,
     m_clearday: beginDate,
@@ -106,9 +106,6 @@ function traverse(obj) {
         // 2. 听书彻底隐藏逻辑
         else if (key === "bookvip_valid" || key === "book_vip_status") {
             obj[key] = 0;
-        }
-        else if (key === "bookvip_end_time") {
-            obj[key] = expiredDate;
         }
         // 3. 其他 VIP 常规逻辑
         else if (["vip_token", "auth_token"].includes(key)) {
