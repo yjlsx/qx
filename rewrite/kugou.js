@@ -678,41 +678,36 @@ if (url.includes('/app/i/getSongInfo\.php')) {
   }
 }
 
+
 if (url.includes('api/v5url')) {
-    // 逻辑：仅当响应体显示失败 (status 为 0) 或 attempts failed 时介入
-    if (data.status === 0 || data.error === "all attempts failed") {
-        
-        if (data.attempts && data.attempts.length > 0) {
-            let attempt = data.attempts[0];
-            let originalTarget = attempt.target || "";
-
-            if (originalTarget) {
-                // 强制修正顶层状态
-                data.status = 1;
-                data.error = ""; 
-
-                // 核心翻转：注入身份参数
-                let fixedUrl = originalTarget
-                    .replace(/vipType=\d+/g, "vipType=6")
-                    .replace(/IsFreePart=\d+/g, "IsFreePart=0")
-                    .replace(/vipToken=/g, "vipToken=" + vipToken);
-
-                let currentHash = url.match(/hash=([a-fA-F0-9]+)/) ? url.match(/hash=([a-fA-F0-9]+)/)[1] : "";
-
-                // 构建成功节点
-                data.data = {
-                    "url": [fixedUrl],
+    // 只有在 status 为 0 (报错) 时才介入处理
+    if (obj.status === 0) {
+        if (obj.attempts && obj.attempts[0]) {
+            let att = obj.attempts[0];
+            
+            // 修正顶层状态，欺骗 App 认为成功
+            obj.status = 1;
+            obj.error = "";
+            
+            // 提取关键链接并注入参数
+            if (att.target) {
+                att.target = att.target
+                    .replace(/vipType=0/g, "vipType=6")
+                    .replace(/vipToken=/g, "vipToken=" + vipToken) // 确保你定义了 vipToken 变量
+                    .replace(/IsFreePart=1/g, "IsFreePart=0");
+                
+                // 关键步骤：由于 status 为 0 时原始数据没有 data 节点，必须手动创建
+                obj.data = {
+                    "url": [att.target],
                     "status": 1,
-                    "hash": currentHash,
-                    "fmt": "flac" 
+                    "fmt": "flac",
+                    "hash": att.hash || ""
                 };
-
-                // 修正 attempt 内部节点
-                attempt.ok = true;
-                attempt.status = 1;
-                attempt.upstream_status = 200;
-                attempt.target = fixedUrl;
             }
+            
+            // 修正 attempt 内部状态
+            att.status = 1;
+            att.ok = true;
         }
     }
 }
