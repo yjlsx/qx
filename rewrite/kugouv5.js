@@ -15,21 +15,19 @@ if (!$response || !$request) {
   $done({});
 }
 
-// 1. 获取原始请求参数
-const url = $request.url;
-const p = Object.fromEntries(new URL(url).searchParams.entries());
+const p = Object.fromEntries(new URL($request.url).searchParams.entries());
 
-// 2. 构造第三方接口 (严格按照你要求的字段顺序拼接)
+const originalQuality = p.quality || "high";
+
 const api = "https://kg.zzxu.de/api/v5url" +
   "?hash=" + (p.hash || "") +
   "&mode=raw" +
-  "&quality=" + (p.quality || "") +
+  "&quality=high" + // 锁定请求 high 以确保接口不报错
   "&fallback=0" +
   "&debug=0" +
   "&album_id=" + (p.album_id || "") +
   "&album_audio_id=" + (p.album_audio_id || "");
 
-// 3. 打印请求日志 (严格匹配你要求的格式)
 console.log("❚ [KG_Replace] 正在请求替换源: " + api);
 
 $task.fetch({
@@ -42,33 +40,38 @@ $task.fetch({
 }).then(resp => {
   let obj = JSON.parse(resp.body);
 
-  // 4. 执行替换补救逻辑 (针对 status: 0 情况)
-  if (obj.status === 0 && obj.attempts && obj.attempts[0]) {
-    let att = obj.attempts[0];
+  if (obj.status === 0 || !obj.data) {
+    let att = (obj.attempts && obj.attempts[0]) ? obj.attempts[0] : {};
     obj.status = 1;
     obj.error = "";
-    att.status = 1;
-    att.ok = true;
     
-    if (att.target) {
-      const fixedUrl = att.target
-        .replace(/vipType=0/g, "vipType=6")
-        .replace(/IsFreePart=1/g, "IsFreePart=0");
+    let targetUrl = att.target || "";
 
-      const q = p.quality || "";
-      const finalFmt = (q.includes("viper") || q === "super") ? "flac" : "mp3";
+    if (targetUrl) {
+      // 修正权限参数
+      const fixedUrl = targetUrl
+        .replace(/vipType=\d+/g, "vipType=6")
+        .replace(/IsFreePart=\d+/g, "IsFreePart=0");
+
+      const finalFmt = (originalQuality.includes("viper") || originalQuality === "super") ? "flac" : "mp3";
 
       obj.data = {
         "url": [fixedUrl],
         "status": 1,
         "fmt": finalFmt,
-        "hash": p.hash
+        "hash": p.hash,
+        "quality": originalQuality // 伪装回原始音质
       };
-      att.target = fixedUrl;
+
+      // 修正 attempts 内部信息
+      if (obj.attempts && obj.attempts[0]) {
+        obj.attempts[0].status = 1;
+        obj.attempts[0].ok = true;
+        obj.attempts[0].target = fixedUrl;
+      }
     }
   }
 
-  // 打印替换成功日志
   console.log("❚ [KG_Replace] 获取成功，执行替换");
 
   $done({
