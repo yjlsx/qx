@@ -678,42 +678,38 @@ if (url.includes('/app/i/getSongInfo\.php')) {
   }
 }
 
-// --- 播放地址补救处理 (针对 Tracker 解析失败的情况) ---
 if (url.includes('api/v5url')) {
-    // 逻辑：仅在 Tracker 返回状态非 1（即失败），或 data 数据缺失时执行补救
-    if (data.status !== 1 || !data.data || (Array.isArray(data.data) && data.data.length === 0)) {
+    // 逻辑：仅当响应体显示失败 (status 为 0) 或 attempts failed 时介入
+    if (data.status === 0 || data.error === "all attempts failed") {
         
-        // 检查 attempts 数组中是否存在原始请求目标 (target)
         if (data.attempts && data.attempts.length > 0) {
             let attempt = data.attempts[0];
             let originalTarget = attempt.target || "";
 
             if (originalTarget) {
-                // 1. 强制将响应状态修正为成功
+                // 强制修正顶层状态
                 data.status = 1;
                 data.error = ""; 
 
-                // 2. 核心补救：翻转 Target 链接中的会员和计费字段
+                // 核心翻转：注入身份参数
                 let fixedUrl = originalTarget
                     .replace(/vipType=\d+/g, "vipType=6")
                     .replace(/IsFreePart=\d+/g, "IsFreePart=0")
-                    .replace(/vipToken=0/g, "vipToken=1234567890abcdef");
+                    .replace(/vipToken=/g, "vipToken=" + vipToken);
 
-                // 3. 动态提取当前请求的 Hash 和 音质 (Quality)
                 let currentHash = url.match(/hash=([a-fA-F0-9]+)/) ? url.match(/hash=([a-fA-F0-9]+)/)[1] : "";
-                let currentQuality = url.match(/quality=(\d+)/) ? parseInt(url.match(/quality=(\d+)/)[1]) : 128;
 
-                // 4. 构建并注入 data 节点，使 App 能够直连修正后的官方接口
+                // 构建成功节点
                 data.data = {
                     "url": [fixedUrl],
                     "status": 1,
                     "hash": currentHash,
-                    "bitrate": currentQuality,
-                    "fmt": "mp3",
+                    "fmt": "flac" 
                 };
 
-                // 5. 同步修正 attempts 辅助信息
+                // 修正 attempt 内部节点
                 attempt.ok = true;
+                attempt.status = 1;
                 attempt.upstream_status = 200;
                 attempt.target = fixedUrl;
             }
