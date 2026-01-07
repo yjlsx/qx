@@ -314,29 +314,31 @@ if (url.includes("/player/v1/model/list")) {
     obj.data.system.list.forEach(category => {
       if (Array.isArray(category.list)) {
         category.list.forEach(item => {
-          if (item.is_free === "0" || item.theme_type !== "1") {
+          if (item.theme_type !== "1" || item.is_free === "0") {
             item.is_free = "1";
             item.can_use = 1;
             item.is_buy = 1;
             item.has_authority = true;
-            
             item.limit_free_info = {
               "limit_free_status": 1,
               "free_end_time": 4102415999
             };
-            item.model_label = "0";    
-            item.theme_type = "1";       
-            if (item.corner_mark) item.corner_mark = ""; 
-            if (item.label_url) item.label_url = "";
-            if (item.label_text) item.label_text = "";
-            if (item.ext_params && item.ext_params.label_info) {
-               item.ext_params.label_info = ""; 
+
+            item.theme_type = "1";   
+            item.model_label = "0";  
+            item.corner_mark = ""; 
+            item.label_url = "";
+            item.label_text = "";
+            
+            if (item.ext_params) {
+               if (item.ext_params.label_info) item.ext_params.label_info = "";
+               if (item.ext_params.corner_mark) item.ext_params.corner_mark = "";
             }
           }
         });
       }
     });
-    console.log("❚ [KG_Player] 已开启限免模式");
+    console.log("❚ [KG_Player] 已开启限免");
   }
 }
 
