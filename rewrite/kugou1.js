@@ -332,7 +332,7 @@ if (url.includes("/player/v1/model/list")) {
       // 4. 清理干扰角标
       item.corner_mark = "";    // 抹掉“珍藏”图片
       item.label_url = "";      // 抹掉标签图片
-      item.label_text = "限免"; // 强制文字显示为限免
+      item.label_text = "限免"; 
       
       if (item.ext_params) {
         item.ext_params.label_info = "";
