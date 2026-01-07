@@ -313,18 +313,14 @@ if (url.includes("/player/v1/model/list")) {
     let bodyString = JSON.stringify(obj);
     bodyString = bodyString
         .replace(/"is_free":"0"/g, '"is_free":"1"')
-        .replace(/"theme_type":"[34]"/g, '"theme_type":"1"') // 将珍藏(3)和系统(4)全转为普通(1)
-        .replace(/"model_label":"\d+"/g, '"model_label":"5"') // 统一改为限免角标
-        .replace(/"label_text":"[^"]*"/g, '"label_text":"限免"'); // 统一改为限免文字
-
-    // 2. 转回对象，针对性注入限免详情节点
+        .replace(/"theme_type":"[34]"/g, '"theme_type":"1"') 
+        .replace(/"model_label":"\d+"/g, '"model_label":"5"') 
+        .replace(/"label_text":"[^"]*"/g, '"label_text":"限免"'); 
     obj = JSON.parse(bodyString);
-
     const fixData = (data) => {
         if (Array.isArray(data)) {
             data.forEach(item => fixData(item));
         } else if (typeof data === 'object' && data !== null) {
-            // 如果是皮肤节点，补全缺失的权限和限免信息
             if (data.theme_id || data.record_id) {
                 data.can_use = 1;
                 data.is_buy = 1;
@@ -333,17 +329,15 @@ if (url.includes("/player/v1/model/list")) {
                     "limit_free_status": 1,
                     "free_end_time": 4102415999
                 };
-                // 清理多余角标
                 data.corner_mark = "";
                 data.label_url = "";
             }
-            // 扁平化遍历所有属性
             Object.values(data).forEach(val => fixData(val));
         }
     };
 
     fixData(obj.data);
-    console.log("❚ [KG_Player] 字符串+对象双重扫描完成，已强制覆盖全量皮肤");
+    console.log("[KG_Player] 已修改");
 }
 
 
@@ -354,28 +348,31 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     obj.errcode = 0;
     obj.status = 1;
     obj.errmsg = "";
-    
     if (!obj.data) obj.data = {};
     obj.data.can_use = 1;
-    obj.data.is_set = 1;              
-    obj.data.record_rack_status = 1;  
-    obj.data.has_authority = true;    
-    obj.data.access = 1;              
-    obj.data.is_buy = 1;           
-    obj.data.vip_type = 6;                
-    obj.data.need_popup = false;
+    obj.data.is_set = 1;
+    obj.data.record_rack_status = 1;
+    obj.data.has_authority = true;
+    obj.data.access = 1;
+    obj.data.is_buy = 1;
+    obj.data.vip_type = 0;
+    obj.data.free_type = 3;
+    obj.data.end_time = "2099-12-31 23:59:59";
+    obj.data.need_popup = 0;
     obj.data.popup_type = 0;
     obj.data.popup_content = "";
     obj.data.popup_button = "";
     obj.data.jump_url = "";
-
-    const fieldsToFix = ["popup_info", "button_info", "popup_info_v2"];
-    fieldsToFix.forEach(f => {
-        if (obj.data[f]) {
-            obj.data[f] = null;         }
+    const popupFields = ["popup_Info", "popup_info", "button_info", "popup_info_v2"];
+    popupFields.forEach(f => {
+        obj.data[f] = {
+            "popup_type": 0,
+            "popup_button": "",
+            "jump_url": "",
+            "popup_content": ""
+        };
     });
 }
-
 
 
   // --- 铭牌佩戴权限绕过 
