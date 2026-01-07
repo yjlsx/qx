@@ -407,6 +407,19 @@ if (url.includes("/pendant/v2/get_user_pendant")) {
     obj.error_code = 0;
 }
 
+#铭牌
+if (url.includes('/pubsongs/v1/all_theme_skin')) {
+  if (obj.data && Array.isArray(obj.data)) {
+    obj.data.forEach(item => {
+      item.vip_type = 1;
+      item.free_end = "2099-12-31 23:59:59";
+      if (item.display_version_userids && item.display_version_userids.version) {
+        item.display_version_userids.version.android = [{ "b": 0, "e": 9999999 }];
+        item.display_version_userids.version.ios = [{ "b": 0, "e": 9999999 }];
+      }
+    });
+  }
+}
 
 
 $done({ body: JSON.stringify(obj) });
