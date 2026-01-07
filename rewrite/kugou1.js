@@ -310,36 +310,49 @@ if (url.includes('/v1/authority/check_user_dress')) {
 
 // --- 播放页皮肤/模型列表处理 ---
 if (url.includes("/player/v1/model/list")) {
-  const processSkin = (item) => {
-    // 判定是否为皮肤节点
-    if (item.theme_id || item.record_id) {
-      // 1. 权限解锁
-      item.is_free = "1";
-      item.can_use = 1;
-      item.is_buy = 1;
-      item.has_authority = true;
-      
-      // 2. 注入限免详情（让 App 识别到限免时间）
-      item.limit_free_info = {
-        "limit_free_status": 1,
-        "free_end_time": 4102415999
-      };
+    // 1. 定义全局深度扫描递归函数
+    const globalUnlock = (obj) => {
+        if (typeof obj !== 'object' || obj === null) return;
 
-      // 3. 视觉改版：将“珍藏/限定”改为“限免”
-      item.theme_type = "1";    // 设为1，消除珍藏皮肤的固定 UI 样式
-      item.model_label = "5";   // 关键：5 通常代表“限免”标签
-      
-      // 4. 清理干扰角标
-      item.corner_mark = "";    // 抹掉“珍藏”图片
-      item.label_url = "";      // 抹掉标签图片
-      item.label_text = "限免"; 
-      
-      if (item.ext_params) {
-        item.ext_params.label_info = "";
-        item.ext_params.corner_mark = "";
-      }
-    }
-  };
+        // 判定：只要包含这两个核心 ID 字段，就认定它是皮肤/模型节点
+        if (obj.theme_id || obj.record_id) {
+            // --- A. 权限彻底开放 ---
+            obj.is_free = "1";
+            obj.can_use = 1;
+            obj.is_buy = 1;
+            obj.has_authority = true;
+
+            // --- B. 仿照“鸣潮”注入限免标签 ---
+            obj.limit_free_info = {
+                "limit_free_status": 1,
+                "free_end_time": 4102415999 // 2099年
+            };
+
+            // --- C. 视觉表现改写 (关键) ---
+            obj.theme_type = "1";    // 设为普通皮肤类型，避开“珍藏”样式
+            obj.model_label = "5";   // 5 是酷狗蓝色的“限免”角标代码
+            obj.label_text = "限免"; // 备用方案：直接写入文字
+            
+            // --- D. 强力清理原本的“珍藏/限定”干扰 ---
+            obj.corner_mark = "";
+            obj.label_url = "";
+            if (obj.ext_params) {
+                obj.ext_params.label_info = "";
+                obj.ext_params.corner_mark = "";
+            }
+        }
+
+        // 2. 继续递归扫描所有子层级
+        for (let key in obj) {
+            globalUnlock(obj[key]);
+        }
+    };
+
+    globalUnlock(obj);
+    console.log("❚ [KG_Player] 全局深度扫描完成：所有皮肤均已标记为限免");
+}
+
+
 
   if (obj.data && obj.data.system && Array.isArray(obj.data.system.list)) {
     obj.data.system.list.forEach(tab => {
