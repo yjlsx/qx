@@ -310,62 +310,41 @@ if (url.includes('/v1/authority/check_user_dress')) {
 
 // --- 播放页皮肤/模型列表处理 ---
 if (url.includes("/player/v1/model/list")) {
-    // 1. 定义全局深度扫描递归函数
-    const globalUnlock = (obj) => {
-        if (typeof obj !== 'object' || obj === null) return;
+    let bodyString = JSON.stringify(obj);
+    bodyString = bodyString
+        .replace(/"is_free":"0"/g, '"is_free":"1"')
+        .replace(/"theme_type":"[34]"/g, '"theme_type":"1"') // 将珍藏(3)和系统(4)全转为普通(1)
+        .replace(/"model_label":"\d+"/g, '"model_label":"5"') // 统一改为限免角标
+        .replace(/"label_text":"[^"]*"/g, '"label_text":"限免"'); // 统一改为限免文字
 
-        // 判定：只要包含这两个核心 ID 字段，就认定它是皮肤/模型节点
-        if (obj.theme_id || obj.record_id) {
-            // --- A. 权限彻底开放 ---
-            obj.is_free = "1";
-            obj.can_use = 1;
-            obj.is_buy = 1;
-            obj.has_authority = true;
+    // 2. 转回对象，针对性注入限免详情节点
+    obj = JSON.parse(bodyString);
 
-            // --- B. 仿照“鸣潮”注入限免标签 ---
-            obj.limit_free_info = {
-                "limit_free_status": 1,
-                "free_end_time": 4102415999 // 2099年
-            };
-
-            // --- C. 视觉表现改写 (关键) ---
-            obj.theme_type = "1";    // 设为普通皮肤类型，避开“珍藏”样式
-            obj.model_label = "5";   // 5 是酷狗蓝色的“限免”角标代码
-            obj.label_text = "限免"; // 备用方案：直接写入文字
-            
-            // --- D. 强力清理原本的“珍藏/限定”干扰 ---
-            obj.corner_mark = "";
-            obj.label_url = "";
-            if (obj.ext_params) {
-                obj.ext_params.label_info = "";
-                obj.ext_params.corner_mark = "";
+    const fixData = (data) => {
+        if (Array.isArray(data)) {
+            data.forEach(item => fixData(item));
+        } else if (typeof data === 'object' && data !== null) {
+            // 如果是皮肤节点，补全缺失的权限和限免信息
+            if (data.theme_id || data.record_id) {
+                data.can_use = 1;
+                data.is_buy = 1;
+                data.has_authority = true;
+                data.limit_free_info = {
+                    "limit_free_status": 1,
+                    "free_end_time": 4102415999
+                };
+                // 清理多余角标
+                data.corner_mark = "";
+                data.label_url = "";
             }
-        }
-
-        // 2. 继续递归扫描所有子层级
-        for (let key in obj) {
-            globalUnlock(obj[key]);
+            // 扁平化遍历所有属性
+            Object.values(data).forEach(val => fixData(val));
         }
     };
 
-    globalUnlock(obj);
-    console.log("❚ [KG_Player] 全局深度扫描完成：所有皮肤均已标记为限免");
+    fixData(obj.data);
+    console.log("❚ [KG_Player] 字符串+对象双重扫描完成，已强制覆盖全量皮肤");
 }
-
-
-
-  if (obj.data && obj.data.system && Array.isArray(obj.data.system.list)) {
-    obj.data.system.list.forEach(tab => {
-      if (Array.isArray(tab.list)) {
-        tab.list.forEach(skin => {
-          processSkin(skin);
-        });
-      }
-    });
-    console.log("❚ [KG_Player] 已将所有皮肤标签修改为：限免");
-  }
-}
-
 
 
 
