@@ -338,7 +338,7 @@ if (url.includes("/player/v1/model/list")) {
         });
       }
     });
-    console.log("❚ [KG_Player] 已开启限免");
+    console.log("❚ [KG_Player] 已开启限免！");
   }
 }
 
