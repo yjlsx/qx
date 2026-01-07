@@ -320,12 +320,12 @@ if (url.includes("/player/v1/model/list")) {
             data.model_label = "0";                       
             data.limit_free_info = {
                 "limit_free_status": 1,
-                "free_end_time": 4102415999   // 2099年
+                "free_end_time": 4102415999   
             };
         }
 
         for (let key in data) {
-            unlock(data[key]); // 继续递归寻找子节点
+            unlock(data[key]); 
         }
     };
     if (obj.data) unlock(obj.data);
