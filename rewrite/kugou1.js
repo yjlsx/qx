@@ -312,16 +312,20 @@ if (url.includes('/v1/authority/check_user_dress')) {
 if (url.includes("/player/v1/model/list")) {
     const unlock = (data) => {
         if (typeof data !== 'object' || data === null) return;
+        if (data.theme_id || data.record_id) {
+            data.is_free = "1";               
+            data.is_buy = 1;                  
+            data.can_use = 1;
+            data.has_authority = true;
+            data.model_label = "0";                       
+            data.limit_free_info = {
+                "limit_free_status": 1,
+                "free_end_time": 4102415999   // 2099年
+            };
+        }
+
         for (let key in data) {
-            // 修正：is_free 必须为 "0"
-            if (key === 'is_free') data[key] = "0";
-            // 修正：free_type 必须为 0
-            if (key === 'free_type') data[key] = 4;
-            if (key === 'is buy') data[key] = 1;
-            if (key === 'can_use') data[key] = 1;
-            if (key === 'has_authority') data[key] = true;
-            if (key === 'model_label') data[key] = "0";
-            unlock(data[key]);
+            unlock(data[key]); // 继续递归寻找子节点
         }
     };
     if (obj.data) unlock(obj.data);
