@@ -16,20 +16,31 @@ hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugo
 
 
 // ===========================================
-// 基础初始化
+// ⚙️ 配置区域 (请修改这里)
+// ===========================================
+// 把下面的链接换成你 GitHub 上那个 skins.json 的 "Raw" 地址
+const GITHUB_DB_URL = "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/pifu.json";
+
+// ===========================================
+// 脚本逻辑开始
 // ===========================================
 const url = $request.url;
-const body = $response.body;
+let body = $response.body;
 let obj = {};
 
+// 尝试解析
 try {
     obj = JSON.parse(body);
 } catch (e) {
-    console.log("❌ JSON 解析失败");
-    $done({});
+    // 如果是 set 接口且解析失败，可能是空响应，我们需要手动构造 obj
+    if (url.includes("set_user_record_rack")) {
+        obj = { data: {} };
+    } else {
+        $done({});
+    }
 }
 
-// 辅助函数：解析 URL 参数
+// 辅助函数：解析URL参数
 const getUrlParam = (url, name) => {
     const reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
     const r = url.split('?')[1] ? url.split('?')[1].match(reg) : null;
@@ -37,75 +48,72 @@ const getUrlParam = (url, name) => {
     return null;
 };
 
-// 配置参数
-const MAX_CACHE_SIZE = 100;  // 限制缓存的最大数量
-const CACHE_EXPIRY_TIME = 86400000; // 1天 (以毫秒为单位)
-let memoryCache = {}; // 内存缓存
+// 辅助函数：递归查找 JSON 中的 URL
+const findUrlById = (jsonData, targetId) => {
+    if (typeof jsonData !== 'object' || jsonData === null) return null;
+    
+    // 检查当前对象是否匹配 ID
+    let currentId = jsonData.record_id || jsonData.record_rack_id;
+    // 注意：ID 可能是数字也可能是字符串，统一转字符串比较
+    if (currentId && String(currentId) === String(targetId)) {
+        // 找到了 ID，开始找地址
+        if (jsonData.record_rack_url) return jsonData.record_rack_url;
+        if (jsonData.zip) return jsonData.zip;
+        if (jsonData.url && jsonData.url.includes(".zip")) return jsonData.url;
+        if (jsonData.file_hash) return `https://vipimgbssdl.kugou.com/${jsonData.file_hash}.zip`;
+    }
+
+    // 没找到，继续递归遍历子属性
+    for (let key in jsonData) {
+        let result = findUrlById(jsonData[key], targetId);
+        if (result) return result;
+    }
+    return null;
+};
 
 // ===========================================
-// 1. 捕获皮肤列表并存储皮肤 ID 和 URL
+// 1. 播放器皮肤列表 (model/list)
+//    功能：仅做显示解锁 (不需要抓取了，因为你有云端数据库)
 // ===========================================
 if (url.includes("/player/v1/model/list")) {
-    let skinMap = {};
-    let count = 0;
-
-    // 深度搜索函数，用于查找皮肤的 URL
-    const findResources = (item) => {
-        if (item.record_rack_url) return item.record_rack_url;
-        if (item.zip) return item.zip;
-        if (item.url && item.url.includes(".zip")) return item.url;
-        
-        if (item.file_hash) return `https://vipimgbssdl.kugou.com/${item.file_hash}.zip`;
-        if (item.zip_hash) return `https://vipimgbssdl.kugou.com/${item.zip_hash}.zip`;
-        
-        if (item.extra && item.extra.file_hash) return `https://vipimgbssdl.kugou.com/${item.extra.file_hash}.zip`;
-        
-        return null;
-    };
-
     const deepClean = (data) => {
         if (typeof data !== 'object' || data === null) return;
-        
         if (data.theme_id || data.record_id) {
-            let skinId = data.record_id || data.record_rack_id;
-            
-            // 保存皮肤 ID 和 URL
-            if (skinId) {
-                let targetUrl = findResources(data);
-                if (targetUrl) {
-                    skinMap[skinId] = targetUrl;
-                    count++;
+            data.is_free = "1";
+            data.can_use = 1;
+            data.is_buy = 1;
+            data.has_authority = true;
+            data.vip_level = 0;
+            data.model_label = "5"; 
+            data.limit_free_info = { "limit_free_status": 1, "free_end_time": 4102415999 };
+            if (data.theme_type === "3" || data.theme_type === "4") data.theme_type = "1";
+            if (data.theme_type === "5" || data.theme_content_5) {
+                data.label_name = "";
+                if (data.theme_content_5) {
+                    data.theme_content_5.label_name = "";
+                    data.theme_content_5.free_type = 0;
                 }
             }
+            data.corner_mark = "";
+            data.label_url = "";
+            if (data.ext_params) data.ext_params.vip_level = 0;
         }
-        
         for (let key in data) deepClean(data[key]);
     };
-    
     deepClean(obj);
-
-    // 存入内存缓存并限制缓存大小
-    if (count > 0) {
-        if (Object.keys(memoryCache).length >= MAX_CACHE_SIZE) {
-            // 如果缓存达到最大数量，删除最早的缓存
-            let keys = Object.keys(memoryCache);
-            delete memoryCache[keys[0]]; // 删除最早的一个
-        }
-        Object.assign(memoryCache, skinMap);
-        console.log(`❚ [KG_Player] 内存缓存更新: 捕获 ${count} 个资源地址`);
-    }
+    $done({ body: JSON.stringify(obj) });
 }
 
 // ===========================================
 // 2. 皮肤设置接口 (set_user_record_rack)
-//    功能：强制成功 + 注入刚才构造的地址
+//    功能：去 GitHub 查表 -> 注入地址
 // ===========================================
 if (url.includes("record_rack/set_record_rack_check") || url.includes("record_rack/set_user_record_rack")) {
+    // 先把回包改写成成功状态
     obj.errcode = 0;
     obj.status = 1;
     obj.errmsg = "";
     if (!obj.data) obj.data = {};
-
     obj.data.can_use = 1;
     obj.data.is_set = 1;
     obj.data.record_rack_status = 1;
@@ -115,34 +123,48 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     obj.data.vip_type = 0;
     obj.data.free_type = 3;
     obj.data.end_time = "2099-12-31 23:59:59";
-
-    // 获取当前请求的 ID
-    let currentId = getUrlParam(url, "record_rack_id") || getUrlParam(url, "id");
     
-    // 从内存缓存查找对应的皮肤地址
-    if (memoryCache && currentId && memoryCache[currentId]) {
-        let matchedUrl = memoryCache[currentId];
-        if (matchedUrl) {
-            console.log(`✅ [KG_Set] 命中资源: ${currentId} -> ${matchedUrl}`);
-            obj.data.record_rack_url = matchedUrl;
-        } else {
-            console.log(`⚠️ [KG_Set] 列表里未发现 ID:${currentId} 的 URL`);
-            obj.data.record_rack_url = ""; // 返回空 URL 或者适当的错误处理
-        }
-    } else {
-        console.log("⚠️ [KG_Set] 缓存为空或未找到对应的 ID");
-    }
-
     // 清理弹窗
     obj.data.need_popup = 0;
     obj.data.popup_type = 0;
     obj.data.popup_content = "";
     obj.data.popup_button = "";
     obj.data.jump_url = "";
-    const popupFields = ["popup_Info", "popup_info", "button_info", "popup_info_v2"];
-    popupFields.forEach(f => {
+    ["popup_Info", "popup_info", "button_info"].forEach(f => {
         obj.data[f] = { "popup_type": 0, "popup_button": "", "jump_url": "", "popup_content": "" };
     });
-}
 
-$done({ body: JSON.stringify(obj) });
+    // --- 核心：去 GitHub 查数据 ---
+    let currentId = getUrlParam(url, "record_rack_id") || getUrlParam(url, "id");
+    
+    if (currentId) {
+        console.log(`❚ [KG_Cloud] 正在去 GitHub 查询 ID: ${currentId} ...`);
+        
+        // 发起网络请求
+        $task.fetch({ url: GITHUB_DB_URL }).then(response => {
+            try {
+                let dbData = JSON.parse(response.body);
+                // 在云端数据里查找
+                let targetUrl = findUrlById(dbData, currentId);
+                
+                if (targetUrl) {
+                    console.log(`✅ [KG_Cloud] 云端命中! ID:${currentId} -> URL:${targetUrl}`);
+                    obj.data.record_rack_url = targetUrl;
+                } else {
+                    console.log(`⚠️ [KG_Cloud] 云端数据库未包含 ID:${currentId}`);
+                }
+            } catch (e) {
+                console.log(`❌ [KG_Cloud] 云端数据解析失败: ${e}`);
+            }
+            // 无论找没找到，都要结束请求
+            $done({ body: JSON.stringify(obj) });
+            
+        }, reason => {
+            console.log(`❌ [KG_Cloud] 连接 GitHub 失败，请检查网络`);
+            // 网络失败也要结束请求
+            $done({ body: JSON.stringify(obj) });
+        });
+    } else {
+        $done({ body: JSON.stringify(obj) });
+    }
+}
