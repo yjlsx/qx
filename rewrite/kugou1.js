@@ -310,35 +310,46 @@ if (url.includes('/v1/authority/check_user_dress')) {
 
 // --- 播放页皮肤/模型列表处理 ---
 if (url.includes("/player/v1/model/list")) {
-    let bodyString = JSON.stringify(obj);
-    bodyString = bodyString
-        .replace(/"is_free":"0"/g, '"is_free":"1"')
-        .replace(/"theme_type":"[34]"/g, '"theme_type":"1"') 
-        .replace(/"model_label":"\d+"/g, '"model_label":"5"') 
-        .replace(/"label_text":"[^"]*"/g, '"label_text":"限免"'); 
-    obj = JSON.parse(bodyString);
-    const fixData = (data) => {
-        if (Array.isArray(data)) {
-            data.forEach(item => fixData(item));
-        } else if (typeof data === 'object' && data !== null) {
-            if (data.theme_id || data.record_id) {
-                data.can_use = 1;
-                data.is_buy = 1;
-                data.has_authority = true;
-                data.limit_free_info = {
-                    "limit_free_status": 1,
-                    "free_end_time": 4102415999
-                };
-                data.corner_mark = "";
-                data.label_url = "";
+    const deepClean = (data) => {
+        if (typeof data !== 'object' || data === null) return;
+        if (data.theme_id || data.record_id) {
+            data.is_free = "1";
+            data.can_use = 1;
+            data.is_buy = 1;
+            data.has_authority = true;
+            data.vip_level = 0;
+            data.is_svip = 0;
+            data.vip_type = 1;
+            data.model_label = "5";
+            data.limit_free_info = {
+                "limit_free_status": 1,
+                "free_end_time": 4102415999
+            };
+            if (data.theme_type === "3" || data.theme_type === "4") {
+                data.theme_type = "1";
             }
-            Object.values(data).forEach(val => fixData(val));
+            if (data.theme_type === "5" || data.theme_content_5) {
+                data.label_name = "";
+                if (data.theme_content_5) {
+                    data.theme_content_5.label_name = "";
+                    data.theme_content_5.free_type = 0;
+                }
+            }
+            data.corner_mark = "";
+            data.label_url = "";
+            if (data.ext_params) {
+                data.ext_params.vip_level = 0;
+                data.ext_params.label_info = "";
+                data.ext_params.corner_mark = "";
+            }
+        }
+        for (let key in data) {
+            deepClean(data[key]);
         }
     };
-
-    fixData(obj.data);
-    console.log("[KG_Player] 已修改");
+    deepClean(obj);
 }
+
 
 
 
