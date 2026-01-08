@@ -353,7 +353,7 @@ if (url.includes("/player/v1/model/list")) {
 
 
 
-
+/**
 // ---播放器皮肤
 if (url.includes("record_rack/set_record_rack_check") || url.includes("record_rack/set_user_record_rack")) {
     obj.errcode = 0;
@@ -385,6 +385,7 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     });
 }
 
+*//
 
   // --- 铭牌佩戴权限绕过 
    if (url.includes("nameplate/v1/set_user_nameplate")) {
