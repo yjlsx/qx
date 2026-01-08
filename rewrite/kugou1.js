@@ -385,7 +385,7 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     });
 }
 
-*/
+**/
 
   // --- 铭牌佩戴权限绕过 
    if (url.includes("nameplate/v1/set_user_nameplate")) {
