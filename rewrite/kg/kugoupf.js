@@ -15,17 +15,16 @@ hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugo
  */
 
 // ===========================================
-// 核心修复：定义 url 和 body 变量
+// 基础初始化
 // ===========================================
 const url = $request.url;
 const body = $response.body;
 let obj = {};
 
-// 安全解析 JSON，防止报错
 try {
     obj = JSON.parse(body);
 } catch (e) {
-    console.log("❌ JSON 解析失败，跳过处理");
+    console.log("❌ JSON 解析失败");
     $done({});
 }
 
@@ -39,19 +38,37 @@ const getUrlParam = (url, name) => {
 
 // ===========================================
 // 1. 播放器皮肤列表 (model/list)
-//    功能：解锁限免 + 批量抓取真实地址存入缓存
+//    功能：按 ID 精准提取下载地址 + 界面解锁
 // ===========================================
 if (url.includes("/player/v1/model/list")) {
-    // 内存暂存对象
     let skinMap = {};
     let count = 0;
+
+    // --- 定义一个函数，专门在一个皮肤对象里找 URL ---
+    const extractSkinUrl = (item) => {
+        // 1. 先找最显眼的位置
+        if (item.record_rack_url) return item.record_rack_url;
+        if (item.zip) return item.zip;
+        if (item.url && item.url.includes(".zip")) return item.url;
+        
+        // 2. 找 extra / ext_params 里的藏匿点
+        if (item.extra && item.extra.zip) return item.extra.zip;
+        if (item.ext_params && item.ext_params.down_url) return item.ext_params.down_url;
+
+        // 3. 找 theme_content_5 (动态皮肤) 里的地址
+        if (item.theme_content_5 && item.theme_content_5.zip) return item.theme_content_5.zip;
+        
+        return null;
+    };
 
     const deepClean = (data) => {
         if (typeof data !== 'object' || data === null) return;
         
-        // 识别皮肤/唱片节点
+        // 命中一个皮肤节点
         if (data.theme_id || data.record_id) {
-            // --- A. 解锁显示 ---
+            let skinId = data.record_id || data.record_rack_id;
+            
+            // --- A. 界面显示解锁 (保持之前的功能) ---
             data.is_free = "1";
             data.can_use = 1;
             data.is_buy = 1;
@@ -61,11 +78,9 @@ if (url.includes("/player/v1/model/list")) {
             data.vip_type = 1;
             data.model_label = "5"; 
             data.limit_free_info = { "limit_free_status": 1, "free_end_time": 4102415999 };
-
-            // 修正皮肤类型
-            if (data.theme_type === "3" || data.theme_type === "4") data.theme_type = "1";
             
-            // 修正动态皮肤 (Type 5) 内部标签
+            // 修复类型和标签
+            if (data.theme_type === "3" || data.theme_type === "4") data.theme_type = "1";
             if (data.theme_type === "5" || data.theme_content_5) {
                 data.label_name = "";
                 if (data.theme_content_5) {
@@ -73,60 +88,57 @@ if (url.includes("/player/v1/model/list")) {
                     data.theme_content_5.free_type = 0;
                 }
             }
-            
-            // 清理视觉干扰
+            // 清理角标
             data.corner_mark = "";
             data.label_url = "";
-            if (data.ext_params) {
-                data.ext_params.vip_level = 0;
-                data.ext_params.label_info = "";
-                data.ext_params.corner_mark = "";
-            }
+            if (data.ext_params) data.ext_params.vip_level = 0;
 
-            // --- B. 抓取资源地址 ---
-            let realUrl = data.record_rack_url || data.zip || data.url || "";
-            let skinId = data.record_id || data.record_rack_id;
-
-            // 如果发现有 zip 地址，暂存到内存
-            if (skinId && realUrl && realUrl.includes(".zip")) {
-                skinMap[skinId] = realUrl;
-                count++;
+            // --- B. 【核心】按 ID 抓取地址并绑定 ---
+            if (skinId) {
+                let targetUrl = extractSkinUrl(data);
+                
+                // 只有当找到了 zip 地址，才存入 map
+                if (targetUrl && targetUrl.includes(".zip")) {
+                    skinMap[skinId] = targetUrl; // 关键：ID 和 URL 一一对应
+                    count++;
+                }
             }
         }
         
-        // 递归
+        // 递归遍历子节点
         for (let key in data) deepClean(data[key]);
     };
     
-    // 执行处理
     deepClean(obj);
 
-    // --- C. 一次性写入缓存 (防卡顿) ---
+    // 将匹配好的 ID-URL 对写入缓存
     if (count > 0) {
         try {
+            // 读取旧缓存合并，防止丢失
             let oldMapStr = $prefs.valueForKey("kg_skin_map_v2");
             let finalMap = oldMapStr ? JSON.parse(oldMapStr) : {};
-            Object.assign(finalMap, skinMap); // 合并新旧数据
+            
+            Object.assign(finalMap, skinMap);
+            
             $prefs.setValueForKey(JSON.stringify(finalMap), "kg_skin_map_v2");
-            console.log(`❚ [KG_Player] 已缓存 ${count} 个新皮肤地址`);
-        } catch (e) {
-            console.log("❚ [KG_Player] 缓存写入异常");
-        }
+            console.log(`❚ [KG_Player] 已更新 ${count} 个皮肤的 ID-URL 绑定`);
+        } catch (e) {}
+    } else {
+        console.log(`❚ [KG_Player] 列表扫描完成，未发现包含ZIP的皮肤`);
     }
 }
 
 // ===========================================
 // 2. 皮肤设置接口 (set_user_record_rack)
-//    功能：强制成功 + 优先使用真实地址 + 替补保底
+//    功能：根据 ID 从缓存里取回对应的 URL
 // ===========================================
 if (url.includes("record_rack/set_record_rack_check") || url.includes("record_rack/set_user_record_rack")) {
-    // 强制修正状态码 (解决 36303 错误)
     obj.errcode = 0;
     obj.status = 1;
     obj.errmsg = "";
     if (!obj.data) obj.data = {};
 
-    // 权限全开
+    // 基础全开
     obj.data.can_use = 1;
     obj.data.is_set = 1;
     obj.data.record_rack_status = 1;
@@ -137,32 +149,29 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     obj.data.free_type = 3;
     obj.data.end_time = "2099-12-31 23:59:59";
 
-    // 默认替补资源 (Twinkle)
-    let finalZip = "https://vipimgbssdl.kugou.com/ce28fd025f628de3dd2e5b23a8aba9aa.zip";
-    let finalImg = "https://vipimgbssdl.kugou.com/20d5d19363416d1444489a43fea884fd.png";
-
-    // 获取当前请求的 ID
+    // --- 【核心步骤】按 ID 找回地址 ---
+    // 1. 获取你要设置的那个皮肤的 ID
     let currentId = getUrlParam(url, "record_rack_id") || getUrlParam(url, "id");
     
-    // 尝试从缓存读取真实地址
+    // 2. 打开缓存本
     let cacheStr = $prefs.valueForKey("kg_skin_map_v2");
+    
+    // 3. 只有 ID 匹配时才填入地址
     if (cacheStr && currentId) {
         try {
             let bigMap = JSON.parse(cacheStr);
-            if (bigMap[currentId]) {
-                console.log("❚ [KG_Set] 命中真实资源! ID: " + currentId);
-                finalZip = bigMap[currentId];
+            let matchedUrl = bigMap[currentId];
+            
+            if (matchedUrl) {
+                console.log(`✅ [KG_Set] ID匹配成功! ID:${currentId} -> URL:${matchedUrl}`);
+                obj.data.record_rack_url = matchedUrl;
             } else {
-                console.log("❚ [KG_Set] 未命中缓存，使用替补资源");
+                console.log(`⚠️ [KG_Set] 缓存里没找到 ID:${currentId} 的地址 (列表接口可能没下发)`);
             }
-        } catch (e) {}
+        } catch (e) {
+            console.log("❌ 缓存读取错误");
+        }
     }
-
-    // 注入地址 (如果原数据没有，则填入我们准备好的)
-    if (!obj.data.record_rack_url) obj.data.record_rack_url = finalZip;
-    if (!obj.data.user_share_img) obj.data.user_share_img = finalImg;
-    if (!obj.data.share_img) obj.data.share_img = finalImg;
-    if (!obj.data.record_rack_img) obj.data.record_rack_img = finalImg;
 
     // 清理弹窗
     obj.data.need_popup = 0;
@@ -176,7 +185,4 @@ if (url.includes("record_rack/set_record_rack_check") || url.includes("record_ra
     });
 }
 
-// ===========================================
-// 结束并输出
-// ===========================================
 $done({ body: JSON.stringify(obj) });
