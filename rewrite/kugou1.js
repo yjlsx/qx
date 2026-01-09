@@ -308,50 +308,6 @@ if (url.includes('/v1/authority/check_user_dress')) {
 }
 
 
-// --- 播放页皮肤/模型列表处理 ---
-if (url.includes("/player/v1/model/list")) {
-    const deepClean = (data) => {
-        if (typeof data !== 'object' || data === null) return;
-        if (data.theme_id || data.record_id) {
-            data.is_free = "1";
-            data.can_use = 1;
-            data.is_buy = 1;
-            data.has_authority = true;
-            data.vip_level = 0;
-            data.is_svip = 0;
-            data.vip_type = 1;
-            data.model_label = "5";
-            data.limit_free_info = {
-                "limit_free_status": 1,
-                "free_end_time": 4102415999
-            };
-            if (data.theme_type === "3" || data.theme_type === "4") {
-                data.theme_type = "1";
-            }
-            if (data.theme_type === "5" || data.theme_content_5) {
-                data.label_name = "";
-                if (data.theme_content_5) {
-                    data.theme_content_5.label_name = "";
-                    data.theme_content_5.free_type = 0;
-                }
-            }
-            data.corner_mark = "";
-            data.label_url = "";
-            if (data.ext_params) {
-                data.ext_params.vip_level = 0;
-                data.ext_params.label_info = "";
-                data.ext_params.corner_mark = "";
-            }
-        }
-        for (let key in data) {
-            deepClean(data[key]);
-        }
-    };
-    deepClean(obj);
-}
-
-
-
 
 /**
 // ---播放器皮肤
