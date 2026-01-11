@@ -42,43 +42,32 @@ if (url.includes("nameplate/v1/get_nameplate_list")) {
    let count = 0;
 
    if (obj.data && Array.isArray(obj.data)) {
-       // ❌ 不再合并分组，不再删除分组，防止 App 报错
-       // ✅ 遍历现有分组，原地修改
        obj.data.forEach(group => {
-           
-           // 顺便把"超级VIP"的分组名改得好听点，但不改 ID 防止冲突
            if (group.tag_name && group.tag_name.includes("VIP")) {
-               group.tag_name = "精选铭牌 (已解锁)";
+               group.tag_name = "铭牌 (已解锁)";
            }
 
            if (group.list && Array.isArray(group.list)) {
                group.list.forEach(item => {
-                   // ---------------------------------------
-                   // [全员 Type 5 伪装]
-                   // 按照你的要求，全部模仿 V9 限定铭牌
-                   // ---------------------------------------
                    item.nameplate_type = 5;
 
-                   // [权限赋予]
-                   item.is_buy = 1;          // 伪装已购买
+                   item.is_buy = 1;          
                    item.pay_status = 1;
                    item.status = 1;
                    
-                   item.change_type = 1;     // 1=直接佩戴
-                   item.button_status = 1;   // 按钮可点
+                   item.change_type = 1;     
+                   item.button_status = 1;   
                    
-                   // [彻底去毒 - 抹除所有 VIP/任务 痕迹]
                    item.is_vip = 0;
                    item.vip_type = 0;
                    item.vip_level = 0;
                    item.supper_vip = 0;
                    item.is_activity = 0;
-                   item.new_days = 0;        // 去掉"新"标
+                   item.new_days = 0;        
                    
-                   // [清理弹窗与跳转]
-                   item.intro = "";          // 简介必须空，否则弹窗
-                   item.label_name = "";     // 清空角标，或者写"已购"
-                   item.jump_url = "";       // 禁止跳转
+                   item.intro = "";          
+                   item.label_name = "";     
+                   item.jump_url = "";       
                    item.buy_url = "";
                    item.price = 0;
                    
