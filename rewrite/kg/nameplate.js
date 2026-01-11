@@ -16,6 +16,11 @@ hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugo
 // 铭牌 (Nameplate) 解锁
 // ===============================================
 
+// ===============================================
+// 酷狗音乐 - 铭牌 (Nameplate) 终极去链接版 v3.0
+// 核心修复：清除 jump_url，强制 is_buy=1
+// ===============================================
+
 const url = $request.url;
 const body = $response.body;
 let obj = {};
@@ -23,11 +28,8 @@ let obj = {};
 try {
     obj = JSON.parse(body);
 } catch (e) {
-    if (url.includes("set_user_nameplate")) {
-        obj = {};
-    } else {
-        $done({});
-    }
+    if (url.includes("set_user_nameplate")) obj = {};
+    else $done({});
 }
 
 const getUrlParam = (url, name) => {
@@ -49,26 +51,35 @@ if (url.includes("nameplate/v1/get_nameplate_list")) {
             if (group.list && Array.isArray(group.list)) {
                 group.list.forEach(item => {
                     // ---------------------------------------
-                    // [核心修复] 彻底抹除 VIP 特征
+                    // [大扫除] 清空所有跳转链接 (最关键的一步)
                     // ---------------------------------------
-                    item.is_vip = 0;          // 【关键】必须改为0，否则强制显示"开通"
-                    item.vip_type = 0;        // 去除VIP类型
-                    item.vip_level = 0;       // 去除等级限制
-                    item.supper_vip = 0;      // 去除SVIP标识
+                    item.jump_url = "";       // 清空跳转
+                    item.buy_url = "";        // 清空购买链接
+                    item.activity_url = "";   // 清空活动链接
+                    item.gift_url = "";       // 清空礼物链接
                     
                     // ---------------------------------------
-                    // [常规伪装] 伪装成已购普通商品
+                    // [身份清洗] 彻底变成普通已购商品
                     // ---------------------------------------
                     item.is_buy = 1;          // 已购买
                     item.pay_status = 1;      // 已支付
-                    item.status = 1;          // 状态正常
-                    item.change_type = 1;     // 操作类型：1=直接佩戴
-                    item.button_status = 1;   // 按钮可用
+                    item.status = 1;          // 状态：上架中
+                    item.off_shelf = 0;       // 确保未下架
                     
-                    item.price = 0;           // 价格归零
+                    item.change_type = 1;     // [核心] 1=直接佩戴
+                    item.button_status = 1;   // 按钮可点
+                    
+                    // 抹除 VIP/活动 痕迹
+                    item.is_vip = 0;
+                    item.vip_type = 0;
+                    item.vip_level = 0;
+                    item.supper_vip = 0;
+                    item.is_activity = 0;
+                    
+                    item.price = 0;
                     item.act_end_time = "2099-12-31 23:59:59";
                     
-                    // 清理视觉
+                    // 清理文字
                     item.label_name = "";
                     item.intro = "";
                     item.is_new = 0;
@@ -92,13 +103,14 @@ if (url.includes("nameplate/v1/get_nameplate_list")) {
             let oldMap = oldMapStr ? JSON.parse(oldMapStr) : {};
             Object.assign(oldMap, nameplateMap);
             $prefs.setValueForKey(JSON.stringify(oldMap), "kg_nameplate_map");
-            console.log(`❚ [KG_Nameplate] 已去VIP化并缓存 ${count} 个铭牌`);
+            console.log(`❚ [KG_Nameplate] 清除链接并缓存 ${count} 个铭牌`);
         } catch (e) {}
     }
 }
 
 // ===========================================
 // 2. 设置佩戴铭牌 (set_user_nameplate)
+//    功能：强制成功 + 填入缓存地址
 // ===========================================
 else if (url.includes("nameplate/v1/set_user_nameplate")) {
     let currentId = getUrlParam(url, "nameplate_id");
