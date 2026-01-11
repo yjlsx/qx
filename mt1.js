@@ -20,7 +20,7 @@ hostname = i.waimai.meituan.com, *.meituan.com
 const CUSTOM_ORDER_TIME = "2026-01-11 09:43:12";    
 const TARGET_ORDER_ID_NUM = "601946621742721858"; 
 const TARGET_ARRIVAL_TIME = "01月11日 10:12-10:27"; 
-const CUSTOM_POI_NAME = "汤芝未 · 药膳养生炖汤府（盘龙店）";   //  ·
+const CUSTOM_POI_NAME = "汤芝未·药膳养生炖汤府（盘龙店）";   //  ·
 // ======================
 
 const TARGET_ORDER_ID_STR = TARGET_ORDER_ID_NUM.toString();
