@@ -16,7 +16,6 @@ hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugo
 // 铭牌 (Nameplate) 解锁
 // ===============================================
 
-
 const url = $request.url;
 let body = $response.body;
 let obj = {};
@@ -40,75 +39,69 @@ const getUrlParam = (url, name) => {
 // ===========================================
 if (url.includes("nameplate/v1/get_nameplate_list")) {
    let nameplateMap = {};
-   let allItems = [];
    let count = 0;
 
-   if (obj.data && Array.isArray(obj.data) && obj.data.length > 0) {
-       
-       // 1. 提取所有铭牌
+   if (obj.data && Array.isArray(obj.data)) {
+       // ❌ 不再合并分组，不再删除分组，防止 App 报错
+       // ✅ 遍历现有分组，原地修改
        obj.data.forEach(group => {
+           
+           // 顺便把"超级VIP"的分组名改得好听点，但不改 ID 防止冲突
+           if (group.tag_name && group.tag_name.includes("VIP")) {
+               group.tag_name = "精选铭牌 (已解锁)";
+           }
+
            if (group.list && Array.isArray(group.list)) {
-               allItems.push(...group.list);
+               group.list.forEach(item => {
+                   // ---------------------------------------
+                   // [全员 Type 5 伪装]
+                   // 按照你的要求，全部模仿 V9 限定铭牌
+                   // ---------------------------------------
+                   item.nameplate_type = 5;
+
+                   // [权限赋予]
+                   item.is_buy = 1;          // 伪装已购买
+                   item.pay_status = 1;
+                   item.status = 1;
+                   
+                   item.change_type = 1;     // 1=直接佩戴
+                   item.button_status = 1;   // 按钮可点
+                   
+                   // [彻底去毒 - 抹除所有 VIP/任务 痕迹]
+                   item.is_vip = 0;
+                   item.vip_type = 0;
+                   item.vip_level = 0;
+                   item.supper_vip = 0;
+                   item.is_activity = 0;
+                   item.new_days = 0;        // 去掉"新"标
+                   
+                   // [清理弹窗与跳转]
+                   item.intro = "";          // 简介必须空，否则弹窗
+                   item.label_name = "";     // 清空角标，或者写"已购"
+                   item.jump_url = "";       // 禁止跳转
+                   item.buy_url = "";
+                   item.price = 0;
+                   
+                   item.act_end_time = "2099-12-31 23:59:59";
+
+                   // [缓存图片地址]
+                   if (item.nameplate_id) {
+                       item.nameplate_url_v1 = item.nameplate_url;
+                       item.nameplate_dynamic_v1 = item.nameplate_dynamic;
+                       nameplateMap[item.nameplate_id] = item;
+                       count++;
+                   }
+               });
            }
        });
-
-       // 2. 统一改造为"已购限定款"
-       allItems.forEach(item => {
-           // [核心伪装] 统统改成 Type 5 (限定/活动)
-           // 这种类型通常脱离 VIP 体系，属于单品逻辑
-           item.nameplate_type = 5;
-
-           // [权限赋予]
-           item.is_buy = 1;          // 只有买了这个限定品
-           item.pay_status = 1;
-           item.status = 1;
-           item.change_type = 1;     // 1=直接佩戴
-           item.button_status = 1;
-           
-           // [去VIP化] 告诉App这不是会员赠品，这是我买的单品
-           item.is_vip = 0;
-           item.vip_type = 0;
-           item.vip_level = 0;
-           item.supper_vip = 0;
-           
-           // [清理干扰]
-           item.intro = "";          // 清空"升级V9可用"
-           item.label_name = "已解锁"; // 给个好听的角标
-           item.jump_url = "";
-           item.buy_url = "";
-           item.price = 0;
-           
-           item.act_end_time = "2099-12-31 23:59:59";
-
-           // [缓存搬运]
-           if (item.nameplate_id) {
-               item.nameplate_url_v1 = item.nameplate_url;
-               item.nameplate_dynamic_v1 = item.nameplate_dynamic;
-               nameplateMap[item.nameplate_id] = item;
-               count++;
-           }
-       });
-
-       // 3. 构造唯一的"全部已解锁"分组
-       // 使用最安全的 tag_id = 1
-       let safeGroup = {
-           "tag_id": 1,
-           "tag_name": "全部铭牌 (已解锁)",
-           "list": allItems,
-           "order": 0
-       };
-
-       // 4. 替换
-       obj.data = [safeGroup];
        
-       console.log(`❚ [KG_Nameplate] 全员限定伪装完成，共 ${count} 个`);
-       
-       // 写入缓存
+       // 存入缓存
        try {
            let oldMapStr = $prefs.valueForKey("kg_nameplate_map");
            let oldMap = oldMapStr ? JSON.parse(oldMapStr) : {};
            Object.assign(oldMap, nameplateMap);
            $prefs.setValueForKey(JSON.stringify(oldMap), "kg_nameplate_map");
+           console.log(`❚ [KG_Nameplate] 修复页面结构，缓存 ${count} 个`);
        } catch (e) {}
    }
 }
