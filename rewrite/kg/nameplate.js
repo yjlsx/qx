@@ -13,7 +13,7 @@ hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugo
  */
 
 // ===============================================
-//铭牌 (Nameplate) 解锁
+// 铭牌 (Nameplate) 解锁
 // ===============================================
 
 const url = $request.url;
@@ -23,7 +23,6 @@ let obj = {};
 try {
     obj = JSON.parse(body);
 } catch (e) {
-    // 设置接口如果失败可能返回空，手动初始化
     if (url.includes("set_user_nameplate")) {
         obj = {};
     } else {
@@ -41,32 +40,42 @@ const getUrlParam = (url, name) => {
 
 // ===========================================
 // 1. 获取铭牌列表 (get_nameplate_list)
-//    动作：解锁显示 + 【关键】偷取所有图片地址存入缓存
+//    核心目标：骗过 App 逻辑，把"购买"按钮变成"佩戴"
 // ===========================================
 if (url.includes("nameplate/v1/get_nameplate_list")) {
     let nameplateMap = {};
     let count = 0;
 
     if (obj.data && Array.isArray(obj.data)) {
-        // 递归或遍历数据结构
         obj.data.forEach(group => {
             if (group.list && Array.isArray(group.list)) {
                 group.list.forEach(item => {
-                    // --- A. 表面解锁 ---
-                    item.act_end_time = "2099-12-31 23:59:59";
-                    item.label_name = "";    // 去掉“限定”
-                    item.intro = "";
-                    item.is_new = 0;
-                    item.change_type = 1;    // 允许操作
+                    // ---------------------------------------
+                    // [关键修改] 权限与按钮状态伪装
+                    // ---------------------------------------
+                    item.is_buy = 1;          // 伪装已购买
+                    item.pay_status = 1;      // 支付状态：已支付
+                    item.status = 1;          // 状态：正常
                     
-                    // --- B. 【核心】缓存图片地址 ---
+                    item.change_type = 1;     // [最关键] 1代表直接佩戴，2代表需购买/任务
+                    item.button_status = 1;   // 按钮状态：可用
+                    
+                    item.vip_type = 0;        // 去掉VIP属性，防止App判断VIP过期
+                    item.price = 0;           // 价格改为0
+                    
+                    item.act_end_time = "2099-12-31 23:59:59"; // 永不过期
+                    
+                    // 清理视觉干扰
+                    item.label_name = "";     // 去掉“限定”角标
+                    item.intro = "";          // 去掉简介
+                    item.is_new = 0;          // 去掉红点
+
+                    // ---------------------------------------
+                    // [缓存逻辑] 偷取图片地址
+                    // ---------------------------------------
                     if (item.nameplate_id) {
-                        // 构造完整的详情对象存下来
-                        // 注意：set接口需要 v1 字段，我们这里手动补齐
                         item.nameplate_url_v1 = item.nameplate_url;
                         item.nameplate_dynamic_v1 = item.nameplate_dynamic;
-                        
-                        // 存入内存对象
                         nameplateMap[item.nameplate_id] = item;
                         count++;
                     }
@@ -74,66 +83,52 @@ if (url.includes("nameplate/v1/get_nameplate_list")) {
             }
         });
         
-        // 写入持久化存储 $prefs
+        // 写入缓存
         try {
-            // 读取旧缓存合并（防止刷新丢失以前的数据）
             let oldMapStr = $prefs.valueForKey("kg_nameplate_map");
             let oldMap = oldMapStr ? JSON.parse(oldMapStr) : {};
-            
-            // 合并新旧数据
             Object.assign(oldMap, nameplateMap);
-            
-            // 保存
             $prefs.setValueForKey(JSON.stringify(oldMap), "kg_nameplate_map");
-            console.log(`❚ [KG_Nameplate] 已缓存 ${count} 个铭牌地址`);
-        } catch (e) {
-            console.log(` [KG_Nameplate] 缓存写入失败`);
-        }
+            console.log(`❚ [KG_Nameplate] 已伪装权限并缓存 ${count} 个铭牌`);
+        } catch (e) {}
     }
 }
 
 // ===========================================
 // 2. 设置佩戴铭牌 (set_user_nameplate)
-//    动作：无视服务器，直接从缓存提取地址返回成功
+//    功能：拦截请求，从缓存填入地址
 // ===========================================
 else if (url.includes("nameplate/v1/set_user_nameplate")) {
-    // 1. 获取你要戴哪个铭牌 ID
     let currentId = getUrlParam(url, "nameplate_id");
     
-    // 2. 准备一个标准的成功模板
+    // 默认成功模板
     let finalData = {
         "status": 1,
         "msg": "设置成功",
         "nameplate_id": parseInt(currentId) || 0,
-        // 预设空值，后面尝试用缓存覆盖
         "nameplate_url": "",
         "nameplate_dynamic": ""
     };
 
-    // 3. 从缓存里找地址 (这就是解决SVIP无法佩戴的关键)
+    // 读取缓存填入地址
     let cacheStr = $prefs.valueForKey("kg_nameplate_map");
     if (cacheStr && currentId) {
         try {
             let map = JSON.parse(cacheStr);
-            let targetItem = map[currentId]; // 查表
-            
+            let targetItem = map[currentId];
             if (targetItem) {
-                console.log(` [KG_Nameplate] 命中缓存 ID: ${currentId}`);
-                // 把缓存里的图片地址填进去
+                console.log(` [KG_Nameplate] 缓存命中 ID: ${currentId}`);
                 Object.assign(finalData, targetItem);
-            } else {
-                console.log(` [KG_Nameplate] 未命中缓存 ID: ${currentId} (列表里可能没刷出来)`);
             }
         } catch (e) {}
     }
 
-    // 4. 暴力构造响应
     obj = {
         "status": 1,
         "error_code": 0,
         "errcode": 0,
         "msg": "success",
-        "data": finalData // 把填好地址的数据塞回去
+        "data": finalData
     };
 }
 
