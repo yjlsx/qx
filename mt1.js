@@ -11,7 +11,7 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 /**
-* - 列表页：修改 orderTime / orderTimeSec / 多种店铺名字段位置
+* - 列表页：修改 orderTime / orderTimeSec /
 * - 详情页：修改 order_time / 评论时间 / 订单号 
 */
 
