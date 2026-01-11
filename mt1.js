@@ -11,7 +11,6 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 /**
-* 强化版：美团外卖订单重写（列表+详情）
 * - 列表页：修改 orderTime / orderTimeSec / 多种店铺名字段位置
 * - 详情页：修改 order_time / 评论时间 / 订单号 
 */
