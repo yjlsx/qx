@@ -11,66 +11,33 @@ hostname = gateway.kugou.com, kg.zzxu.de
  */
 
 
-if (!$response || !$request) {
-  $done({});
+const url = $request.url;
+const headers = $request.headers;
+
+console.log("🧭 当前请求 URL：" + url);
+
+// 处理 /v5/url 和 /tracker/v5/url 请求重写
+if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?")) {
+    const hashMatch = url.match(/hash=([0-9a-fA-F]{32})/);
+    const hash = hashMatch ? hashMatch[1] : '';
+
+    console.log("🔍 检测 hash 参数：" + (hash || "未找到"));
+
+    if (hash) {
+        const newUrl = `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
+        headers['x-router'] = 'm.kugou.com';
+
+        console.log("✅ 请求重写成功！");
+        console.log("🎯 新 URL：" + newUrl);
+
+        $done({
+            url: newUrl,
+            headers: headers
+        });
+    } else {
+        console.log("❌ 未检测到合法 hash，跳过重写。");
+        $done({});
+    }
+    return;
 }
 
-const url = $request.url;
-const p = Object.fromEntries(new URL(url).searchParams.entries());
-
-const api = "https://kg.zzxu.de/api/v5url" +
-  "?hash=" + (p.hash || "") +
-  "&mode=raw" +
-  "&quality=" + (p.quality || "") +
-  "&fallback=0" +
-  "&debug=0" +
-  "&album_id=" + (p.album_id || "") +
-  "&album_audio_id=" + (p.album_audio_id || "");
-
-console.log("❚ [KG_Replace] 正在请求替换源: " + api);
-
-$task.fetch({
-  url: api,
-  method: "GET",
-  headers: {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
-    "Accept": "*/*"
-  }
-}).then(resp => {
-  let obj = JSON.parse(resp.body);
-
-  if (obj.status === 0 && obj.attempts && obj.attempts[0]) {
-    let att = obj.attempts[0];
-    obj.status = 1;
-    obj.error = "";
-    att.status = 1;
-    att.ok = true;
-    
-    if (att.target) {
-      const fixedUrl = att.target
-        .replace(/vipType=0/g, "vipType=6")
-        .replace(/IsFreePart=1/g, "IsFreePart=0");
-
-      const q = p.quality || "";
-      const finalFmt = (q.includes("viper") || q === "super") ? "flac" : "mp3";
-
-      obj.data = {
-        "url": [fixedUrl],
-        "status": 1,
-        "fmt": finalFmt,
-        "hash": p.hash
-      };
-      att.target = fixedUrl;
-    }
-  }
-
-  console.log("❚ [KG_Replace] 获取成功，执行替换");
-
-  $done({
-    status: 200,
-    headers: $response.headers,
-    body: JSON.stringify(obj)
-  });
-}, _ => {
-  $done({});
-});
