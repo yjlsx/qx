@@ -12,144 +12,111 @@ hostname = gateway.kugou.com, kg.zzxu.de
 
 
 // ===============================================
-// 酷狗音乐 - 播放链接解密 v7.0 (三通道终极版)
-// 逻辑：手机Web -> PC Web -> 上古Tracker -> 失败
+// 酷狗音乐 - 播放链接解密 v9.0 (智能换Hash版)
+// 核心逻辑：
+// 1. 使用真实 Cookie 骗取 pay_type:0
+// 2. 若 URL 为空，自动提取 extra 中的 128hash (MP3) 重试
 // ===============================================
 
 const url = $request.url;
-const body = $response.body;
 
 // 1. 提取 Hash
 const getParam = (url, key) => {
-   const reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)", "i");
-   const r = url.split('?')[1] ? url.split('?')[1].match(reg) : null;
-   return r ? unescape(r[2]) : null;
+    const reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)", "i");
+    const r = url.split('?')[1] ? url.split('?')[1].match(reg) : null;
+    return r ? unescape(r[2]) : null;
 };
+const originalHash = getParam(url, "hash");
 
-const hash = getParam(url, "hash");
-const album_id = getParam(url, "album_id") || "";
+if (!originalHash) $done({});
 
-// 无 Hash 则放行
-if (!hash) $done({});
-
-console.log(`🔍 [KG_Crack] 正在挖掘 Hash: ${hash}`);
-
-// -----------------------------------------------
-// 通道 A: m.kugou.com (模拟 Android)
-// -----------------------------------------------
-const tryChannelA = () => {
-   return new Promise((resolve, reject) => {
-       const req = {
-           url: `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`,
-           headers: {
-               "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36",
-               "Cookie": "kg_mid=2333"
-           }
-       };
-       $task.fetch(req).then(res => {
-           try {
-               let data = JSON.parse(res.body);
-               if (data && data.url && data.url.length > 5) resolve(data);
-               else reject("通道A无链接");
-           } catch (e) { reject("通道A错误"); }
-       }, err => reject("通道A超时"));
-   });
-};
-
-// -----------------------------------------------
-// 通道 B: www.kugou.com (PC 接口)
-// -----------------------------------------------
-const tryChannelB = () => {
-   return new Promise((resolve, reject) => {
-       const req = {
-           url: `https://www.kugou.com/yy/index.php?r=play/getdata&hash=${hash}&album_id=${album_id}`,
-           headers: { "Cookie": "kg_mid=2333" }
-       };
-       $task.fetch(req).then(res => {
-           try {
-               let data = JSON.parse(res.body);
-               if (data && data.data && data.data.play_url) {
-                   resolve({
-                       url: data.data.play_url,
-                       fileSize: data.data.filesize,
-                       timeLength: data.data.timelength / 1000,
-                       bitRate: data.data.bitrate * 1000,
-                       fileName: data.data.audio_name
-                   });
-               } else {
-                   reject("通道B拒绝(Code:" + data.err_code + ")");
-               }
-           } catch (e) { reject("通道B错误"); }
-       }, err => reject("通道B超时"));
-   });
-};
-
-// -----------------------------------------------
-// 通道 C: trackercdn (上古接口 - 最后的稻草)
-// -----------------------------------------------
-const tryChannelC = () => {
-   return new Promise((resolve, reject) => {
-       // 使用 key=0 的免签模式尝试
-       const req = {
-           url: `http://trackercdn.kugou.com/i/v2/?appid=1005&pid=2&cmd=25&behavior=play&hash=${hash}&key=0`,
-           headers: { "User-Agent": "KG_Mobile" }
-       };
-       $task.fetch(req).then(res => {
-           try {
-               let data = JSON.parse(res.body);
-               if (data && data.url && data.url[0]) {
-                   resolve({
-                       url: data.url[0],
-                       fileSize: data.file_size,
-                       timeLength: data.time_length,
-                       bitRate: data.bitrate,
-                       fileName: "已解锁歌曲"
-                   });
-               } else {
-                   reject("通道C失败");
-               }
-           } catch (e) { reject("通道C错误"); }
-       }, err => reject("通道C超时"));
-   });
-};
-
-// -----------------------------------------------
-// 主逻辑
-// -----------------------------------------------
-tryChannelA()
-   .then(data => success(data, "A"))
-   .catch(errA => {
-       console.log(`⚠️ ${errA} -> 尝试通道B`);
-       tryChannelB()
-           .then(data => success(data, "B"))
-           .catch(errB => {
-               console.log(`⚠️ ${errB} -> 尝试通道C`);
-               tryChannelC()
-                   .then(data => success(data, "C"))
-                   .catch(errC => {
-                       console.log(`❌ [KG_Crack] 全线崩溃。此歌为服务器端硬锁资源。`);
-                       // 失败时直接返回原始数据，让App显示"购买"而不是报错闪退
-                       $done({});
-                   });
-           });
-   });
-
-function success(data, channel) {
-   console.log(`✅ [KG_Crack] 通道${channel} 立功！获取地址成功`);
-   const fakeBody = {
-       "status": 1,
-       "error_code": 0,
-       "url": [ data.url ],
-       "hash": hash,
-       "new_hash": hash,
-       "file_size": data.fileSize || 0,
-       "time_length": (data.timeLength || 0) * 1000,
-       "bitrate": data.bitRate || 128000,
-       "file_name": data.fileName || "已解锁歌曲",
-       "store_type": "audio",
-       "vip_type": 6,
-       "trans_param": { "musicpack_advance": 0, "pay_block_tpl": 0 }
-   };
-   $done({ body: JSON.stringify(fakeBody) });
+// 2. 生成随机 ID 模拟真实设备 (关键！解决 pay_type:3 问题)
+const randomHex = (len) => {
+    let output = '';
+    for (let i = 0; i < len; ++i) output += (Math.floor(Math.random() * 16)).toString(16);
+    return output;
 }
+const fakeMid = randomHex(32);
+const fakeDfid = randomHex(24);
+// 模拟你浏览器里成功的 Cookie
+const realCookie = `kg_mid=${fakeMid}; kg_dfid=${fakeDfid}; kg_open_key=2f4c93717f679bc2b07688be6230c230`;
 
+console.log(` [KG_Crack] 初始请求 Hash: ${originalHash}`);
+
+// 3. 定义请求函数
+const requestMusic = (targetHash) => {
+    return new Promise((resolve, reject) => {
+        const req = {
+            url: `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${targetHash}`,
+            headers: {
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+                "Cookie": realCookie,
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "zh-CN,zh-Hans;q=0.9"
+            }
+        };
+        $task.fetch(req).then(res => {
+            try {
+                let data = JSON.parse(res.body);
+                resolve(data);
+            } catch (e) { reject("JSON解析失败"); }
+        }, err => reject("网络错误"));
+    });
+};
+
+// 4. 执行逻辑：先试原 Hash -> 失败则试 MP3 Hash
+requestMusic(originalHash).then(data => {
+    
+    // 情况A: 直接拿到了 URL
+    if (data && data.url && data.url.length > 5) {
+        console.log(" [KG_Crack] 原 Hash 解锁成功！");
+        finish(data, originalHash);
+    } 
+    // 情况B: URL 为空，但提供了 extra 信息 (说明可能是 Hash 不对)
+    else if (data && data.extra && data.extra["128hash"]) {
+        const mp3Hash = data.extra["128hash"];
+        console.log(` [KG_Crack] 原 Hash 无链接，尝试切换 MP3 Hash: ${mp3Hash}`);
+        
+        // 发起第二次请求 (换 MP3 Hash)
+        requestMusic(mp3Hash).then(data2 => {
+            if (data2 && data2.url && data2.url.length > 5) {
+                console.log(" [KG_Crack] 切换 MP3 Hash 解锁成功！");
+                finish(data2, mp3Hash);
+            } else {
+                console.log(" [KG_Crack] MP3 Hash 也无链接，放弃。");
+                $done({}); // 彻底没救了
+            }
+        }).catch(err => {
+            console.log(" [KG_Crack] 重试请求失败");
+            $done({});
+        });
+    } 
+    // 情况C: 彻底失败
+    else {
+        console.log(` [KG_Crack] 无法获取信息 (PayType:${data.pay_type})`);
+        $done({});
+    }
+}).catch(err => {
+    console.log(" [KG_Crack] 请求异常");
+    $done({});
+});
+
+// 5. 构造最终响应
+function finish(data, finalHash) {
+    const fakeBody = {
+        "status": 1,
+        "error_code": 0,
+        "url": [ data.url ],
+        "hash": finalHash,
+        "new_hash": finalHash,
+        "file_size": data.fileSize || 0,
+        "time_length": (data.timeLength || 0) * 1000,
+        "bitrate": data.bitRate || 128000,
+        "file_name": data.fileName || "已解锁歌曲",
+        "store_type": "audio",
+        "vip_type": 6,
+        "trans_param": { "musicpack_advance": 0, "pay_block_tpl": 0 }
+    };
+    $done({ body: JSON.stringify(fakeBody) });
+}
