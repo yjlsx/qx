@@ -434,7 +434,7 @@ if (url.includes('/v1/get_res_privilege/lite')) {
         if (!item) return;
 
         // --- 基础权限设置 ---
-        item.privilege = 10;
+        item.privilege = 1;
         item.status = 1;
         item.fail_process = 0;
         item.pay_type = 0;
@@ -462,7 +462,7 @@ if (url.includes('/v1/get_res_privilege/lite')) {
             item.trans_param.display_rate = 0;       // 0=不显示费率
             item.trans_param.free_limited = 0;       // 0=不限制免费
             item.trans_param.all_quality_free = 1;   // 1=所有音质免费
-            item.trans_param.download_privilege = 8; // 8=下载权限
+            item.trans_param.download_privilege = 1; // 8=下载权限
             item.trans_param.is_super_vip = 1;
         }
     };
