@@ -761,8 +761,8 @@ if (url.includes('vip_level/detail')) {
         obj.data.grade = 9;
         obj.data.growth = 999999;
         obj.data.daily_growth = "20";
-        obj.data.level_start_growth = 108000;
-        obj.data.next_level_growth = 300000;
+        obj.data.level_start_growth = 300000;
+        obj.data.next_level_growth = 0;
         obj.data.popup_status = 0;
         if (obj.data.growth_conf && Array.isArray(obj.data.growth_conf)) {
             obj.data.growth_conf.forEach(item => {
