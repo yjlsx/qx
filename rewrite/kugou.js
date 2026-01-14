@@ -18,7 +18,7 @@
 
 
 # --- 基础信息、资产、余额类 ---
-^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
 # --- K歌与订单修正 ---
 ^https?:\/\/gateway\.kugou\.com\/vipcenter\/ios url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
@@ -755,6 +755,22 @@ if (url.includes('v1/audio/client_bg')) {
     }
 }
 
+// 匹配 VIP 等级详情接口
+if (url.includes('vip_level/detail')) {
+    if (obj.data) {
+        obj.data.grade = 9;
+        obj.data.growth = 999999;
+        obj.data.daily_growth = "20";
+        obj.data.level_start_growth = 108000;
+        obj.data.next_level_growth = 300000;
+        obj.data.popup_status = 0;
+        if (obj.data.growth_conf && Array.isArray(obj.data.growth_conf)) {
+            obj.data.growth_conf.forEach(item => {
+                item.need_super_vip = 1;
+            });
+        }
+    }
+}
 
 
 
