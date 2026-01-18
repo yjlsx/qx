@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt.js
+^https:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
 ^https:\/\/wx-shangou\.meituan\.com\/quickbuy\/v1\/order\/detail url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
 
 [mitm]
@@ -9,7 +9,7 @@ hostname = i.waimai.meituan.com, wx-shangou.meituan.com
 
 // === 🧭 你只要改这里 ===
 const CUSTOM_POI_NAME = "果然·水果农场（关上店)";      //  店铺名称
-const CUSTOM_ORDER_TIME = ""2026-01-18 11:03:12";    //  下单时间
+const CUSTOM_ORDER_TIME = "2026-01-18 11:03:12";    //  下单时间
 const TARGET_ORDER_ID_NUM = "601954784865721548";   //  订单号
 const TARGET_ARRIVAL_TIME = "01月18日 11:33-11:48"; //  送达时间
 // =====================
