@@ -12,7 +12,7 @@ const CUSTOM_POI_NAME = "果然·水果农场（关上店)";
 const CUSTOM_ORDER_TIME = "2026-01-18 11:03:12";    
 const TARGET_ORDER_ID_STR = "601954784865721548";   
 const TARGET_ARRIVAL_TIME = "01月18日 11:33-11:48"; 
-const LIST_ARRIVAL_TIME = "01月18日 11:45"; // 状态页显示的单一送达时间点
+const LIST_ARRIVAL_TIME = "01月18日 11:40"; // 状态页显示的单一送达时间点
 // =====================
 
 function getTimestamp(timeStr) {
