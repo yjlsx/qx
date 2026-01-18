@@ -10,7 +10,7 @@ hostname = wx-shangou.meituan.com
 // --- 配置区域：在此修改你想要显示的内容 ---
 const CONFIG = {
     poiName: "果然·水果农场（关上店)",          // 店铺名称
-    orderId: "601954784865721506",     // 订单号 (建议保留数字位长)
+    orderId: "601954784865721548",     // 订单号 (建议保留数字位长)
     orderTime: "2026-01-18 11:03:12",  // 下单时间 (格式: YYYY-MM-DD HH:mm:ss)
     arrivalText: "预计 11:35 送达"       // 配送状态/预计到达时间
 };
