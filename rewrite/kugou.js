@@ -1,7 +1,7 @@
 /**
 [rewrite_local]
 # --- 下载接口 ---
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
