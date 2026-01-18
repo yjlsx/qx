@@ -11,10 +11,6 @@ hostname = gateway.kugou.com, kg.zzxu.de
  */
 
 
-/**
- * 核心逻辑修改版（保留原始日志输出）
- */
-
 if (!$response || !$request) {
   $done({});
 }
