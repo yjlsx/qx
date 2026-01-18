@@ -18,10 +18,12 @@ if (!$response || !$request) {
 const url = $request.url;
 const p = Object.fromEntries(new URL(url).searchParams.entries());
 
+const targetQuality = p.quality || "";
+
 const api = "https://kg.zzxu.de/api/v5url" +
   "?hash=" + (p.hash || "") +
   "&mode=raw" +
-  "&quality=" + (p.quality || "") +
+  "&quality=" + targetQuality +
   "&fallback=0" +
   "&debug=0" +
   "&album_id=" + (p.album_id || "") +
@@ -39,7 +41,6 @@ $task.fetch({
 }).then(resp => {
   let obj = JSON.parse(resp.body);
 
-  // 使用可选链检查数据完整性
   if (obj.status === 0 && obj.attempts?.[0]?.target) {
     let att = obj.attempts[0];
     obj.status = 1;
@@ -47,12 +48,13 @@ $task.fetch({
     att.status = 1;
     att.ok = true;
     
+    // 替换 URL 中的权限标识
     const fixedUrl = att.target
       .replace(/vipType=0/g, "vipType=6")
       .replace(/IsFreePart=1/g, "IsFreePart=0");
 
-    const q = p.quality || "";
-    const finalFmt = (q.includes("viper") || q === "super") ? "flac" : "mp3";
+    const q = targetQuality.toLowerCase();
+    const finalFmt = (q.includes("viper") || q === "super" || q === "flac") ? "flac" : "mp3";
 
     obj.data = {
       "url": [fixedUrl],
@@ -61,10 +63,8 @@ $task.fetch({
       "hash": p.hash
     };
     att.target = fixedUrl;
-    
+
     console.log("❚ [KG_Replace] 获取成功，执行替换");
-  } else {
-    console.log("❚ [KG_Replace] API 未返回有效资源");
   }
 
   $done({
@@ -72,7 +72,7 @@ $task.fetch({
     headers: $response.headers,
     body: JSON.stringify(obj)
   });
-}).catch(err => {
-  console.log("❚ [KG_Replace] 请求发生错误: " + err);
+}, _ => {
   $done({});
 });
+
