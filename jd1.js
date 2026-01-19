@@ -21,14 +21,14 @@ hostname = api.m.jd.com
 // ⚙️ 用户可配置项 (订单详情页)
 // ===================================
 
-const DETAIL_NEW_ORDER_ID = "333869816543581671"; // 详情页显示的新订单号
+const DETAIL_NEW_ORDER_ID = "3338705668140826"; // 详情页显示的新订单号
 
-const DETAIL_NEW_DATE_BASE = "2026-01-19";  // 新的日期
+const DETAIL_NEW_DATE_BASE = "2026-01-20";  // 新的日期
 const DETAIL_NEW_TIME_BASE = "00:18:42";   // 新的基本时间 (用于下单时间)
-const DETAIL_NEW_PAY_TIME = "2026-01-19 00:19:23"; // 新的支付时间
-const DETAIL_NEW_COMPLETE_TIME = "2026-01-19 00:54:18"; // 新的订单完成/送达时间
-const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2026-01-19 00:50-01:05"; // 新的期望配送时间
-const DETAIL_NEW_CURRENT_TIME = "2026-01-19 00:19:46"; // 模拟服务器返回的当前时间
+const DETAIL_NEW_PAY_TIME = "2026-01-20 00:19:23"; // 新的支付时间
+const DETAIL_NEW_COMPLETE_TIME = "2026-01-20 00:54:18"; // 新的订单完成/送达时间
+const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2026-01-20 00:50-01:05"; // 新的期望配送时间
+const DETAIL_NEW_CURRENT_TIME = "2026-01-20 00:19:46"; // 模拟服务器返回的当前时间
 
 // ===================================
 // 🛠️ 脚本主体
