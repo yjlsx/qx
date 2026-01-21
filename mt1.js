@@ -16,10 +16,10 @@ hostname = i.waimai.meituan.com, *.meituan.com
 */
 
 // === 可修改的配置 ===
-const CUSTOM_ORDER_TIME = "2026-01-21 09:30:12";   
-const TARGET_ORDER_ID_NUM = "601957611862573946"; 
-const TARGET_ARRIVAL_TIME = "01月21日 09:57-10:12"; 
-const CUSTOM_POI_NAME = "老妈蹄花汤·药膳蹄花（盘龙店）";   //  ·老妈蹄花汤·药膳蹄花（盘龙店）汤芝未·药膳养生炖汤府（盘龙店）
+const CUSTOM_ORDER_TIME = "2026-01-21 10:22:12";   
+const TARGET_ORDER_ID_NUM = "601959433514601384"; 
+const TARGET_ARRIVAL_TIME = "01月21日 10:55-11:10"; 
+const CUSTOM_POI_NAME = "老妈蹄花汤·药膳蹄花";   //  ·老妈蹄花汤·药膳蹄花（盘龙店）汤芝未·药膳养生炖汤府（盘龙店）
 // ====================== 千萬低温慢烤美式烤肉（大商汇店） 食肉狂徒·美式烤肉法式小排（同德店）
 
 
