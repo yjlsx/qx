@@ -9,53 +9,53 @@ hostname = gw.xiaocantech.com
 
 */
 
-/**
- * 小蚕助手 - 游客查询模式 (仅对列表和搜索生效)
- * 作用：在登录状态下，以游客身份看活动，不影响大号抢名额。
- */
 
 let headers = $request.headers;
-let bodyObj = JSON.parse($request.body || "{}");
-// 获取接口方法名
-let mName = headers['methodname'] || headers['Methodname'] || "";
+let body = $request.body;
+let methodName = headers['methodname'] || headers['Methodname'] || "";
 
-// 定义需要“游客化”的特定接口
-const guestMethods = [
-    "RecService.GetStorePromotionList",        // 首页及分类列表
+// 定义需要重写的两个目标接口
+const targetMethods = [
+    "RecService.GetStorePromotionList",        // 首页/分类列表
     "SilkwormRcsService.MeituanShangjinGetPoiList" // 关键词搜索
 ];
 
-// 检查当前请求是否属于上述两个接口
-const shouldRewrite = guestMethods.some(m => mName === m);
+const isTarget = targetMethods.some(m => methodName.indexOf(m) > -1);
 
-if (shouldRewrite) {
-    console.log(" 正在转换游客查询身份: " + mName);
+if (isTarget && body) {
+    console.log(" 触发游客模式重写: " + methodName);
 
-    // 1. 抹除 Headers 里的身份 Token 和 UID
-    delete headers['X-Sivir'];
-    delete headers['x-sivir'];
-    headers['X-Vayne'] = '0';
-    headers['x-Teemo'] = '0';
-    
-    // 2. 修正 Body 里的 ID 为游客 ID (0)
-    if (bodyObj.hasOwnProperty("silk_id")) {
-        bodyObj["silk_id"] = 0;
+    try {
+        let bodyObj = JSON.parse(body);
+
+        // --- 1. 修改 Body：抹除个人 ID ---
+        if (bodyObj.hasOwnProperty("silk_id")) bodyObj["silk_id"] = 0;
+        if (bodyObj.hasOwnProperty("user_id")) bodyObj["user_id"] = 0;
+        
+        // --- 2. 修改 Headers：抹除登录 Token ---
+        delete headers['X-Sivir'];
+        delete headers['x-sivir'];
+        headers['X-Vayne'] = '0';
+        headers['x-Teemo'] = '0';
+
+        /**
+         *  注意：
+         * 如果你刷新后 App 显示网络错误或签名错误，说明服务器校验了 Ashe 和 Body 的一致性。
+         * 这种情况下，你必须在【未登录】状态下手动抓一组 Ashe/Garen/Nami 填到下面，
+         * 强制覆盖掉你登录状态下的签名。
+         */
+        // headers['X-Ashe'] = '这里填入你抓到的游客Ashe';
+        // headers['X-Garen'] = '这里填入你抓到的游客Garen';
+
+        $done({
+            headers: headers,
+            body: JSON.stringify(bodyObj)
+        });
+    } catch (e) {
+        console.log("解析 Body 出错: " + e);
+        $done({});
     }
-    if (bodyObj.hasOwnProperty("user_id")) {
-        bodyObj["user_id"] = 0;
-    }
-
-    // 3. 搜索接口特殊打印 (可选)
-    if (mName.includes("MeituanShangjinGetPoiList")) {
-        console.log(" 游客模式搜索关键词: " + (bodyObj.search_word || "未识别"));
-    }
-
-    $done({
-        headers: headers,
-        body: JSON.stringify(bodyObj)
-    });
 } else {
-    // --- 关键保障：非查询/搜索接口（如抢名额）直接透传，不做任何修改 ---
-    // console.log(" 正常接口，跳过重写: " + mName);
+    // 抢名额接口 (GrabPromotionQuota) 等不处理，保留登录态
     $done({});
 }
