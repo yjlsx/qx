@@ -18,7 +18,8 @@
 
 
 # --- 基础信息、资产、余额类 ---
-^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail|wallet\/balance|vocal_style\/selected) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+
 
 # --- K歌与订单修正 ---
 ^https?:\/\/gateway\.kugou\.com\/vipcenter\/ios url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
@@ -772,6 +773,31 @@ if (url.includes('vip_level/detail')) {
     }
 }
 
+
+// AI歌手 
+if (url.includes('aisinger/v1/wallet/balance')) {
+    if (obj.data) {
+        // 修改余额为 999999
+        obj.data.balance = 999999;
+    }
+}
+
+// AI歌手 
+if (url.includes('aisinger/v1/vocal_style/selected')) {
+    if (obj.data) {
+        // 标记为已购买
+        obj.data.had_pay = 1;
+        // 标记为已选中
+        obj.data.is_selected = 1;
+        
+        if (obj.data.vocal_style_id === 0) {
+            obj.data.vocal_style_id = 1; 
+        }
+        if (!obj.data.style_name) {
+            obj.data.style_name = "已解锁音色";
+        }
+    }
+}
 
 
 $done({ body: JSON.stringify(obj) });
