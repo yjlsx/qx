@@ -1,8 +1,9 @@
 /*
 
 [rewrite_local]
-^https:\/\/gw\.xiaocantech\.com\/rpc url script-request-header  https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocanrpc.js
+^https:\/\/gw\.xiaocantech\.com\/rpc url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocanrpc.js
 
+#script-request-header 
 [mitm]
 hostname = gw.xiaocantech.com
 
@@ -11,52 +12,51 @@ hostname = gw.xiaocantech.com
 
 
 /**
- * 小蚕助手 - 动态重写克隆版 (V5)
- * 作用：解决登录后看不见列表的问题
+ * 小蚕助手 - 登录态显示游客内容 (响应体异步劫持版)
+ * 逻辑：不修改发出的请求（保签名），只在回包时把游客数据塞进去
  */
 
-let headers = $request.headers;
-let bodyObj = JSON.parse($request.body || "{}");
-let mName = headers['methodname'] || headers['Methodname'] || "";
+const isRequest = typeof $request !== "undefined";
 
-const targetMethods = [
-    "RecService.SearchStorePromotionList",
-    "SilkwormRcsService.MeituanShangjinGetPoiList"
-];
-
-if (targetMethods.some(m => mName.indexOf(m) > -1)) {
-    const isGuest = bodyObj.silk_id === 0 || !headers['X-Sivir'];
-
-    if (isGuest) {
-        // --- 1. 采集模式 (退出登录时运行) ---
-        $prefs.setValueForKey(headers['X-Ashe'], "guest_ashe");
-        $prefs.setValueForKey(headers['X-Garen'], "guest_garen");
-        $prefs.setValueForKey(headers['X-Nami'], "guest_nami");
-        console.log(" 成功采集游客套装，现在请去登录大号");
-        $done({});
-    } else {
-        // --- 2. 注入模式 (登录大号时运行) ---
-        const gAshe = $prefs.valueForKey("guest_ashe");
-        const gGaren = $prefs.valueForKey("guest_garen");
-        const gNami = $prefs.valueForKey("guest_nami");
-
-        if (gAshe) {
-            console.log(" 正在克隆游客身份重写请求...");
-            // 全套替换，保证签名校验能过
-            headers['X-Ashe'] = gAshe;
-            headers['X-Garen'] = gGaren;
-            headers['X-Nami'] = gNami;
-            delete headers['X-Sivir'];
-            headers['X-Vayne'] = '0';
-            headers['x-Teemo'] = '0';
-            bodyObj["silk_id"] = 0;
-            
-            $done({ headers: headers, body: JSON.stringify(bodyObj) });
-        } else {
-            console.log(" 未发现可用的游客套装");
-            $done({});
-        }
-    }
-} else {
+if (isRequest) {
+    // 请求阶段：不做任何修改，确保签名校验 100% 通过
     $done({});
+} else {
+    // 响应阶段：开始偷梁换柱
+    const headers = $request.headers;
+    const mName = headers['methodname'] || headers['Methodname'] || "";
+
+    // 锁定列表和搜索接口
+    if (mName.indexOf("PromotionList") > -1 || mName.indexOf("GetPoiList") > -1) {
+        console.log(" 检测到登录回包，正在同步拉取游客数据...");
+
+        // 构造一个完全纯净的游客请求体
+        let guestBody = JSON.parse($request.body);
+        guestBody.silk_id = 0;
+
+        const request = {
+            url: $request.url,
+            method: "POST",
+            headers: {
+                ...headers,
+                'X-Sivir': '', // 抹除身份
+                'X-Vayne': '0',
+                'x-Teemo': '0'
+            },
+            body: JSON.stringify(guestBody)
+        };
+
+        // 在后台以游客身份发一起一次真请求
+        $task.fetch(request).then(response => {
+            console.log(" 游客数据获取成功，正在注入 App 界面");
+            // 将游客的数据内容直接替换掉大号的空响应
+            $done({ body: response.body });
+        }, reason => {
+            console.log(" 游客请求失败: " + reason.error);
+            $done({});
+        });
+    } else {
+        $done({});
+    }
 }
+
