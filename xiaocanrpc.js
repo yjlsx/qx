@@ -11,35 +11,42 @@ hostname = gw.xiaocantech.com
 
 
 /**
- * 小蚕助手 - 登录转游客重写 (静默修正版)
- * 逻辑：只改参数，不弹通知，防止死循环干扰
+ * 小蚕助手 - 登录转游客静默重写版
+ * 作用：在不破坏 App 运行的前提下，强制将查询接口游客化
  */
 
 let headers = $request.headers;
 let bodyObj = JSON.parse($request.body || "{}");
 let mName = headers['methodname'] || headers['Methodname'] || "";
 
-// 精准锁定首页列表和搜索这两个关键接口
-const isTarget = mName.indexOf("GetPoiList") > -1 || mName.indexOf("PromotionList") > -1;
+// 仅锁定这两个关键查询接口
+const targetMethods = [
+    "RecService.GetStorePromotionList", 
+    "RecService.SearchStorePromotionList"
+];
 
-if (isTarget) {
-    console.log(" 正在静默重写身份: " + mName);
+if (targetMethods.some(m => mName.indexOf(m) > -1)) {
+    console.log(" 执行重写 -> " + mName);
 
-    // 1. 尝试“脱壳”：只抹除身份标识，保留签名所需的其他环境
+    // 1. 身份彻底脱壳：删掉所有可能关联你大号的 Header
     delete headers['X-Sivir'];
     delete headers['x-sivir'];
     headers['X-Vayne'] = '0';
     headers['x-Teemo'] = '0';
     
-    // 2. 修正 Body 里的 ID
-    if (bodyObj.hasOwnProperty("silk_id")) bodyObj["silk_id"] = 0;
-    if (bodyObj.hasOwnProperty("user_id")) bodyObj["user_id"] = 0;
+    // 2. Body 强制游客化
+    bodyObj["silk_id"] = 0;
+    if (bodyObj.user_id) bodyObj["user_id"] = 0;
+
+    // 3. 关键：解决白屏/无内容
+    // 如果这样改完还是没内容，说明 X-Ashe 必须匹配 silk_id:0 时的特定值
+    // 这里我们尝试保持 X-Ashe 不动，看后端是否兼容“无 Token 情况下的签名”
 
     $done({
         headers: headers,
         body: JSON.stringify(bodyObj)
     });
 } else {
-    // 其他接口（如抢名额、心跳、埋点）一律原样跳过，不弹通知
+    // 抢名额接口等其他流量直接放行，不干扰，不弹通知
     $done({});
 }
