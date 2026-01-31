@@ -11,42 +11,52 @@ hostname = gw.xiaocantech.com
 
 
 /**
- * 小蚕助手 - 登录转游客静默重写版
- * 作用：在不破坏 App 运行的前提下，强制将查询接口游客化
+ * 小蚕助手 - 动态重写克隆版 (V5)
+ * 作用：解决登录后看不见列表的问题
  */
 
 let headers = $request.headers;
 let bodyObj = JSON.parse($request.body || "{}");
 let mName = headers['methodname'] || headers['Methodname'] || "";
 
-// 仅锁定这两个关键查询接口
 const targetMethods = [
-    "RecService.GetStorePromotionList", 
-    "RecService.SearchStorePromotionList"
+    "RecService.SearchStorePromotionList",
+    "SilkwormRcsService.MeituanShangjinGetPoiList"
 ];
 
 if (targetMethods.some(m => mName.indexOf(m) > -1)) {
-    console.log(" 执行重写 -> " + mName);
+    const isGuest = bodyObj.silk_id === 0 || !headers['X-Sivir'];
 
-    // 1. 身份彻底脱壳：删掉所有可能关联你大号的 Header
-    delete headers['X-Sivir'];
-    delete headers['x-sivir'];
-    headers['X-Vayne'] = '0';
-    headers['x-Teemo'] = '0';
-    
-    // 2. Body 强制游客化
-    bodyObj["silk_id"] = 0;
-    if (bodyObj.user_id) bodyObj["user_id"] = 0;
+    if (isGuest) {
+        // --- 1. 采集模式 (退出登录时运行) ---
+        $prefs.setValueForKey(headers['X-Ashe'], "guest_ashe");
+        $prefs.setValueForKey(headers['X-Garen'], "guest_garen");
+        $prefs.setValueForKey(headers['X-Nami'], "guest_nami");
+        console.log(" 成功采集游客套装，现在请去登录大号");
+        $done({});
+    } else {
+        // --- 2. 注入模式 (登录大号时运行) ---
+        const gAshe = $prefs.valueForKey("guest_ashe");
+        const gGaren = $prefs.valueForKey("guest_garen");
+        const gNami = $prefs.valueForKey("guest_nami");
 
-    // 3. 关键：解决白屏/无内容
-    // 如果这样改完还是没内容，说明 X-Ashe 必须匹配 silk_id:0 时的特定值
-    // 这里我们尝试保持 X-Ashe 不动，看后端是否兼容“无 Token 情况下的签名”
-
-    $done({
-        headers: headers,
-        body: JSON.stringify(bodyObj)
-    });
+        if (gAshe) {
+            console.log(" 正在克隆游客身份重写请求...");
+            // 全套替换，保证签名校验能过
+            headers['X-Ashe'] = gAshe;
+            headers['X-Garen'] = gGaren;
+            headers['X-Nami'] = gNami;
+            delete headers['X-Sivir'];
+            headers['X-Vayne'] = '0';
+            headers['x-Teemo'] = '0';
+            bodyObj["silk_id"] = 0;
+            
+            $done({ headers: headers, body: JSON.stringify(bodyObj) });
+        } else {
+            console.log(" 未发现可用的游客套装");
+            $done({});
+        }
+    }
 } else {
-    // 抢名额接口等其他流量直接放行，不干扰，不弹通知
     $done({});
 }
