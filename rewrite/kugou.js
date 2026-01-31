@@ -18,7 +18,7 @@
 
 
 # --- 基础信息、资产、余额类 ---
-^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail|wallet\/balance|vocal_style\/selected) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail|wallet\/balance|vocal_style\/selected|pay\/wallet_pay|songs\/buy) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
 
 # --- K歌与订单修正 ---
@@ -798,6 +798,23 @@ if (url.includes('aisinger/v1/vocal_style/selected')) {
         }
     }
 }
+
+if (url.includes('aisinger/v1/songs/buy')) {
+    if (obj.data) {
+        obj.data.pay_status = 1;
+        if (!obj.data.goods_id) obj.data.goods_id = "fake_goods_id";
+    }
+}
+
+if (url.includes('aisinger/v1/pay/wallet_pay')) {
+    obj.errcode = 0;
+    obj.status = 1;
+    obj.errmsg = "";
+    if (!obj.data) obj.data = {};
+    obj.data.order_id = "fake_payment_success_" + new Date().getTime();
+    obj.data.status = 1; 
+}
+
 
 
 $done({ body: JSON.stringify(obj) });
