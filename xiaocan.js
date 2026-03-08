@@ -3,14 +3,16 @@
 ^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocan.js
 
 # 广告接口全部拒绝
-^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/track url reject-200
-^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/v2\/ads\/conf url reject-200
 ^https?:\/\/de\.ad\.gameley\.com\/delivery\/request\/getad\/adn url reject-200
 ^https?:\/\/inner\.baihemob\.com\/ad2 url reject
+^https:\/\/.*gameley\.com\/ url reject
+^https:\/\/sdkapi\.richmob\.cn\/ url reject
+^https:\/\/ocpx\.adwangmai\.com\/ url reject
+^https:\/\/.*66mobi\.com\/twn\.api url reject
 
 
 [mitm]
-hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com, inner.baihemob.com
+hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com, inner.baihemob.com, gameley\.com, ocpx.adwangmai.com, 66mobi.com
 
 
 */
