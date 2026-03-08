@@ -6,9 +6,12 @@
 ^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/track url reject-200
 ^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/v2\/ads\/conf url reject-200
 ^https?:\/\/de\.ad\.gameley\.com\/delivery\/request\/getad\/adn url reject-200
+^https?:\/\/inner\.baihemob\.com\/ad2 url reject
+
 
 [mitm]
-hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com
+hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com, inner.baihemob.com
+
 
 */
 
