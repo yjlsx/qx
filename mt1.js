@@ -10,7 +10,7 @@ hostname = i.waimai.meituan.com, wx-shangou.meituan.com, api.waimai.meituan.com
 
 
 
-// === 统一配置区域 (根据需要修改) ===
+// === 统一配置区域 ===
 const CUSTOM_ORDER_TIME = "2026-03-23 10:02:26";   
 const TARGET_ORDER_ID_NUM = 602048282627103956; 
 const TARGET_ORDER_ID_STR = "602048282627103956"; 
@@ -39,13 +39,13 @@ try {
   if (url.includes("manager/v3/status")) {
     let d = obj.data;
     
-    // 修改顶部状态文案
+    // 修改顶部文案
     if (d.order_status_desc) {
       d.order_status_desc.status_desc = "订单已完成";
       d.order_status_desc.subtitle = "感谢您对美团外卖的信任，期待再次光临。";
     }
 
-    // 修改核心状态码 (取消 9 -> 完成 8)
+    // 核心状态转换 (取消 9 -> 完成 8)
     if (d.order_common_info) {
       let ci = d.order_common_info;
       ci.order_status = 8;      
@@ -58,17 +58,17 @@ try {
       ci.formatted_delivery_time = TARGET_ARRIVAL_TIME.replace("03月", "3月");
     }
 
-    // 修正底部按钮 (移除"逛逛别家"，加入完成状态特有按钮)
+    // --- 强制四个按钮逻辑 ---
     if (d.order_operate_area) {
-      d.order_operate_area.snd_desc = "订单已送达，评价一下吧";
+      d.order_operate_area.snd_desc = "感谢您对美团外卖的信任，期待再次光临。";
       d.order_operate_area.button_list = [
         { "title": "申请退款", "code": 2027, "highlight": 0, "action": 0, "change_icon_with_code": true, "button_icon": "http://p1.meituan.net/scarlett/d963e924f3a0947f056a97572c2aa1e13192.png" },
         { "title": "再来一单", "code": 1001, "highlight": 1, "action": 0, "change_icon_with_code": true, "button_icon": "http://p0.meituan.net/scarlett/043781eaaa8b92e49171e9c788d67d171713.png" },
-        { "title": "致电商家", "code": 2006, "highlight": 0, "action": 0, "change_icon_with_code": true, "button_icon": "http://p1.meituan.net/scarlett/0215b074ed74edb14298615f1997ee0f2761.png" }
+        { "title": "致电商家", "code": 2006, "highlight": 0, "action": 0, "change_icon_with_code": true, "button_icon": "http://p1.meituan.net/scarlett/0215b074ed74edb14298615f1997ee0f2761.png" },
+        { "title": "致电骑手", "code": 2025, "highlight": 0, "action": 0, "change_icon_with_code": true, "button_icon": "http://p0.meituan.net/scarlett/a076ee400b63eaa89435b751f839c7ec2893.png" }
       ];
     }
 
-    // 店铺名修正
     if (d.poi_info) d.poi_info.poi_name = CUSTOM_POI_NAME;
   }
 
@@ -77,7 +77,6 @@ try {
     let d = obj.data;
     const oldId = d.id || d.id_view || "";
 
-    // 订单基础信息与 ID
     d.id = TARGET_ORDER_ID_NUM;
     d.id_view = TARGET_ORDER_ID_STR;
     d.id_text = TARGET_ORDER_ID_STR;
@@ -86,22 +85,19 @@ try {
     d.poi_name = CUSTOM_POI_NAME;
     d.wm_poi_name = CUSTOM_POI_NAME;
 
-    // 如果是取消状态(9)，强制转为完成(8)
-    if (d.status === 9) {
+    // 详情页也同步为这四个按钮
+    if (d.status === 9 || d.status === 8) {
       d.status = 8;
       d.button_list = [
-        { "code": 1001, "highlight": 1, "title": "再来一单", "click_url": "" },
-        { "code": 2006, "highlight": 0, "title": "致电商家", "click_url": "" },
-        { "code": 2027, "highlight": 0, "title": "申请退款", "click_url": "" }
+        { "title": "申请退款", "code": 2027, "highlight": 0 },
+        { "title": "再来一单", "code": 1001, "highlight": 1 },
+        { "title": "致电商家", "code": 2006, "highlight": 0 },
+        { "title": "致电骑手", "code": 2025, "highlight": 0 }
       ];
     }
     
-    // 内部链接与跳转协议正则替换
     const idRegex = new RegExp(oldId, "g");
     if (d.scheme) d.scheme = d.scheme.replace(idRegex, TARGET_ORDER_ID_STR);
-    if (d.insurance?.insurance_detail_url) {
-      d.insurance.insurance_detail_url = d.insurance.insurance_detail_url.replace(idRegex, TARGET_ORDER_ID_STR);
-    }
   }
 
   // --- 3. 处理 列表页 (list) ---
@@ -109,22 +105,18 @@ try {
     let list = obj.data.orderList || obj.data.orders || obj.data.order_list;
     if (Array.isArray(list)) {
       list.forEach(order => {
-        // 状态文字与码修改
         if (order.orderStatus === 9 || order.orderStatusStr === "已取消") {
           order.orderStatus = 8;
           order.orderStatusStr = "已完成";
         }
-        // 店铺与时间修改
         order.poiName = CUSTOM_POI_NAME;
         order.wm_poi_name = CUSTOM_POI_NAME;
         if (order.orderTime) order.orderTime = CUSTOM_ORDER_TIME.slice(0, 16);
-        if (order.orderTimeSec) order.orderTimeSec = TARGET_TIMESTAMP_SEC;
       });
     }
   }
 
   $done({ body: JSON.stringify(obj) });
 } catch (e) {
-  console.log(`[MT修改脚本] 发生错误: ${e}`);
   $done({ body });
 }
