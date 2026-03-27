@@ -11,11 +11,11 @@ hostname = i.waimai.meituan.com, wx-shangou.meituan.com, api.waimai.meituan.com
 
 
 // === 统一配置区域 ===
-const CUSTOM_ORDER_TIME = "2026-03-23 10:02:26";   
+const CUSTOM_ORDER_TIME = "2026-03-22 10:26:26";   
 const TARGET_ORDER_ID_NUM = 602048282627103956; 
 const TARGET_ORDER_ID_STR = "602048282627103956"; 
-const TARGET_ARRIVAL_TIME = "03月23日 11:07-11:22"; 
-const CUSTOM_POI_NAME = "鮨念.精致料理.刺身.寿司.生腌（正义坊店）"; 
+const TARGET_ARRIVAL_TIME = "03月22日 11:00-11:15"; 
+const CUSTOM_POI_NAME = "喜川.精致料理.刺身.寿司.生腌（正义坊店）";  //鮨念.精致料理.刺身.寿司.生腌（正义坊店）
 // ==================================
 
 function getTimestamp(timeStr) {
