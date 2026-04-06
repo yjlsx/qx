@@ -4,15 +4,28 @@
 
 # 广告接口全部拒绝
 ^https?:\/\/de\.ad\.gameley\.com\/delivery\/request\/getad\/adn url reject-200
-^https?:\/\/inner\.baihemob\.com\/ad2 url reject
-^https:\/\/.*gameley\.com\/ url reject
-^https:\/\/sdkapi\.richmob\.cn\/ url reject
-^https:\/\/ocpx\.adwangmai\.com\/ url reject
-^https:\/\/.*66mobi\.com\/twn\.api url reject
+# --- Gameley 广告请求与上报 ---
+^https?:\/\/(?:jp|de)\.ad\.gameley\.com\/delivery\/request\/getad\/adn url reject-200
+^https?:\/\/jp\.ad\.gameley\.com\/stat\/ikanstat\/adnlog url reject-200
+
+# --- Sigmob 广告配置 / 广告素材 / 点击追踪 ---
+^https?:\/\/adservice\.sigmob\.cn\/ad\/v4(?:\?.*)?$ url reject-200
+^https?:\/\/track\.sigmob\.cn\/track(?:\?.*)?$ url reject-200
+^https?:\/\/n\.sigmob\.cn\/mtsvideo\/.* url reject-200
+^https?:\/\/webstatic\.sigmob\.cn\/mraid2\/.* url reject-200
+
+# --- RichMob 广告 SDK ---
+^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/v2\/ads\/conf(?:\?.*)?$ url reject-200
+^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/track(?:\?.*)?$ url reject-200
+^https?:\/\/sdkapi\.richmob\.cn\/sylas\/sdk\/app\/log\/addError2(?:\?.*)?$ url reject-200
+
+# --- ZhangYuYidong 广告 SDK ---
+^https?:\/\/sdk\.zhangyuyidong\.cn\/api\/zysdk(?:\?.*)?$ url reject-200
+
 
 
 [mitm]
-hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com, inner.baihemob.com, gameley\.com, ocpx.adwangmai.com, 66mobi.com
+hostname = gw.xiaocantech.com, sdkapi.richmob.cn, de.ad.gameley.com, inner.baihemob.com, gameley\.com, ocpx.adwangmai.com, 66mobi.com, %APPEND% adservice.sigmob.cn, track.sigmob.cn, n.sigmob.cn, webstatic.sigmob.cn, sdkapi.richmob.cn, sdk.zhangyuyidong.cn, jp.ad.gameley.com, de.ad.gameley.com, backend.gravity-engine.com, cnlogs.umeng.com
 
 
 */
