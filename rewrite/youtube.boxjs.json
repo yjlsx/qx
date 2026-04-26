@@ -1,8 +1,8 @@
 {
-  "id": "yjlsx9527",
-  "name": "yjlsx自用脚本",
+  "id": "yjlsx_youtube",
+  "name": "YouTube增强脚本订阅",
   "author": "@yjlsx",
-  "icon": "https://raw.githubusercontent.com/yjlsx/quantumult-x/master/IconSet/Color/Auto.png",
+  "icon": "https://www.youtube.com/s/desktop/28b0985e/img/favicon_144x144.png",
   "repo": "https://github.com/yjlsx/qx",
   "apps": [
     {
@@ -11,7 +11,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://yjlsx.github.io/features-plugin/icons/youtube.png"
+        "https://www.youtube.com/s/desktop/28b0985e/img/favicon_144x144.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/youtube.response.js",
       "keys": [
