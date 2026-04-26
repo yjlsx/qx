@@ -1,0 +1,259 @@
+{
+  "id": "yjlsx9527",
+  "name": "yjlsx自用脚本",
+  "author": "@yjlsx",
+  "icon": "https://raw.githubusercontent.com/yjlsx/quantumult-x/master/IconSet/Color/Auto.png",
+  "repo": "https://github.com/yjlsx/qx",
+  "apps": [
+    {
+      "id": "youtube_enhance",
+      "name": "YouTube增强版",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://www.youtube.com/s/desktop/28b0985e/img/favicon_144x144.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/youtube.response.js",
+      "keys": [
+        "YouTubeEnhance.tabs",
+        "YouTubeEnhance.showHistory",
+        "YouTubeEnhance.noAds",
+        "YouTubeEnhance.backgroundPlayback",
+        "YouTubeEnhance.pictureInPicture",
+        "YouTubeEnhance.blockShorts",
+        "YouTubeEnhance.hideShorts",
+        "YouTubeEnhance.removeShorts",
+        "YouTubeEnhance.removeSubscriptions",
+        "YouTubeEnhance.removeUploads",
+        "YouTubeEnhance.removeLibrary",
+        "YouTubeEnhance.blockImmersive",
+        "YouTubeEnhance.noPromotionCards",
+        "YouTubeEnhance.noRelatedWatchNexts",
+        "YouTubeEnhance.captionLang",
+        "YouTubeEnhance.lyricLang"
+      ],
+      "settings": [
+        {
+          "id": "YouTubeEnhance.tabs",
+          "name": "底部栏目",
+          "val": "home,subscriptions,history,you",
+          "type": "textarea",
+          "desc": "用英文逗号分隔。支持 home, shorts, subscriptions, history, you, uploads。"
+        },
+        {
+          "id": "YouTubeEnhance.showHistory",
+          "name": "显示历史入口",
+          "val": true,
+          "type": "boolean",
+          "desc": "在 Guide/底部栏目数据里插入历史记录入口。"
+        },
+        {
+          "id": "YouTubeEnhance.noAds",
+          "name": "移除广告",
+          "val": true,
+          "type": "boolean",
+          "desc": "移除播放器广告、pagead、赞助推广卡片等响应内容。"
+        },
+        {
+          "id": "YouTubeEnhance.backgroundPlayback",
+          "name": "后台播放",
+          "val": true,
+          "type": "boolean",
+          "desc": "向 player 响应注入后台播放能力。"
+        },
+        {
+          "id": "YouTubeEnhance.pictureInPicture",
+          "name": "画中画",
+          "val": true,
+          "type": "boolean",
+          "desc": "向 player 响应注入 PiP 能力。"
+        },
+        {
+          "id": "YouTubeEnhance.blockShorts",
+          "name": "屏蔽 Shorts 内容",
+          "val": true,
+          "type": "boolean",
+          "desc": "过滤首页、搜索、推荐中的 Shorts 内容。"
+        },
+        {
+          "id": "YouTubeEnhance.hideShorts",
+          "name": "隐藏 Shorts 响应",
+          "val": true,
+          "type": "boolean",
+          "desc": "兼容旧脚本参数，隐藏 Shorts 相关响应内容。"
+        },
+        {
+          "id": "YouTubeEnhance.removeShorts",
+          "name": "隐藏 Shorts 栏目",
+          "val": true,
+          "type": "boolean",
+          "desc": "从 Guide/底部栏目候选里移除 Shorts。"
+        },
+        {
+          "id": "YouTubeEnhance.removeSubscriptions",
+          "name": "隐藏订阅栏目",
+          "val": false,
+          "type": "boolean",
+          "desc": "从 Guide/底部栏目候选里移除订阅。"
+        },
+        {
+          "id": "YouTubeEnhance.removeUploads",
+          "name": "隐藏上传入口",
+          "val": true,
+          "type": "boolean",
+          "desc": "从 Guide/底部栏目候选里移除上传/创建入口。"
+        },
+        {
+          "id": "YouTubeEnhance.removeLibrary",
+          "name": "隐藏我的栏目",
+          "val": false,
+          "type": "boolean",
+          "desc": "从 Guide/底部栏目候选里移除我的/You。"
+        },
+        {
+          "id": "YouTubeEnhance.blockImmersive",
+          "name": "隐藏沉浸式音乐入口",
+          "val": false,
+          "type": "boolean",
+          "desc": "过滤 FEmusic_immersive。"
+        },
+        {
+          "id": "YouTubeEnhance.noPromotionCards",
+          "name": "隐藏推广卡片",
+          "val": true,
+          "type": "boolean",
+          "desc": "过滤 sponsored/promoted/promotion 等推广内容。"
+        },
+        {
+          "id": "YouTubeEnhance.noRelatedWatchNexts",
+          "name": "减少播放页推荐",
+          "val": false,
+          "type": "boolean",
+          "desc": "响应层只能尽量过滤推荐，不能完全等同客户端 hook。"
+        },
+        {
+          "id": "YouTubeEnhance.captionLang",
+          "name": "字幕翻译语言",
+          "val": "off",
+          "type": "text",
+          "desc": "off 表示关闭；可填 zh-Hans、zh-Hant、en、ja、ko 等。"
+        },
+        {
+          "id": "YouTubeEnhance.lyricLang",
+          "name": "歌词翻译语言",
+          "val": "off",
+          "type": "text",
+          "desc": "off 表示关闭；可填 zh-Hans、zh-Hant、en、ja、ko 等。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "youtubei.googleapis.com",
+          "www.youtube.com",
+          "s.youtube.com",
+          "*.googlevideo.com"
+        ],
+        "schema": {
+          "YouTubeEnhance.tabs": {
+            "type": "textarea",
+            "label": "底部栏目",
+            "default": "home,subscriptions,history,you",
+            "desc": "英文逗号分隔，支持 home, shorts, subscriptions, history, you, uploads。",
+            "rows": 2,
+            "placeholder": "home,subscriptions,history,you"
+          },
+          "YouTubeEnhance.showHistory": {
+            "type": "boolean",
+            "label": "显示历史入口",
+            "default": true,
+            "desc": "在底部栏目/Guide 中加入历史入口。"
+          },
+          "YouTubeEnhance.noAds": {
+            "type": "boolean",
+            "label": "移除广告",
+            "default": true,
+            "desc": "过滤 YouTube 广告与推广响应。"
+          },
+          "YouTubeEnhance.backgroundPlayback": {
+            "type": "boolean",
+            "label": "后台播放",
+            "default": true,
+            "desc": "注入后台播放能力。"
+          },
+          "YouTubeEnhance.pictureInPicture": {
+            "type": "boolean",
+            "label": "画中画",
+            "default": true,
+            "desc": "注入 PiP 能力。"
+          },
+          "YouTubeEnhance.blockShorts": {
+            "type": "boolean",
+            "label": "屏蔽 Shorts 内容",
+            "default": true,
+            "desc": "过滤首页、搜索、推荐中的 Shorts。"
+          },
+          "YouTubeEnhance.hideShorts": {
+            "type": "boolean",
+            "label": "隐藏 Shorts 响应",
+            "default": true,
+            "desc": "兼容旧脚本参数。"
+          },
+          "YouTubeEnhance.removeShorts": {
+            "type": "boolean",
+            "label": "隐藏 Shorts 栏目",
+            "default": true,
+            "desc": "从底部栏目候选里移除 Shorts。"
+          },
+          "YouTubeEnhance.removeSubscriptions": {
+            "type": "boolean",
+            "label": "隐藏订阅栏目",
+            "default": false,
+            "desc": "从底部栏目候选里移除订阅。"
+          },
+          "YouTubeEnhance.removeUploads": {
+            "type": "boolean",
+            "label": "隐藏上传入口",
+            "default": true,
+            "desc": "从底部栏目候选里移除上传/创建入口。"
+          },
+          "YouTubeEnhance.removeLibrary": {
+            "type": "boolean",
+            "label": "隐藏我的栏目",
+            "default": false,
+            "desc": "从底部栏目候选里移除我的/You。"
+          },
+          "YouTubeEnhance.blockImmersive": {
+            "type": "boolean",
+            "label": "隐藏沉浸式音乐入口",
+            "default": false,
+            "desc": "过滤 FEmusic_immersive。"
+          },
+          "YouTubeEnhance.noPromotionCards": {
+            "type": "boolean",
+            "label": "隐藏推广卡片",
+            "default": true,
+            "desc": "过滤赞助、推广卡片。"
+          },
+          "YouTubeEnhance.noRelatedWatchNexts": {
+            "type": "boolean",
+            "label": "减少播放页推荐",
+            "default": false,
+            "desc": "尽量过滤播放页推荐。"
+          },
+          "YouTubeEnhance.captionLang": {
+            "type": "text",
+            "label": "字幕翻译语言",
+            "default": "off",
+            "desc": "off 为关闭，可填 zh-Hans、zh-Hant、en、ja、ko 等。"
+          },
+          "YouTubeEnhance.lyricLang": {
+            "type": "text",
+            "label": "歌词翻译语言",
+            "default": "off",
+            "desc": "off 为关闭，可填 zh-Hans、zh-Hant、en、ja、ko 等。"
+          }
+        }
+      }
+    }
+  ]
+}

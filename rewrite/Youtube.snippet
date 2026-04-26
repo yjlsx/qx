@@ -1,5 +1,5 @@
-#!name=YouTube去广告隐藏版
-#!desc=基于稳定版，额外去除首页Shorts，去除首页shorts区块
+#!name=YouTube增强版
+#!desc=迁移 YTLite 可由响应改写实现的功能：去广告、PiP/后台播放、字幕增强、底部栏目选择、历史入口。默认底栏: 首页/订阅/历史/我的，可通过 BoxJs 持久化键覆盖。
 ^https?:\/\/[\w-]+\.googlevideo\.com\/(?!dclk_video_ads).+?&ctier=L(&.+?),ctier,(.+) url 302 https://$1$2$3
 ^https?:\/\/[\w-]+\.googlevideo\.com\/(?!(dclk_video_ads|videoplayback\?)).+&oad url reject-200
 ^https?:\/\/(www|s)\.youtube\.com\/api\/stats\/ads url reject-200
