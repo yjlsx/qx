@@ -37,7 +37,45 @@ function lower(s) {
 }
 
 function keyLooksLikeRebate(key) {
-  return /(ratio|rebate|commission|cps|union|media|activity|plan|poi_event|reward|bounty|shangjin|fanli|fan_li)/i.test(key);
+  return /(ratio|commission|cps|union|plan_activity|poi_event|shangjin|fanli|fan_li)/i.test(key);
+}
+
+function hasStrongRatioRebateMarker(node) {
+  if (!isObj(node)) return false;
+
+  if (Array.isArray(node.plan_activity_info_list) && node.plan_activity_info_list.length > 0) return true;
+  if (Array.isArray(node.commission_info_list) && node.commission_info_list.length > 0) return true;
+
+  const ratioKeys = [
+    "ratio",
+    "user_ratio",
+    "media_ratio",
+    "shop_ratio",
+    "store_ratio",
+    "commission_ratio",
+    "rebate_ratio",
+    "cps_ratio",
+    "platform_ratio",
+  ];
+  const commissionKeys = [
+    "max_commission",
+    "user_max_commission",
+    "media_max_commission",
+    "commission",
+    "commission_amount",
+  ];
+
+  for (const k of ratioKeys) {
+    if (Number(node[k] || 0) > 0) return true;
+  }
+  for (const k of commissionKeys) {
+    if (Number(node[k] || 0) > 0) return true;
+  }
+
+  if (node.poi_event_id != null && String(node.poi_event_id) !== "" && String(node.poi_event_id) !== "0") return true;
+  if (node.plan_activity_type != null && String(node.plan_activity_type) !== "" && String(node.plan_activity_type) !== "0") return true;
+
+  return false;
 }
 
 function textLooksLikeRatioRebate(text) {
@@ -79,9 +117,7 @@ function deepHasRatioRebate(node, depth) {
 
   if (!isObj(node)) return false;
 
-  if (Array.isArray(node.plan_activity_info_list) && node.plan_activity_info_list.length > 0) return true;
-  if (Array.isArray(node.activity_info_list) && node.activity_info_list.length > 0) return true;
-  if (Array.isArray(node.commission_info_list) && node.commission_info_list.length > 0) return true;
+  if (hasStrongRatioRebateMarker(node)) return true;
 
   for (const key in node) {
     const val = node[key];
@@ -108,7 +144,7 @@ function deepHasRatioRebate(node, depth) {
       return true;
     }
 
-    if (/^(poi_event_id|event_id|activity_id|plan_activity_type|rebate_condition)$/.test(lk) && String(val || "") !== "") {
+    if (/^(poi_event_id|plan_activity_type)$/.test(lk) && String(val || "") !== "") {
       return true;
     }
 
@@ -133,6 +169,10 @@ function looksLikeResultList(key, arr) {
 function filterRatioRebateItems(obj) {
   let removed = 0;
 
+  function shouldRemoveItem(item) {
+    return isObj(item) && deepHasRatioRebate(item, 0);
+  }
+
   function walk(node, path) {
     if (!node || typeof node !== "object") return;
 
@@ -143,9 +183,9 @@ function filterRatioRebateItems(obj) {
 
     for (const key in node) {
       const val = node[key];
-      if (Array.isArray(val) && looksLikeResultList(key, val)) {
+      if (Array.isArray(val) && val.some(shouldRemoveItem) && looksLikeResultList(key, val)) {
         const before = val.length;
-        node[key] = val.filter((item) => !deepHasRatioRebate(item, 0));
+        node[key] = val.filter((item) => !shouldRemoveItem(item));
         const diff = before - node[key].length;
         if (diff > 0) {
           removed += diff;
@@ -155,6 +195,16 @@ function filterRatioRebateItems(obj) {
       } else if (val && typeof val === "object") {
         walk(val, `${path ? path + "." : ""}${key}`);
       }
+    }
+  }
+
+  if (Array.isArray(obj.poi_list)) {
+    const before = obj.poi_list.length;
+    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveItem(item));
+    const diff = before - obj.poi_list.length;
+    if (diff > 0) {
+      removed += diff;
+      console.log(`[小蚕清理] poi_list 移除 ${diff} 条按比例返利店铺`);
     }
   }
 
@@ -246,9 +296,9 @@ if (!body) {
       };
       changed = true;
     } else {
+      changed = filterRatioRebateItems(obj) > 0 || changed;
       changed = stripPlacementResources(obj) || changed;
       changed = disablePopupLike(obj) || changed;
-      changed = filterRatioRebateItems(obj) > 0 || changed;
     }
 
     if (changed) done(obj);
