@@ -3,7 +3,7 @@
 
 
 [rewrite_local]
-^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
+^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
 hostname = gw.xiaocantech.com, gwh.xiaocantech.com
