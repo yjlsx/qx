@@ -3,7 +3,7 @@
 
 
 [rewrite_local]
-^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
+^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
 hostname = gw.xiaocantech.com, gwh.xiaocantech.com
@@ -12,6 +12,7 @@ hostname = gw.xiaocantech.com, gwh.xiaocantech.com
 
 const body = typeof $response !== "undefined" ? $response.body : "";
 const headers = ($request && $request.headers) || {};
+const url = ($request && $request.url) || "";
 
 function h(name) {
   const lower = String(name).toLowerCase();
@@ -26,6 +27,27 @@ const server = h("servername");
 
 function done(obj) {
   $done({ body: JSON.stringify(obj) });
+}
+
+function emptyOk(extra) {
+  return Object.assign(
+    {
+      status: { code: 0 },
+      data: null,
+      list: [],
+      records: [],
+      record_list: [],
+      order_list: [],
+      show: false,
+      is_show: false,
+      if_show: false,
+      show_popup: false,
+      need_pop: false,
+      popup: null,
+      dialog: null,
+    },
+    extra || {}
+  );
 }
 
 function isObj(v) {
@@ -267,6 +289,45 @@ function disablePopupLike(obj) {
   return changed;
 }
 
+function disableOrderAbnormalPopup(obj) {
+  let changed = false;
+  const dangerKey = /reject|rejection|abnormal|exception|resurrection|pending.*order|order.*popup|order.*award|force.*screen|user.*force.*screen|popup|dialog/i;
+
+  function walk(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+
+    for (const key in node) {
+      const lk = lower(key);
+      if (/^(show|is_show|if_show|show_popup|need_pop|need_popup|has_popup|can_popup|if_force_screen|force_screen|user_force_screen_show)$/.test(lk)) {
+        node[key] = false;
+        changed = true;
+      } else if (/^(user_force_screen|force_screen_info|force_screen_data|abnormal_order_info)$/.test(lk)) {
+        node[key] = null;
+        changed = true;
+      } else if (/^(if_celebrate|if_page_gift|if_receive_add_gift|if_alpay_promotion_one|if_promotion_muster)$/.test(lk)) {
+        node[key] = false;
+        changed = true;
+      } else if (dangerKey.test(key)) {
+        if (Array.isArray(node[key])) node[key] = [];
+        else if (isObj(node[key])) node[key] = null;
+        else if (typeof node[key] === "boolean") node[key] = false;
+        else if (typeof node[key] === "number") node[key] = 0;
+        else if (typeof node[key] === "string") node[key] = "";
+        changed = true;
+      } else {
+        walk(node[key]);
+      }
+    }
+  }
+
+  walk(obj);
+  return changed;
+}
+
 if (!body) {
   $done({});
 } else {
@@ -280,7 +341,15 @@ if (!body) {
   try {
     let changed = false;
 
-    if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
+    if (/native_order_config\.json/i.test(url)) {
+      obj.open_native = false;
+      obj.open_ios_native = false;
+      obj.open_android_native = false;
+      obj.open_ohos_native = false;
+      obj.open_flutter_native = false;
+      console.log("[小蚕清理] 已关闭原生订单页配置，避免订单异常弹窗");
+      changed = true;
+    } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
       obj = {
         status: { code: 0 },
         data: {
@@ -295,8 +364,13 @@ if (!body) {
         },
       };
       changed = true;
+    } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
+      obj = emptyOk();
+      console.log(`[小蚕清理] 已关闭订单异常/订单奖励弹窗：${method}`);
+      changed = true;
     } else {
       changed = filterRatioRebateItems(obj) > 0 || changed;
+      changed = disableOrderAbnormalPopup(obj) || changed;
       changed = stripPlacementResources(obj) || changed;
       changed = disablePopupLike(obj) || changed;
     }
