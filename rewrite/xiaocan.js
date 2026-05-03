@@ -71,10 +71,11 @@ function widenCityShopRequest(obj) {
 
   let changed = 0;
   const pageSizeKeys = /^(page_size|pagesize|pageSize|limit|size|count|page_count|pageCount|page_limit|pageLimit|offset_limit|offsetLimit)$/;
-  const radiusKeys = /^(radius|distance|range|scope|search_radius|searchRadius|around_radius|aroundRadius|max_distance|maxDistance|nearby_distance|nearbyDistance)$/;
-  const sameCityKeys = /^(same_city|sameCity|city_scope|cityScope|in_city|inCity|only_city|onlyCity)$/;
-  const cityOnlyKeys = /^(city_only|cityOnly|is_city|isCity|local_city|localCity)$/;
-  const nearbyOnlyKeys = /^(nearby_only|nearbyOnly|only_nearby|onlyNearby|nearby)$/;
+  const radiusKeys = /^(radius|distance|range|scope|search_radius|searchRadius|around_radius|aroundRadius|max_distance|maxDistance|nearby_distance|nearbyDistance|geo_radius|geoRadius|delivery_radius|deliveryRadius)$/;
+  const sameCityKeys = /^(same_city|sameCity|city_scope|cityScope|in_city|inCity|only_city|onlyCity|whole_city|wholeCity|city_wide|cityWide|all_city|allCity)$/;
+  const cityOnlyKeys = /^(city_only|cityOnly|is_city|isCity|local_city|localCity|current_city|currentCity)$/;
+  const nearbyOnlyKeys = /^(nearby_only|nearbyOnly|only_nearby|onlyNearby|nearby|nearby_mode|nearbyMode)$/;
+  const cityScopeTypeKeys = /^(scope_type|scopeType|range_type|rangeType|search_type|searchType|query_type|queryType)$/;
 
   function setNumber(node, key, value) {
     const old = Number(node[key] || 0);
@@ -97,9 +98,9 @@ function widenCityShopRequest(obj) {
       const val = node[key];
 
       if (pageSizeKeys.test(key) || pageSizeKeys.test(lk)) {
-        setNumber(node, key, 100);
+        setNumber(node, key, 200);
       } else if (radiusKeys.test(key) || radiusKeys.test(lk)) {
-        setNumber(node, key, 80000);
+        setNumber(node, key, 300000);
       } else if (sameCityKeys.test(key) || sameCityKeys.test(lk) || cityOnlyKeys.test(key) || cityOnlyKeys.test(lk)) {
         if (node[key] !== true && node[key] !== 1) {
           node[key] = typeof val === "number" ? 1 : true;
@@ -110,6 +111,9 @@ function widenCityShopRequest(obj) {
           node[key] = typeof val === "number" ? 0 : false;
           changed += 1;
         }
+      } else if ((cityScopeTypeKeys.test(key) || cityScopeTypeKeys.test(lk)) && typeof val === "string" && /nearby|around|distance/i.test(val)) {
+        node[key] = "city";
+        changed += 1;
       } else if (val && typeof val === "object") {
         walk(val, depth + 1);
       }
