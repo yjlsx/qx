@@ -1,5 +1,5 @@
 /*
-小蚕/小餐类接口去广告 + 移除所有“按比例返利”店铺单
+接口去广告 + 移除所有“按比例返利”店铺单
 
 
 [rewrite_local]
@@ -68,7 +68,7 @@ function methodLooksLikeShopList() {
 
 function logRequestHeaderHit() {
   if (!/^https:\/\/gwh?\.xiaocantech\.com\/rpc$/i.test(url)) return;
-  console.log(`[小蚕清理] 请求头命中：${server || "-"} | ${method || "-"}`);
+  console.log(`[接口清理] 请求头命中：${server || "-"} | ${method || "-"}`);
 }
 
 function requestCacheKey() {
@@ -90,7 +90,7 @@ function saveRequestObjForSweep(obj) {
   if (typeof $prefs === "undefined" || !methodLooksLikeShopList()) return;
   if (findCoordPairs(obj).length === 0) return;
   $prefs.setValueForKey(JSON.stringify(obj), requestCacheKey());
-  console.log(`[小蚕清理] ${method || "RPC"} 已缓存同城多点请求体`);
+  console.log(`[接口清理] ${method || "RPC"} 已缓存同城多点请求体`);
 }
 
 function widenCityShopRequest(obj) {
@@ -317,7 +317,7 @@ function filterRatioRebateItems(obj) {
         const diff = before - node[key].length;
         if (diff > 0) {
           removed += diff;
-          console.log(`[小蚕清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利项`);
+          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利项`);
         }
         node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
       } else if (val && typeof val === "object") {
@@ -332,7 +332,7 @@ function filterRatioRebateItems(obj) {
     const diff = before - obj.poi_list.length;
     if (diff > 0) {
       removed += diff;
-      console.log(`[小蚕清理] poi_list 移除 ${diff} 条按比例返利店铺`);
+      console.log(`[接口清理] poi_list 移除 ${diff} 条按比例返利店铺`);
     }
   }
 
@@ -604,7 +604,7 @@ function processResponseObj(obj) {
     obj.open_android_native = false;
     obj.open_ohos_native = false;
     obj.open_flutter_native = false;
-    console.log("[小蚕清理] 已关闭原生订单页配置，避免订单异常弹窗");
+    console.log("[接口清理] 已关闭原生订单页配置，避免订单异常弹窗");
     changed = true;
   } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
     obj = {
@@ -623,7 +623,7 @@ function processResponseObj(obj) {
     changed = true;
   } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
     obj = emptyOk();
-    console.log(`[小蚕清理] 已关闭订单异常/订单奖励弹窗：${method}`);
+    console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${method}`);
     changed = true;
   } else {
     changed = filterRatioRebateItems(obj) > 0 || changed;
@@ -642,7 +642,7 @@ function tryCitySweepAndFinish(obj, changed) {
   }
 
   if (typeof $task === "undefined") {
-    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：$task 不可用`);
+    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：$task 不可用`);
     finishResponse(obj, changed);
     return;
   }
@@ -653,17 +653,17 @@ function tryCitySweepAndFinish(obj, changed) {
   } catch (e) {
     reqObj = readCachedRequestObj();
     if (!reqObj) {
-      console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON，且没有缓存`);
+      console.log(`[接口清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON，且没有缓存`);
       finishResponse(obj, changed);
       return;
     }
-    console.log(`[小蚕清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
+    console.log(`[接口清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
   }
 
   const coordCount = findCoordPairs(reqObj).length;
   const listCount = collectResultLists(obj).length;
   if (coordCount === 0 || listCount === 0) {
-    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：坐标组 ${coordCount}，列表 ${listCount}`);
+    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：坐标组 ${coordCount}，列表 ${listCount}`);
     finishResponse(obj, changed);
     return;
   }
@@ -699,7 +699,7 @@ function tryCitySweepAndFinish(obj, changed) {
     if (added > 0) {
       filterRatioRebateItems(obj);
       obj._qx_city_sweep_added_count = added;
-      console.log(`[小蚕清理] ${method || "RPC"} 同城多点合并新增 ${added} 条店铺`);
+      console.log(`[接口清理] ${method || "RPC"} 同城多点合并新增 ${added} 条店铺`);
       changed = true;
     }
     finishResponse(obj, changed);
@@ -727,7 +727,7 @@ if (!body) {
       saveRequestObjForSweep(obj);
       const widened = widenCityShopRequest(obj);
       if (widened > 0) {
-        console.log(`[小蚕清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
+        console.log(`[接口清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
         changed = true;
       }
       if (changed) done(obj);
@@ -737,7 +737,7 @@ if (!body) {
       tryCitySweepAndFinish(result.obj, result.changed);
     }
   } catch (e) {
-    console.log(`[小蚕清理] 异常：${e.message || e}`);
+    console.log(`[接口清理] 异常：${e.message || e}`);
     $done({});
   }
 }
