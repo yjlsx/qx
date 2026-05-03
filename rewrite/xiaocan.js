@@ -75,6 +75,10 @@ function requestCacheKey() {
   return `xiaocan_req_${server || "server"}_${method || "method"}`.replace(/[^\w.-]/g, "_");
 }
 
+function rawRequestCacheKey() {
+  return `${requestCacheKey()}_raw`;
+}
+
 function readCachedRequestObj() {
   if (typeof $prefs === "undefined") return null;
   const cached = $prefs.valueForKey(requestCacheKey());
@@ -86,11 +90,22 @@ function readCachedRequestObj() {
   }
 }
 
+function readCachedRawRequestBody() {
+  if (typeof $prefs === "undefined") return "";
+  return $prefs.valueForKey(rawRequestCacheKey()) || "";
+}
+
 function saveRequestObjForSweep(obj) {
   if (typeof $prefs === "undefined" || !methodLooksLikeShopList()) return;
   if (findCoordPairs(obj).length === 0) return;
   $prefs.setValueForKey(JSON.stringify(obj), requestCacheKey());
   console.log(`[接口清理] ${method || "RPC"} 已缓存同城多点请求体`);
+}
+
+function saveRawRequestBodyForSweep(rawBody) {
+  if (typeof $prefs === "undefined" || !methodLooksLikeShopList() || !rawBody) return;
+  $prefs.setValueForKey(String(rawBody), rawRequestCacheKey());
+  console.log(`[接口清理] ${method || "RPC"} 已缓存原始请求体`);
 }
 
 function widenCityShopRequest(obj) {
@@ -481,6 +496,22 @@ function findCoordPairs(root) {
   return pairs;
 }
 
+function findHeaderCoordPairs(headerObj) {
+  const pairs = [];
+  const latNames = /^(x-)?(lat|latitude|user-lat|user_lat|gcj-lat|gcj_lat|poi-lat|poi_lat)$/i;
+  const lngNames = /^(x-)?(lng|lon|longitude|user-lng|user_lng|user-lon|user_lon|gcj-lng|gcj_lng|gcj-lon|gcj_lon|poi-lng|poi_lng|poi-lon|poi_lon)$/i;
+  let latKey = "";
+  let lngKey = "";
+
+  for (const key in headerObj || {}) {
+    if (!latKey && latNames.test(key) && coordNumber(headerObj[key]) != null) latKey = key;
+    if (!lngKey && lngNames.test(key) && coordNumber(headerObj[key]) != null) lngKey = key;
+  }
+
+  if (latKey && lngKey) pairs.push({ node: headerObj, latKey, lngKey });
+  return pairs;
+}
+
 function applyCoordOffset(root, offset) {
   const pairs = findCoordPairs(root);
   pairs.forEach(({ node, latKey, lngKey }) => {
@@ -489,6 +520,18 @@ function applyCoordOffset(root, offset) {
     if (lat == null || lng == null) return;
     node[latKey] = Number((lat + offset.lat).toFixed(6));
     node[lngKey] = Number((lng + offset.lng).toFixed(6));
+  });
+  return pairs.length;
+}
+
+function applyHeaderCoordOffset(headerObj, offset) {
+  const pairs = findHeaderCoordPairs(headerObj);
+  pairs.forEach(({ node, latKey, lngKey }) => {
+    const lat = coordNumber(node[latKey]);
+    const lng = coordNumber(node[lngKey]);
+    if (lat == null || lng == null) return;
+    node[latKey] = String(Number((lat + offset.lat).toFixed(6)));
+    node[lngKey] = String(Number((lng + offset.lng).toFixed(6)));
   });
   return pairs.length;
 }
@@ -582,11 +625,12 @@ function citySweepOffsets() {
   ];
 }
 
-function citySweepHeaders() {
+function citySweepHeaders(offset) {
   const next = Object.assign({}, headers, { "X-QX-Xiaocan-City-Sweep": "1" });
   for (const key in next) {
     if (String(key).toLowerCase() === "content-length") delete next[key];
   }
+  if (offset) applyHeaderCoordOffset(next, offset);
   return next;
 }
 
@@ -647,36 +691,41 @@ function tryCitySweepAndFinish(obj, changed) {
     return;
   }
 
-  let reqObj;
+  let reqObj = null;
+  let requestBodyIsJson = true;
   try {
     reqObj = JSON.parse(($request && $request.body) || "");
   } catch (e) {
+    requestBodyIsJson = false;
     reqObj = readCachedRequestObj();
-    if (!reqObj) {
-      console.log(`[接口清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON，且没有缓存`);
-      finishResponse(obj, changed);
-      return;
-    }
-    console.log(`[接口清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
+    if (reqObj) console.log(`[接口清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
   }
 
-  const coordCount = findCoordPairs(reqObj).length;
   const listCount = collectResultLists(obj).length;
-  if (coordCount === 0 || listCount === 0) {
-    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：坐标组 ${coordCount}，列表 ${listCount}`);
+  const bodyCoordCount = reqObj ? findCoordPairs(reqObj).length : 0;
+  const headerCoordCount = findHeaderCoordPairs(headers).length;
+  if (listCount === 0 || (bodyCoordCount === 0 && headerCoordCount === 0)) {
+    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，列表 ${listCount}`);
     finishResponse(obj, changed);
     return;
   }
 
   const requests = citySweepOffsets().map((offset) => {
-    const next = cloneJson(reqObj);
-    if (applyCoordOffset(next, offset) === 0) return null;
-    widenCityShopRequest(next);
+    let nextBody = ($request && $request.body) || readCachedRawRequestBody();
+    if (bodyCoordCount > 0) {
+      const next = cloneJson(reqObj);
+      if (applyCoordOffset(next, offset) === 0) return null;
+      widenCityShopRequest(next);
+      nextBody = JSON.stringify(next);
+    } else if (requestBodyIsJson) {
+      return null;
+    }
+
     return $task.fetch({
       url,
       method: "POST",
-      headers: citySweepHeaders(),
-      body: JSON.stringify(next),
+      headers: citySweepHeaders(bodyCoordCount > 0 ? null : offset),
+      body: nextBody,
     }).then((resp) => {
       try {
         return JSON.parse(resp.body || "{}");
@@ -720,6 +769,7 @@ if (!body) {
   }
 
   if (obj == null) {
+    if (!isResponse && body) saveRawRequestBodyForSweep(body);
     $done({});
   } else try {
     if (!isResponse) {
