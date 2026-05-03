@@ -405,6 +405,266 @@ function disableOrderAbnormalPopup(obj) {
   return changed;
 }
 
+function cloneJson(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function hasHeader(name) {
+  return h(name) !== "";
+}
+
+function isCitySweepRequest() {
+  return hasHeader("X-QX-Xiaocan-City-Sweep");
+}
+
+function coordNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function findCoordPairs(root) {
+  const pairs = [];
+  const latNames = /^(lat|latitude|user_lat|userLat|gcj_lat|gcjLat|poi_lat|poiLat)$/;
+  const lngNames = /^(lng|lon|longitude|user_lng|userLng|user_lon|userLon|gcj_lng|gcjLng|gcj_lon|gcjLon|poi_lng|poiLng|poi_lon|poiLon)$/;
+
+  function walk(node, depth) {
+    if (depth > 7 || node == null) return;
+    if (Array.isArray(node)) {
+      node.forEach((x) => walk(x, depth + 1));
+      return;
+    }
+    if (!isObj(node)) return;
+
+    let latKey = "";
+    let lngKey = "";
+    for (const key in node) {
+      if (!latKey && latNames.test(key) && coordNumber(node[key]) != null) latKey = key;
+      if (!lngKey && lngNames.test(key) && coordNumber(node[key]) != null) lngKey = key;
+    }
+    if (latKey && lngKey) pairs.push({ node, latKey, lngKey });
+
+    for (const key in node) {
+      if (node[key] && typeof node[key] === "object") walk(node[key], depth + 1);
+    }
+  }
+
+  walk(root, 0);
+  return pairs;
+}
+
+function applyCoordOffset(root, offset) {
+  const pairs = findCoordPairs(root);
+  pairs.forEach(({ node, latKey, lngKey }) => {
+    const lat = coordNumber(node[latKey]);
+    const lng = coordNumber(node[lngKey]);
+    if (lat == null || lng == null) return;
+    node[latKey] = Number((lat + offset.lat).toFixed(6));
+    node[lngKey] = Number((lng + offset.lng).toFixed(6));
+  });
+  return pairs.length;
+}
+
+function listItemKey(item) {
+  if (!isObj(item)) return "";
+  const keys = [
+    "wm_poi_id",
+    "poi_id",
+    "store_id",
+    "shop_id",
+    "merchant_id",
+    "id",
+    "name",
+  ];
+  for (const key of keys) {
+    if (item[key] != null && String(item[key]) !== "") return `${key}:${String(item[key])}`;
+  }
+  const name = item.name || item.poi_name || item.shop_name || item.store_name;
+  const address = item.address || item.addr || item.distance || "";
+  return name ? `fallback:${name}|${address}` : "";
+}
+
+function mergeList(target, source) {
+  if (!Array.isArray(target) || !Array.isArray(source)) return 0;
+  const seen = {};
+  target.forEach((item) => {
+    const key = listItemKey(item);
+    if (key) seen[key] = true;
+  });
+
+  let added = 0;
+  source.forEach((item) => {
+    const key = listItemKey(item);
+    if (!key || seen[key]) return;
+    target.push(item);
+    seen[key] = true;
+    added += 1;
+  });
+  return added;
+}
+
+function collectResultLists(root) {
+  const lists = [];
+
+  function walk(node, path) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach((x, i) => walk(x, `${path}[${i}]`));
+      return;
+    }
+
+    for (const key in node) {
+      const val = node[key];
+      if (looksLikeResultList(key, val)) {
+        lists.push({ path: `${path ? path + "." : ""}${key}`, arr: val });
+      } else if (val && typeof val === "object") {
+        walk(val, `${path ? path + "." : ""}${key}`);
+      }
+    }
+  }
+
+  walk(root, "");
+  return lists;
+}
+
+function mergeCitySweepResults(target, extra) {
+  const targetLists = collectResultLists(target);
+  const extraLists = collectResultLists(extra);
+  let added = 0;
+
+  targetLists.forEach((targetList) => {
+    extraLists.forEach((extraList) => {
+      if (targetList.path === extraList.path) {
+        added += mergeList(targetList.arr, extraList.arr);
+      }
+    });
+  });
+
+  return added;
+}
+
+function citySweepOffsets() {
+  return [
+    { lat: 0.14, lng: 0 },
+    { lat: -0.14, lng: 0 },
+    { lat: 0, lng: 0.16 },
+    { lat: 0, lng: -0.16 },
+    { lat: 0.1, lng: 0.12 },
+    { lat: -0.1, lng: -0.12 },
+  ];
+}
+
+function citySweepHeaders() {
+  const next = Object.assign({}, headers, { "X-QX-Xiaocan-City-Sweep": "1" });
+  for (const key in next) {
+    if (String(key).toLowerCase() === "content-length") delete next[key];
+  }
+  return next;
+}
+
+function finishResponse(obj, changed) {
+  if (changed) done(obj);
+  else $done({});
+}
+
+function processResponseObj(obj) {
+  let changed = false;
+
+  if (/native_order_config\.json/i.test(url)) {
+    obj.open_native = false;
+    obj.open_ios_native = false;
+    obj.open_android_native = false;
+    obj.open_ohos_native = false;
+    obj.open_flutter_native = false;
+    console.log("[小蚕清理] 已关闭原生订单页配置，避免订单异常弹窗");
+    changed = true;
+  } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
+    obj = {
+      status: { code: 0 },
+      data: {
+        ad_open: 0,
+        ad_type: [],
+        ad_source: [],
+        android_ad_id: "",
+        android_slot_id: "",
+        ios_ad_id: "",
+        ios_slot_id: "",
+        ad_photo: "",
+      },
+    };
+    changed = true;
+  } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
+    obj = emptyOk();
+    console.log(`[小蚕清理] 已关闭订单异常/订单奖励弹窗：${method}`);
+    changed = true;
+  } else {
+    changed = filterRatioRebateItems(obj) > 0 || changed;
+    changed = disableOrderAbnormalPopup(obj) || changed;
+    changed = stripPlacementResources(obj) || changed;
+    changed = disablePopupLike(obj) || changed;
+  }
+
+  return { obj, changed };
+}
+
+function tryCitySweepAndFinish(obj, changed) {
+  if (!isResponse || isCitySweepRequest() || !methodLooksLikeShopList() || typeof $task === "undefined") {
+    finishResponse(obj, changed);
+    return;
+  }
+
+  let reqObj;
+  try {
+    reqObj = JSON.parse(($request && $request.body) || "");
+  } catch (e) {
+    finishResponse(obj, changed);
+    return;
+  }
+
+  if (findCoordPairs(reqObj).length === 0 || collectResultLists(obj).length === 0) {
+    finishResponse(obj, changed);
+    return;
+  }
+
+  const requests = citySweepOffsets().map((offset) => {
+    const next = cloneJson(reqObj);
+    if (applyCoordOffset(next, offset) === 0) return null;
+    widenCityShopRequest(next);
+    return $task.fetch({
+      url,
+      method: "POST",
+      headers: citySweepHeaders(),
+      body: JSON.stringify(next),
+    }).then((resp) => {
+      try {
+        return JSON.parse(resp.body || "{}");
+      } catch (e) {
+        return null;
+      }
+    }, () => null);
+  }).filter(Boolean);
+
+  if (requests.length === 0) {
+    finishResponse(obj, changed);
+    return;
+  }
+
+  Promise.all(requests).then((results) => {
+    let added = 0;
+    results.forEach((extra) => {
+      if (extra) added += mergeCitySweepResults(obj, extra);
+    });
+    if (added > 0) {
+      filterRatioRebateItems(obj);
+      obj._qx_city_sweep_added_count = added;
+      console.log(`[小蚕清理] ${method || "RPC"} 同城多点合并新增 ${added} 条店铺`);
+      changed = true;
+    }
+    finishResponse(obj, changed);
+  }, () => {
+    finishResponse(obj, changed);
+  });
+}
+
 if (!body) {
   $done({});
 } else {
@@ -418,50 +678,19 @@ if (!body) {
   if (obj == null) {
     $done({});
   } else try {
-    let changed = false;
-
     if (!isResponse) {
+      let changed = false;
       const widened = widenCityShopRequest(obj);
       if (widened > 0) {
         console.log(`[小蚕清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
         changed = true;
       }
-    } else if (/native_order_config\.json/i.test(url)) {
-      obj.open_native = false;
-      obj.open_ios_native = false;
-      obj.open_android_native = false;
-      obj.open_ohos_native = false;
-      obj.open_flutter_native = false;
-      console.log("[小蚕清理] 已关闭原生订单页配置，避免订单异常弹窗");
-      changed = true;
-    } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
-      obj = {
-        status: { code: 0 },
-        data: {
-          ad_open: 0,
-          ad_type: [],
-          ad_source: [],
-          android_ad_id: "",
-          android_slot_id: "",
-          ios_ad_id: "",
-          ios_slot_id: "",
-          ad_photo: "",
-        },
-      };
-      changed = true;
-    } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
-      obj = emptyOk();
-      console.log(`[小蚕清理] 已关闭订单异常/订单奖励弹窗：${method}`);
-      changed = true;
+      if (changed) done(obj);
+      else $done({});
     } else {
-      changed = filterRatioRebateItems(obj) > 0 || changed;
-      changed = disableOrderAbnormalPopup(obj) || changed;
-      changed = stripPlacementResources(obj) || changed;
-      changed = disablePopupLike(obj) || changed;
+      const result = processResponseObj(obj);
+      tryCitySweepAndFinish(result.obj, result.changed);
     }
-
-    if (changed) done(obj);
-    else $done({});
   } catch (e) {
     console.log(`[小蚕清理] 异常：${e.message || e}`);
     $done({});
