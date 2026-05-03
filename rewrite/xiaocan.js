@@ -3,6 +3,7 @@
 
 
 [rewrite_local]
+^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
@@ -15,6 +16,7 @@ const isResponse = typeof $response !== "undefined";
 const body = isResponse ? $response.body : (($request && $request.body) || "");
 const headers = ($request && $request.headers) || {};
 const url = ($request && $request.url) || "";
+const isRequestHeader = !isResponse && !body;
 
 function h(name) {
   const lower = String(name).toLowerCase();
@@ -62,6 +64,11 @@ function lower(s) {
 
 function methodLooksLikeShopList() {
   return /PromotionList|GetPoiList|PoiList|ShopList|StoreList|LifeShopList|SearchPoi|Nearby|RecommendPoi|ActivityList|MerchantList/i.test(method);
+}
+
+function logRequestHeaderHit() {
+  if (!/^https:\/\/gwh?\.xiaocantech\.com\/rpc$/i.test(url)) return;
+  console.log(`[小蚕清理] 请求头命中：${server || "-"} | ${method || "-"}`);
 }
 
 function widenCityShopRequest(obj) {
@@ -607,7 +614,13 @@ function processResponseObj(obj) {
 }
 
 function tryCitySweepAndFinish(obj, changed) {
-  if (!isResponse || isCitySweepRequest() || !methodLooksLikeShopList() || typeof $task === "undefined") {
+  if (!isResponse || isCitySweepRequest() || !methodLooksLikeShopList()) {
+    finishResponse(obj, changed);
+    return;
+  }
+
+  if (typeof $task === "undefined") {
+    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：$task 不可用`);
     finishResponse(obj, changed);
     return;
   }
@@ -616,11 +629,15 @@ function tryCitySweepAndFinish(obj, changed) {
   try {
     reqObj = JSON.parse(($request && $request.body) || "");
   } catch (e) {
+    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON`);
     finishResponse(obj, changed);
     return;
   }
 
-  if (findCoordPairs(reqObj).length === 0 || collectResultLists(obj).length === 0) {
+  const coordCount = findCoordPairs(reqObj).length;
+  const listCount = collectResultLists(obj).length;
+  if (coordCount === 0 || listCount === 0) {
+    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：坐标组 ${coordCount}，列表 ${listCount}`);
     finishResponse(obj, changed);
     return;
   }
@@ -666,6 +683,7 @@ function tryCitySweepAndFinish(obj, changed) {
 }
 
 if (!body) {
+  if (isRequestHeader) logRequestHeaderHit();
   $done({});
 } else {
   let obj;
