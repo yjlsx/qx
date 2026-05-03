@@ -298,8 +298,9 @@ function deepHasRatioRebate(node, depth) {
 }
 
 function looksLikeResultList(key, arr) {
-  if (!Array.isArray(arr) || arr.length === 0) return false;
+  if (!Array.isArray(arr)) return false;
   if (/list|items|results|poi|store|shop|promotion|data/i.test(key)) return true;
+  if (arr.length === 0) return false;
   return arr.some((x) => isObj(x) && (
     Object.prototype.hasOwnProperty.call(x, "wm_poi_id") ||
     Object.prototype.hasOwnProperty.call(x, "store_id") ||
@@ -468,8 +469,8 @@ function coordNumber(v) {
 
 function findCoordPairs(root) {
   const pairs = [];
-  const latNames = /^(lat|latitude|user_lat|userLat|gcj_lat|gcjLat|poi_lat|poiLat)$/;
-  const lngNames = /^(lng|lon|longitude|user_lng|userLng|user_lon|userLon|gcj_lng|gcjLng|gcj_lon|gcjLon|poi_lng|poiLng|poi_lon|poiLon)$/;
+  const latNames = /^(lat|latitude|user_lat|userLat|gcj_lat|gcjLat|poi_lat|poiLat|shop_lat|shopLat|store_lat|storeLat)$/;
+  const lngNames = /^(lng|lon|longitude|user_lng|userLng|user_lon|userLon|gcj_lng|gcjLng|gcj_lon|gcjLon|poi_lng|poiLng|poi_lon|poiLon|shop_lng|shopLng|shop_lon|shopLon|store_lng|storeLng|store_lon|storeLon)$/;
 
   function walk(node, depth) {
     if (depth > 7 || node == null) return;
@@ -494,6 +495,15 @@ function findCoordPairs(root) {
 
   walk(root, 0);
   return pairs;
+}
+
+function firstCoordFrom(root) {
+  const pair = findCoordPairs(root)[0];
+  if (!pair) return null;
+  const lat = coordNumber(pair.node[pair.latKey]);
+  const lng = coordNumber(pair.node[pair.lngKey]);
+  if (lat == null || lng == null) return null;
+  return { lat, lng };
 }
 
 function findHeaderCoordPairs(headerObj) {
@@ -625,12 +635,15 @@ function citySweepOffsets() {
   ];
 }
 
-function citySweepHeaders(offset) {
+function citySweepHeaders(offset, baseCoord) {
   const next = Object.assign({}, headers, { "X-QX-Xiaocan-City-Sweep": "1" });
   for (const key in next) {
     if (String(key).toLowerCase() === "content-length") delete next[key];
   }
-  if (offset) applyHeaderCoordOffset(next, offset);
+  if (offset && applyHeaderCoordOffset(next, offset) === 0 && baseCoord) {
+    next.latitude = String(Number((baseCoord.lat + offset.lat).toFixed(6)));
+    next.longitude = String(Number((baseCoord.lng + offset.lng).toFixed(6)));
+  }
   return next;
 }
 
@@ -639,7 +652,7 @@ function finishResponse(obj, changed) {
   else $done({});
 }
 
-function processResponseObj(obj) {
+function processResponseObj(obj, skipRatioFilter) {
   let changed = false;
 
   if (/native_order_config\.json/i.test(url)) {
@@ -670,7 +683,7 @@ function processResponseObj(obj) {
     console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${method}`);
     changed = true;
   } else {
-    changed = filterRatioRebateItems(obj) > 0 || changed;
+    if (!skipRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
     changed = disableOrderAbnormalPopup(obj) || changed;
     changed = stripPlacementResources(obj) || changed;
     changed = disablePopupLike(obj) || changed;
@@ -679,15 +692,20 @@ function processResponseObj(obj) {
   return { obj, changed };
 }
 
-function tryCitySweepAndFinish(obj, changed) {
+function finishCitySweep(obj, changed, needsRatioFilter) {
+  if (needsRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
+  finishResponse(obj, changed);
+}
+
+function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   if (!isResponse || isCitySweepRequest() || !methodLooksLikeShopList()) {
-    finishResponse(obj, changed);
+    finishCitySweep(obj, changed, needsRatioFilter);
     return;
   }
 
   if (typeof $task === "undefined") {
     console.log(`[接口清理] ${method || "RPC"} 无法同城多点：$task 不可用`);
-    finishResponse(obj, changed);
+    finishCitySweep(obj, changed, needsRatioFilter);
     return;
   }
 
@@ -704,9 +722,10 @@ function tryCitySweepAndFinish(obj, changed) {
   const listCount = collectResultLists(obj).length;
   const bodyCoordCount = reqObj ? findCoordPairs(reqObj).length : 0;
   const headerCoordCount = findHeaderCoordPairs(headers).length;
-  if (listCount === 0 || (bodyCoordCount === 0 && headerCoordCount === 0)) {
-    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，列表 ${listCount}`);
-    finishResponse(obj, changed);
+  const responseBaseCoord = firstCoordFrom(obj);
+  if (listCount === 0 || (bodyCoordCount === 0 && headerCoordCount === 0 && !responseBaseCoord)) {
+    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，响应坐标 ${responseBaseCoord ? 1 : 0}，列表 ${listCount}`);
+    finishCitySweep(obj, changed, needsRatioFilter);
     return;
   }
 
@@ -724,7 +743,7 @@ function tryCitySweepAndFinish(obj, changed) {
     return $task.fetch({
       url,
       method: "POST",
-      headers: citySweepHeaders(bodyCoordCount > 0 ? null : offset),
+      headers: citySweepHeaders(bodyCoordCount > 0 ? null : offset, responseBaseCoord),
       body: nextBody,
     }).then((resp) => {
       try {
@@ -746,14 +765,13 @@ function tryCitySweepAndFinish(obj, changed) {
       if (extra) added += mergeCitySweepResults(obj, extra);
     });
     if (added > 0) {
-      filterRatioRebateItems(obj);
       obj._qx_city_sweep_added_count = added;
       console.log(`[接口清理] ${method || "RPC"} 同城多点合并新增 ${added} 条店铺`);
       changed = true;
     }
-    finishResponse(obj, changed);
+    finishCitySweep(obj, changed, needsRatioFilter);
   }, () => {
-    finishResponse(obj, changed);
+    finishCitySweep(obj, changed, needsRatioFilter);
   });
 }
 
@@ -783,8 +801,9 @@ if (!body) {
       if (changed) done(obj);
       else $done({});
     } else {
-      const result = processResponseObj(obj);
-      tryCitySweepAndFinish(result.obj, result.changed);
+      const deferRatioFilter = methodLooksLikeShopList();
+      const result = processResponseObj(obj, deferRatioFilter);
+      tryCitySweepAndFinish(result.obj, result.changed, deferRatioFilter);
     }
   } catch (e) {
     console.log(`[接口清理] 异常：${e.message || e}`);
