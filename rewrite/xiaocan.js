@@ -334,10 +334,39 @@ function looksLikeResultList(key, arr) {
 }
 
 function filterRatioRebateItems(obj) {
-  let removed = 0;
+  let cleaned = 0;
 
-  function shouldRemoveItem(item) {
+  function shouldCleanItem(item) {
     return isObj(item) && deepHasRatioRebate(item, 0);
+  }
+
+  function scrubRatioRebateFields(node, depth) {
+    if (depth > 6 || node == null) return;
+    if (Array.isArray(node)) {
+      for (let i = node.length - 1; i >= 0; i--) {
+        if (deepHasRatioRebate(node[i], 0)) node.splice(i, 1);
+        else scrubRatioRebateFields(node[i], depth + 1);
+      }
+      return;
+    }
+    if (!isObj(node)) return;
+
+    for (const key in node) {
+      const lk = lower(key);
+      const val = node[key];
+      if (
+        keyLooksLikeRebate(lk) ||
+        /^(ratio|user_ratio|media_ratio|shop_ratio|store_ratio|commission_ratio|rebate_ratio|cps_ratio|platform_ratio|max_commission|user_max_commission|media_max_commission|commission|commission_amount|reward_amount|bounty_amount|poi_event_id|plan_activity_type)$/.test(lk)
+      ) {
+        if (Array.isArray(val)) node[key] = [];
+        else if (isObj(val)) node[key] = null;
+        else if (typeof val === "number") node[key] = 0;
+        else if (typeof val === "string") node[key] = "";
+        else if (typeof val === "boolean") node[key] = false;
+      } else {
+        scrubRatioRebateFields(val, depth + 1);
+      }
+    }
   }
 
   function walk(node, path) {
@@ -350,15 +379,19 @@ function filterRatioRebateItems(obj) {
 
     for (const key in node) {
       const val = node[key];
-      if (Array.isArray(val) && val.some(shouldRemoveItem) && looksLikeResultList(key, val)) {
-        const before = val.length;
-        node[key] = val.filter((item) => !shouldRemoveItem(item));
-        const diff = before - node[key].length;
+      if (Array.isArray(val) && val.some(shouldCleanItem) && looksLikeResultList(key, val)) {
+        let diff = 0;
+        val.forEach((item) => {
+          if (shouldCleanItem(item)) {
+            scrubRatioRebateFields(item, 0);
+            diff += 1;
+          }
+        });
         if (diff > 0) {
-          removed += diff;
-          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利项`);
+          cleaned += diff;
+          console.log(`[接口清理] ${path ? path + "." : ""}${key} 清理 ${diff} 条返利店铺字段`);
         }
-        node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
+        val.forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
       } else if (val && typeof val === "object") {
         walk(val, `${path ? path + "." : ""}${key}`);
       }
@@ -366,18 +399,22 @@ function filterRatioRebateItems(obj) {
   }
 
   if (Array.isArray(obj.poi_list)) {
-    const before = obj.poi_list.length;
-    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveItem(item));
-    const diff = before - obj.poi_list.length;
+    let diff = 0;
+    obj.poi_list.forEach((item) => {
+      if (shouldCleanItem(item)) {
+        scrubRatioRebateFields(item, 0);
+        diff += 1;
+      }
+    });
     if (diff > 0) {
-      removed += diff;
-      console.log(`[接口清理] poi_list 移除 ${diff} 条按比例返利店铺`);
+      cleaned += diff;
+      console.log(`[接口清理] poi_list 清理 ${diff} 条返利店铺字段`);
     }
   }
 
   walk(obj, "");
-  if (removed > 0) obj._qx_removed_ratio_rebate_count = removed;
-  return removed;
+  if (cleaned > 0) obj._qx_cleaned_ratio_rebate_count = cleaned;
+  return cleaned;
 }
 
 function stripPlacementResources(obj) {
