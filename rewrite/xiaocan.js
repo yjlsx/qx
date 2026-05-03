@@ -3,6 +3,7 @@
 
 
 [rewrite_local]
+^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
@@ -10,7 +11,8 @@ hostname = gw.xiaocantech.com, gwh.xiaocantech.com
 
 */
 
-const body = typeof $response !== "undefined" ? $response.body : "";
+const isResponse = typeof $response !== "undefined";
+const body = isResponse ? $response.body : (($request && $request.body) || "");
 const headers = ($request && $request.headers) || {};
 const url = ($request && $request.url) || "";
 
@@ -56,6 +58,77 @@ function isObj(v) {
 
 function lower(s) {
   return String(s || "").toLowerCase();
+}
+
+function methodLooksLikeShopList() {
+  return /PromotionList|GetPoiList|PoiList|ShopList|StoreList|LifeShopList|SearchPoi|Nearby|RecommendPoi|ActivityList|MerchantList/i.test(method);
+}
+
+function widenCityShopRequest(obj) {
+  if (!methodLooksLikeShopList() && !deepHasAnyKey(obj, /^(poi|shop|store|promotion|activity|merchant)/i, 0)) {
+    return 0;
+  }
+
+  let changed = 0;
+  const pageSizeKeys = /^(page_size|pagesize|pageSize|limit|size|count|page_count|pageCount|page_limit|pageLimit|offset_limit|offsetLimit)$/;
+  const radiusKeys = /^(radius|distance|range|scope|search_radius|searchRadius|around_radius|aroundRadius|max_distance|maxDistance|nearby_distance|nearbyDistance)$/;
+  const sameCityKeys = /^(same_city|sameCity|city_scope|cityScope|in_city|inCity|only_city|onlyCity)$/;
+  const cityOnlyKeys = /^(city_only|cityOnly|is_city|isCity|local_city|localCity)$/;
+  const nearbyOnlyKeys = /^(nearby_only|nearbyOnly|only_nearby|onlyNearby|nearby)$/;
+
+  function setNumber(node, key, value) {
+    const old = Number(node[key] || 0);
+    if (!old || old < value) {
+      node[key] = value;
+      changed += 1;
+    }
+  }
+
+  function walk(node, depth) {
+    if (depth > 8 || node == null) return;
+    if (Array.isArray(node)) {
+      node.forEach((x) => walk(x, depth + 1));
+      return;
+    }
+    if (!isObj(node)) return;
+
+    for (const key in node) {
+      const lk = lower(key);
+      const val = node[key];
+
+      if (pageSizeKeys.test(key) || pageSizeKeys.test(lk)) {
+        setNumber(node, key, 100);
+      } else if (radiusKeys.test(key) || radiusKeys.test(lk)) {
+        setNumber(node, key, 80000);
+      } else if (sameCityKeys.test(key) || sameCityKeys.test(lk) || cityOnlyKeys.test(key) || cityOnlyKeys.test(lk)) {
+        if (node[key] !== true && node[key] !== 1) {
+          node[key] = typeof val === "number" ? 1 : true;
+          changed += 1;
+        }
+      } else if (nearbyOnlyKeys.test(key) || nearbyOnlyKeys.test(lk)) {
+        if (node[key] !== false && node[key] !== 0) {
+          node[key] = typeof val === "number" ? 0 : false;
+          changed += 1;
+        }
+      } else if (val && typeof val === "object") {
+        walk(val, depth + 1);
+      }
+    }
+  }
+
+  walk(obj, 0);
+  return changed;
+}
+
+function deepHasAnyKey(node, re, depth) {
+  if (depth > 5 || node == null) return false;
+  if (Array.isArray(node)) return node.some((x) => deepHasAnyKey(x, re, depth + 1));
+  if (!isObj(node)) return false;
+  for (const key in node) {
+    if (re.test(key)) return true;
+    if (deepHasAnyKey(node[key], re, depth + 1)) return true;
+  }
+  return false;
 }
 
 function keyLooksLikeRebate(key) {
@@ -335,13 +408,21 @@ if (!body) {
   try {
     obj = JSON.parse(body);
   } catch (e) {
-    $done({});
+    obj = null;
   }
 
-  try {
+  if (obj == null) {
+    $done({});
+  } else try {
     let changed = false;
 
-    if (/native_order_config\.json/i.test(url)) {
+    if (!isResponse) {
+      const widened = widenCityShopRequest(obj);
+      if (widened > 0) {
+        console.log(`[小蚕清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
+        changed = true;
+      }
+    } else if (/native_order_config\.json/i.test(url)) {
       obj.open_native = false;
       obj.open_ios_native = false;
       obj.open_android_native = false;
