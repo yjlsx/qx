@@ -863,9 +863,9 @@ if (!body) {
       if (changed) done(obj);
       else $done({});
     } else {
-      const deferRatioFilter = methodLooksLikeShopList();
-      const result = processResponseObj(obj, deferRatioFilter);
-      tryCitySweepAndFinish(result.obj, result.changed, deferRatioFilter);
+      const skipRatioFilter = methodLooksLikeShopList();
+      const result = processResponseObj(obj, skipRatioFilter);
+      tryCitySweepAndFinish(result.obj, result.changed, false);
     }
   } catch (e) {
     console.log(`[接口清理] 异常：${e.message || e}`);
