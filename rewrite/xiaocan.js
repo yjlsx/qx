@@ -71,6 +71,28 @@ function logRequestHeaderHit() {
   console.log(`[小蚕清理] 请求头命中：${server || "-"} | ${method || "-"}`);
 }
 
+function requestCacheKey() {
+  return `xiaocan_req_${server || "server"}_${method || "method"}`.replace(/[^\w.-]/g, "_");
+}
+
+function readCachedRequestObj() {
+  if (typeof $prefs === "undefined") return null;
+  const cached = $prefs.valueForKey(requestCacheKey());
+  if (!cached) return null;
+  try {
+    return JSON.parse(cached);
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveRequestObjForSweep(obj) {
+  if (typeof $prefs === "undefined" || !methodLooksLikeShopList()) return;
+  if (findCoordPairs(obj).length === 0) return;
+  $prefs.setValueForKey(JSON.stringify(obj), requestCacheKey());
+  console.log(`[小蚕清理] ${method || "RPC"} 已缓存同城多点请求体`);
+}
+
 function widenCityShopRequest(obj) {
   if (!methodLooksLikeShopList() && !deepHasAnyKey(obj, /^(poi|shop|store|promotion|activity|merchant)/i, 0)) {
     return 0;
@@ -629,9 +651,13 @@ function tryCitySweepAndFinish(obj, changed) {
   try {
     reqObj = JSON.parse(($request && $request.body) || "");
   } catch (e) {
-    console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON`);
-    finishResponse(obj, changed);
-    return;
+    reqObj = readCachedRequestObj();
+    if (!reqObj) {
+      console.log(`[小蚕清理] ${method || "RPC"} 无法同城多点：请求体不是 JSON，且没有缓存`);
+      finishResponse(obj, changed);
+      return;
+    }
+    console.log(`[小蚕清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
   }
 
   const coordCount = findCoordPairs(reqObj).length;
@@ -698,6 +724,7 @@ if (!body) {
   } else try {
     if (!isResponse) {
       let changed = false;
+      saveRequestObjForSweep(obj);
       const widened = widenCityShopRequest(obj);
       if (widened > 0) {
         console.log(`[小蚕清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
