@@ -417,6 +417,50 @@ function filterRatioRebateItems(obj) {
   return cleaned;
 }
 
+function lightlyScrubRatioRebateItems(obj) {
+  let cleaned = 0;
+  const listPaths = collectResultLists(obj);
+  const topRebateKeys = /^(ratio|user_ratio|media_ratio|shop_ratio|store_ratio|commission_ratio|rebate_ratio|cps_ratio|platform_ratio|max_commission|user_max_commission|media_max_commission|commission|commission_amount|reward_amount|bounty_amount|poi_event_id|plan_activity_type|plan_activity_info_list|commission_info_list)$/i;
+  const textKeys = /(?:tag|label|desc|description|title|sub_title|subtitle|tips|notice|reason|activity|benefit|reward|commission|rebate|fanli|shangjin)/i;
+
+  function scrubTextLike(value) {
+    if (typeof value !== "string") return value;
+    return textLooksLikeRatioRebate(value) ? "" : value;
+  }
+
+  function scrubItem(item) {
+    if (!isObj(item) || !deepHasRatioRebate(item, 0)) return false;
+    for (const key in item) {
+      const val = item[key];
+      if (topRebateKeys.test(key) || keyLooksLikeRebate(key)) {
+        if (Array.isArray(val)) item[key] = [];
+        else if (isObj(val)) item[key] = null;
+        else if (typeof val === "number") item[key] = 0;
+        else if (typeof val === "string") item[key] = "";
+        else if (typeof val === "boolean") item[key] = false;
+      } else if (textKeys.test(key)) {
+        if (typeof val === "string") item[key] = scrubTextLike(val);
+        else if (Array.isArray(val)) item[key] = val.filter((x) => !textLooksLikeRatioRebate(typeof x === "string" ? x : JSON.stringify(x || "")));
+      }
+    }
+    return true;
+  }
+
+  listPaths.forEach(({ arr, path }) => {
+    let diff = 0;
+    arr.forEach((item) => {
+      if (scrubItem(item)) diff += 1;
+    });
+    if (diff > 0) {
+      cleaned += diff;
+      console.log(`[接口清理] ${path || "list"} 轻量清理 ${diff} 条返利店铺字段`);
+    }
+  });
+
+  if (cleaned > 0) obj._qx_light_cleaned_ratio_rebate_count = cleaned;
+  return cleaned;
+}
+
 function stripPlacementResources(obj) {
   if (!Array.isArray(obj.resources)) return false;
 
@@ -753,7 +797,8 @@ function processResponseObj(obj, skipRatioFilter) {
 }
 
 function finishCitySweep(obj, changed, needsRatioFilter) {
-  if (needsRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
+  if (needsRatioFilter === "light") changed = lightlyScrubRatioRebateItems(obj) > 0 || changed;
+  else if (needsRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
   finishResponse(obj, changed);
 }
 
@@ -865,7 +910,7 @@ if (!body) {
     } else {
       const skipRatioFilter = methodLooksLikeShopList();
       const result = processResponseObj(obj, skipRatioFilter);
-      tryCitySweepAndFinish(result.obj, result.changed, false);
+      tryCitySweepAndFinish(result.obj, result.changed, skipRatioFilter ? "light" : false);
     }
   } catch (e) {
     console.log(`[接口清理] 异常：${e.message || e}`);
