@@ -3,8 +3,9 @@
 
 
 [rewrite_local]
-^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
-^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
+# 请求阶段用于缓存/放宽店铺查询参数，响应阶段用于清理和合并列表；三条都需要启用。
+^https:\/\/gwh?\.xiaocantech\.com\/rpc(?:$|\?) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
+^https:\/\/gwh?\.xiaocantech\.com\/rpc(?:$|\?) url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
@@ -13,10 +14,39 @@ hostname = gw.xiaocantech.com, gwh.xiaocantech.com
 */
 
 const isResponse = typeof $response !== "undefined";
-const body = isResponse ? $response.body : (($request && $request.body) || "");
+const body = readBody();
 const headers = ($request && $request.headers) || {};
 const url = ($request && $request.url) || "";
 const isRequestHeader = !isResponse && !body;
+
+function readBody() {
+  if (isResponse) return ($response && $response.body) || bytesToString($response && $response.bodyBytes) || "";
+  return readRequestBody();
+}
+
+function readRequestBody() {
+  return ($request && $request.body) || bytesToString($request && $request.bodyBytes) || "";
+}
+
+function bytesToString(bytes) {
+  if (!bytes) return "";
+  try {
+    if (typeof TextDecoder !== "undefined") {
+      return new TextDecoder("utf-8").decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    }
+    if (typeof Uint8Array !== "undefined" && bytes instanceof Uint8Array) {
+      let out = "";
+      for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
+      return decodeURIComponent(escape(out));
+    }
+    if (Array.isArray(bytes)) {
+      let out = "";
+      for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
+      return decodeURIComponent(escape(out));
+    }
+  } catch (e) {}
+  return "";
+}
 
 function h(name) {
   const lower = String(name).toLowerCase();
@@ -712,7 +742,10 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   let reqObj = null;
   let requestBodyIsJson = true;
   try {
-    reqObj = JSON.parse(($request && $request.body) || "");
+    reqObj = JSON.parse(readRequestBody());
+    if (findCoordPairs(reqObj).length > 0) {
+      console.log(`[接口清理] ${method || "RPC"} 响应阶段读到请求体坐标`);
+    }
   } catch (e) {
     requestBodyIsJson = false;
     reqObj = readCachedRequestObj();
@@ -730,7 +763,7 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   }
 
   const requests = citySweepOffsets().map((offset) => {
-    let nextBody = ($request && $request.body) || readCachedRawRequestBody();
+    let nextBody = readRequestBody() || readCachedRawRequestBody();
     if (bodyCoordCount > 0) {
       const next = cloneJson(reqObj);
       if (applyCoordOffset(next, offset) === 0) return null;
