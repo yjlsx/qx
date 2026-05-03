@@ -3,9 +3,8 @@
 
 
 [rewrite_local]
-# 请求阶段用于缓存/放宽店铺查询参数，响应阶段用于清理和合并列表；三条都需要启用。
-^https:\/\/gwh?\.xiaocantech\.com\/rpc(?:$|\?) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
-^https:\/\/gwh?\.xiaocantech\.com\/rpc(?:$|\?) url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
+# 请求体阶段用于缓存/放宽店铺查询参数，响应阶段用于清理和合并列表；两条都需要启用。
+^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
@@ -17,7 +16,6 @@ const isResponse = typeof $response !== "undefined";
 const body = readBody();
 const headers = ($request && $request.headers) || {};
 const url = ($request && $request.url) || "";
-const isRequestHeader = !isResponse && !body;
 
 function readBody() {
   if (isResponse) return ($response && $response.body) || bytesToString($response && $response.bodyBytes) || "";
@@ -94,11 +92,6 @@ function lower(s) {
 
 function methodLooksLikeShopList() {
   return /PromotionList|GetPoiList|PoiList|ShopList|StoreList|LifeShopList|SearchPoi|Nearby|RecommendPoi|ActivityList|MerchantList/i.test(method);
-}
-
-function logRequestHeaderHit() {
-  if (!/^https:\/\/gwh?\.xiaocantech\.com\/rpc$/i.test(url)) return;
-  console.log(`[接口清理] 请求头命中：${server || "-"} | ${method || "-"}`);
 }
 
 function requestCacheKey() {
@@ -809,7 +802,6 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
 }
 
 if (!body) {
-  if (isRequestHeader) logRequestHeaderHit();
   $done({});
 } else {
   let obj;
