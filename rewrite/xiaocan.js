@@ -3,8 +3,6 @@
 
 
 [rewrite_local]
-# 请求体阶段用于缓存/放宽店铺查询参数，响应阶段用于清理和合并列表；两条都需要启用。
-^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 ^https:\/\/gwh?\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/xiaocan.js
 
 [mitm]
@@ -12,39 +10,9 @@ hostname = gw.xiaocantech.com, gwh.xiaocantech.com
 
 */
 
-const isResponse = typeof $response !== "undefined";
-const body = readBody();
+const body = typeof $response !== "undefined" ? $response.body : "";
 const headers = ($request && $request.headers) || {};
 const url = ($request && $request.url) || "";
-
-function readBody() {
-  if (isResponse) return ($response && $response.body) || bytesToString($response && $response.bodyBytes) || "";
-  return readRequestBody();
-}
-
-function readRequestBody() {
-  return ($request && $request.body) || bytesToString($request && $request.bodyBytes) || "";
-}
-
-function bytesToString(bytes) {
-  if (!bytes) return "";
-  try {
-    if (typeof TextDecoder !== "undefined") {
-      return new TextDecoder("utf-8").decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
-    }
-    if (typeof Uint8Array !== "undefined" && bytes instanceof Uint8Array) {
-      let out = "";
-      for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
-      return decodeURIComponent(escape(out));
-    }
-    if (Array.isArray(bytes)) {
-      let out = "";
-      for (let i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
-      return decodeURIComponent(escape(out));
-    }
-  } catch (e) {}
-  return "";
-}
 
 function h(name) {
   const lower = String(name).toLowerCase();
@@ -56,11 +24,6 @@ function h(name) {
 
 const method = h("methodname");
 const server = h("servername");
-
-function methodLogName() {
-  const name = method || "RPC";
-  return String(name).replace(/^Silkworm[^.]*\./i, "");
-}
 
 function done(obj) {
   $done({ body: JSON.stringify(obj) });
@@ -93,118 +56,6 @@ function isObj(v) {
 
 function lower(s) {
   return String(s || "").toLowerCase();
-}
-
-function methodLooksLikeShopList() {
-  return /PromotionList|GetPoiList|PoiList|ShopList|StoreList|LifeShopList|SearchPoi|Nearby|RecommendPoi|ActivityList|MerchantList/i.test(method);
-}
-
-function requestCacheKey() {
-  return `xiaocan_req_${server || "server"}_${method || "method"}`.replace(/[^\w.-]/g, "_");
-}
-
-function rawRequestCacheKey() {
-  return `${requestCacheKey()}_raw`;
-}
-
-function readCachedRequestObj() {
-  if (typeof $prefs === "undefined") return null;
-  const cached = $prefs.valueForKey(requestCacheKey());
-  if (!cached) return null;
-  try {
-    return JSON.parse(cached);
-  } catch (e) {
-    return null;
-  }
-}
-
-function readCachedRawRequestBody() {
-  if (typeof $prefs === "undefined") return "";
-  return $prefs.valueForKey(rawRequestCacheKey()) || "";
-}
-
-function saveRequestObjForSweep(obj) {
-  if (typeof $prefs === "undefined" || !methodLooksLikeShopList()) return;
-  if (findCoordPairs(obj).length === 0) return;
-  $prefs.setValueForKey(JSON.stringify(obj), requestCacheKey());
-  console.log(`[接口清理] ${methodLogName()} 已缓存同城多点请求体`);
-}
-
-function saveRawRequestBodyForSweep(rawBody) {
-  if (typeof $prefs === "undefined" || !methodLooksLikeShopList() || !rawBody) return;
-  $prefs.setValueForKey(String(rawBody), rawRequestCacheKey());
-  console.log(`[接口清理] ${methodLogName()} 已缓存原始请求体`);
-}
-
-function widenCityShopRequest(obj) {
-  if (!methodLooksLikeShopList() && !deepHasAnyKey(obj, /^(poi|shop|store|promotion|activity|merchant)/i, 0)) {
-    return 0;
-  }
-
-  let changed = 0;
-  const pageSizeKeys = /^(page_size|pagesize|pageSize|limit|size|count|page_count|pageCount|page_limit|pageLimit|offset_limit|offsetLimit)$/;
-  const radiusKeys = /^(radius|distance|range|scope|search_radius|searchRadius|around_radius|aroundRadius|max_distance|maxDistance|nearby_distance|nearbyDistance|geo_radius|geoRadius|delivery_radius|deliveryRadius)$/;
-  const sameCityKeys = /^(same_city|sameCity|city_scope|cityScope|in_city|inCity|only_city|onlyCity|whole_city|wholeCity|city_wide|cityWide|all_city|allCity)$/;
-  const cityOnlyKeys = /^(city_only|cityOnly|is_city|isCity|local_city|localCity|current_city|currentCity)$/;
-  const nearbyOnlyKeys = /^(nearby_only|nearbyOnly|only_nearby|onlyNearby|nearby|nearby_mode|nearbyMode)$/;
-  const cityScopeTypeKeys = /^(scope_type|scopeType|range_type|rangeType|search_type|searchType|query_type|queryType)$/;
-
-  function setNumber(node, key, value) {
-    const old = Number(node[key] || 0);
-    if (!old || old < value) {
-      node[key] = value;
-      changed += 1;
-    }
-  }
-
-  function walk(node, depth) {
-    if (depth > 8 || node == null) return;
-    if (Array.isArray(node)) {
-      node.forEach((x) => walk(x, depth + 1));
-      return;
-    }
-    if (!isObj(node)) return;
-
-    for (const key in node) {
-      const lk = lower(key);
-      const val = node[key];
-
-      if (pageSizeKeys.test(key) || pageSizeKeys.test(lk)) {
-        setNumber(node, key, 200);
-      } else if (radiusKeys.test(key) || radiusKeys.test(lk)) {
-        setNumber(node, key, 300000);
-      } else if (sameCityKeys.test(key) || sameCityKeys.test(lk) || cityOnlyKeys.test(key) || cityOnlyKeys.test(lk)) {
-        if (node[key] !== true && node[key] !== 1) {
-          node[key] = typeof val === "number" ? 1 : true;
-          changed += 1;
-        }
-      } else if (nearbyOnlyKeys.test(key) || nearbyOnlyKeys.test(lk)) {
-        if (node[key] !== false && node[key] !== 0) {
-          node[key] = typeof val === "number" ? 0 : false;
-          changed += 1;
-        }
-      } else if ((cityScopeTypeKeys.test(key) || cityScopeTypeKeys.test(lk)) && typeof val === "string" && /nearby|around|distance/i.test(val)) {
-        node[key] = "city";
-        changed += 1;
-      } else if (val && typeof val === "object") {
-        walk(val, depth + 1);
-      }
-    }
-  }
-
-  walk(obj, 0);
-  return changed;
-}
-
-function deepHasAnyKey(node, re, depth) {
-  if (depth > 5 || node == null) return false;
-  if (Array.isArray(node)) return node.some((x) => deepHasAnyKey(x, re, depth + 1));
-  if (!isObj(node)) return false;
-  for (const key in node) {
-    if (re.test(key)) return true;
-    if (deepHasAnyKey(node[key], re, depth + 1)) return true;
-  }
-  return false;
 }
 
 function keyLooksLikeRebate(key) {
@@ -326,9 +177,8 @@ function deepHasRatioRebate(node, depth) {
 }
 
 function looksLikeResultList(key, arr) {
-  if (!Array.isArray(arr)) return false;
+  if (!Array.isArray(arr) || arr.length === 0) return false;
   if (/list|items|results|poi|store|shop|promotion|data/i.test(key)) return true;
-  if (arr.length === 0) return false;
   return arr.some((x) => isObj(x) && (
     Object.prototype.hasOwnProperty.call(x, "wm_poi_id") ||
     Object.prototype.hasOwnProperty.call(x, "store_id") ||
@@ -341,77 +191,8 @@ function looksLikeResultList(key, arr) {
 function filterRatioRebateItems(obj) {
   let removed = 0;
 
-  function isShopItem(item) {
-    return isObj(item) && (
-      item.wm_poi_id != null ||
-      item.poi_id != null ||
-      item.store_id != null ||
-      item.shop_id != null ||
-      (item.name != null && (item.action_url != null || item.picture != null))
-    );
-  }
-
-  function isRatioActivity(item) {
-    if (!isObj(item)) return false;
-    const type = String(item.plan_activity_type || "");
-    const condition = String(item.rebate_condition == null ? "" : item.rebate_condition);
-    return (
-      type === "2" ||
-      condition === "99"
-    ) && Number(item.ratio || item.user_ratio || item.media_ratio || 0) > 0;
-  }
-
-  function hasAvailableNormalActivity(item) {
-    if (!Array.isArray(item.plan_activity_info_list)) return false;
-    return item.plan_activity_info_list.some((activity) => {
-      if (!isObj(activity)) return false;
-      if (isRatioActivity(activity)) return false;
-      return true;
-    });
-  }
-
-  function shouldRemoveShopItem(item) {
-    if (!isShopItem(item) || !Array.isArray(item.plan_activity_info_list)) return false;
-    return item.plan_activity_info_list.some(isRatioActivity) && !hasAvailableNormalActivity(item);
-  }
-
-  function syncTopActivityFields(item) {
-    if (!isObj(item) || !Array.isArray(item.plan_activity_info_list)) return;
-    const activity = item.plan_activity_info_list.find((x) => isObj(x) && !isRatioActivity(x));
-    if (!activity) return;
-
-    const keys = [
-      "ratio",
-      "max_commission",
-      "inventory",
-      "poi_event_id",
-      "total_inventory",
-      "plan_activity_type",
-      "rebate_condition",
-      "user_ratio",
-      "media_ratio",
-      "user_max_commission",
-      "media_max_commission",
-    ];
-    keys.forEach((key) => {
-      if (Object.prototype.hasOwnProperty.call(activity, key)) item[key] = activity[key];
-    });
-  }
-
-  function scrubRatioActivities(item) {
-    if (!isObj(item) || !Array.isArray(item.plan_activity_info_list)) return 0;
-    const before = item.plan_activity_info_list.length;
-    item.plan_activity_info_list = item.plan_activity_info_list.filter((activity) => !isRatioActivity(activity));
-    const diff = before - item.plan_activity_info_list.length;
-    if (diff > 0) syncTopActivityFields(item);
-    return diff;
-  }
-
   function shouldRemoveItem(item) {
-    if (!isObj(item)) return false;
-    if (isShopItem(item)) return shouldRemoveShopItem(item);
-    if (item.plan_activity_type != null || item.rebate_condition != null) return isRatioActivity(item);
-    return isRatioActivity(item) || deepHasRatioRebate(item, 0);
+    return isObj(item) && deepHasRatioRebate(item, 0);
   }
 
   function walk(node, path) {
@@ -430,7 +211,7 @@ function filterRatioRebateItems(obj) {
         const diff = before - node[key].length;
         if (diff > 0) {
           removed += diff;
-          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利项`);
+          console.log(`[清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利项`);
         }
         node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
       } else if (val && typeof val === "object") {
@@ -441,65 +222,16 @@ function filterRatioRebateItems(obj) {
 
   if (Array.isArray(obj.poi_list)) {
     const before = obj.poi_list.length;
-    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveShopItem(item));
+    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveItem(item));
     const diff = before - obj.poi_list.length;
     if (diff > 0) {
       removed += diff;
-      console.log(`[接口清理] poi_list 移除 ${diff} 条按比例返利店铺`);
-    }
-
-    let scrubbed = 0;
-    obj.poi_list.forEach((item) => {
-      scrubbed += scrubRatioActivities(item);
-    });
-    if (scrubbed > 0) {
-      removed += scrubbed;
-      console.log(`[接口清理] poi_list 移除 ${scrubbed} 条按比例返利活动`);
+      console.log(`[清理] poi_list 移除 ${diff} 条按比例返利店铺`);
     }
   }
 
   walk(obj, "");
   if (removed > 0) obj._qx_removed_ratio_rebate_count = removed;
-  return removed;
-}
-
-function filterPromotionRebateItems(obj) {
-  let removed = 0;
-
-  function isPromotionRatioRebate(item) {
-    if (!isObj(item)) return false;
-    if (String(item.rebate_condition == null ? "" : item.rebate_condition) === "99") return true;
-    if (textLooksLikeRatioRebate(item.rebate_condition_str)) return true;
-    return false;
-  }
-
-  function walk(node, path) {
-    if (!node || typeof node !== "object") return;
-
-    if (Array.isArray(node)) {
-      node.forEach((x, i) => walk(x, `${path}[${i}]`));
-      return;
-    }
-
-    for (const key in node) {
-      const val = node[key];
-      if (Array.isArray(val) && /^promotions$/i.test(key) && val.some(isPromotionRatioRebate)) {
-        const before = val.length;
-        node[key] = val.filter((item) => !isPromotionRatioRebate(item));
-        const diff = before - node[key].length;
-        if (diff > 0) {
-          removed += diff;
-          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利活动`);
-        }
-        node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
-      } else if (val && typeof val === "object") {
-        walk(val, `${path ? path + "." : ""}${key}`);
-      }
-    }
-  }
-
-  walk(obj, "");
-  if (removed > 0) obj._qx_removed_promotion_ratio_rebate_count = removed;
   return removed;
 }
 
@@ -596,336 +328,6 @@ function disableOrderAbnormalPopup(obj) {
   return changed;
 }
 
-function cloneJson(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-function hasHeader(name) {
-  return h(name) !== "";
-}
-
-function isCitySweepRequest() {
-  return hasHeader("X-QX-Xiaocan-City-Sweep");
-}
-
-function coordNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function findCoordPairs(root) {
-  const pairs = [];
-  const latNames = /^(lat|latitude|user_lat|userLat|gcj_lat|gcjLat|poi_lat|poiLat|shop_lat|shopLat|store_lat|storeLat)$/;
-  const lngNames = /^(lng|lon|longitude|user_lng|userLng|user_lon|userLon|gcj_lng|gcjLng|gcj_lon|gcjLon|poi_lng|poiLng|poi_lon|poiLon|shop_lng|shopLng|shop_lon|shopLon|store_lng|storeLng|store_lon|storeLon)$/;
-
-  function walk(node, depth) {
-    if (depth > 7 || node == null) return;
-    if (Array.isArray(node)) {
-      node.forEach((x) => walk(x, depth + 1));
-      return;
-    }
-    if (!isObj(node)) return;
-
-    let latKey = "";
-    let lngKey = "";
-    for (const key in node) {
-      if (!latKey && latNames.test(key) && coordNumber(node[key]) != null) latKey = key;
-      if (!lngKey && lngNames.test(key) && coordNumber(node[key]) != null) lngKey = key;
-    }
-    if (latKey && lngKey) pairs.push({ node, latKey, lngKey });
-
-    for (const key in node) {
-      if (node[key] && typeof node[key] === "object") walk(node[key], depth + 1);
-    }
-  }
-
-  walk(root, 0);
-  return pairs;
-}
-
-function firstCoordFrom(root) {
-  const pair = findCoordPairs(root)[0];
-  if (!pair) return null;
-  const lat = coordNumber(pair.node[pair.latKey]);
-  const lng = coordNumber(pair.node[pair.lngKey]);
-  if (lat == null || lng == null) return null;
-  return { lat, lng };
-}
-
-function findHeaderCoordPairs(headerObj) {
-  const pairs = [];
-  const latNames = /^(x-)?(lat|latitude|user-lat|user_lat|gcj-lat|gcj_lat|poi-lat|poi_lat)$/i;
-  const lngNames = /^(x-)?(lng|lon|longitude|user-lng|user_lng|user-lon|user_lon|gcj-lng|gcj_lng|gcj-lon|gcj_lon|poi-lng|poi_lng|poi-lon|poi_lon)$/i;
-  let latKey = "";
-  let lngKey = "";
-
-  for (const key in headerObj || {}) {
-    if (!latKey && latNames.test(key) && coordNumber(headerObj[key]) != null) latKey = key;
-    if (!lngKey && lngNames.test(key) && coordNumber(headerObj[key]) != null) lngKey = key;
-  }
-
-  if (latKey && lngKey) pairs.push({ node: headerObj, latKey, lngKey });
-  return pairs;
-}
-
-function applyCoordOffset(root, offset) {
-  const pairs = findCoordPairs(root);
-  pairs.forEach(({ node, latKey, lngKey }) => {
-    const lat = coordNumber(node[latKey]);
-    const lng = coordNumber(node[lngKey]);
-    if (lat == null || lng == null) return;
-    node[latKey] = Number((lat + offset.lat).toFixed(6));
-    node[lngKey] = Number((lng + offset.lng).toFixed(6));
-  });
-  return pairs.length;
-}
-
-function applyHeaderCoordOffset(headerObj, offset) {
-  const pairs = findHeaderCoordPairs(headerObj);
-  pairs.forEach(({ node, latKey, lngKey }) => {
-    const lat = coordNumber(node[latKey]);
-    const lng = coordNumber(node[lngKey]);
-    if (lat == null || lng == null) return;
-    node[latKey] = String(Number((lat + offset.lat).toFixed(6)));
-    node[lngKey] = String(Number((lng + offset.lng).toFixed(6)));
-  });
-  return pairs.length;
-}
-
-function listItemKey(item) {
-  if (!isObj(item)) return "";
-  const keys = [
-    "wm_poi_id",
-    "poi_id",
-    "store_id",
-    "shop_id",
-    "merchant_id",
-    "id",
-    "name",
-  ];
-  for (const key of keys) {
-    if (item[key] != null && String(item[key]) !== "") return `${key}:${String(item[key])}`;
-  }
-  const name = item.name || item.poi_name || item.shop_name || item.store_name;
-  const address = item.address || item.addr || item.distance || "";
-  return name ? `fallback:${name}|${address}` : "";
-}
-
-function mergeList(target, source) {
-  if (!Array.isArray(target) || !Array.isArray(source)) return 0;
-  const seen = {};
-  target.forEach((item) => {
-    const key = listItemKey(item);
-    if (key) seen[key] = true;
-  });
-
-  let added = 0;
-  source.forEach((item) => {
-    const key = listItemKey(item);
-    if (!key || seen[key]) return;
-    target.push(item);
-    seen[key] = true;
-    added += 1;
-  });
-  return added;
-}
-
-function collectResultLists(root) {
-  const lists = [];
-
-  function walk(node, path) {
-    if (!node || typeof node !== "object") return;
-    if (Array.isArray(node)) {
-      node.forEach((x, i) => walk(x, `${path}[${i}]`));
-      return;
-    }
-
-    for (const key in node) {
-      const val = node[key];
-      if (looksLikeResultList(key, val)) {
-        lists.push({ path: `${path ? path + "." : ""}${key}`, arr: val });
-      } else if (val && typeof val === "object") {
-        walk(val, `${path ? path + "." : ""}${key}`);
-      }
-    }
-  }
-
-  walk(root, "");
-  return lists;
-}
-
-function mergeCitySweepResults(target, extra) {
-  const targetLists = collectResultLists(target);
-  const extraLists = collectResultLists(extra);
-  let added = 0;
-
-  targetLists.forEach((targetList) => {
-    extraLists.forEach((extraList) => {
-      if (targetList.path === extraList.path) {
-        added += mergeList(targetList.arr, extraList.arr);
-      }
-    });
-  });
-
-  return added;
-}
-
-function citySweepOffsets() {
-  return [
-    { lat: 0.14, lng: 0 },
-    { lat: -0.14, lng: 0 },
-    { lat: 0, lng: 0.16 },
-    { lat: 0, lng: -0.16 },
-    { lat: 0.1, lng: 0.12 },
-    { lat: -0.1, lng: -0.12 },
-  ];
-}
-
-function citySweepHeaders(offset, baseCoord) {
-  const next = Object.assign({}, headers, { "X-QX-Xiaocan-City-Sweep": "1" });
-  for (const key in next) {
-    if (String(key).toLowerCase() === "content-length") delete next[key];
-  }
-  if (offset && applyHeaderCoordOffset(next, offset) === 0 && baseCoord) {
-    next.latitude = String(Number((baseCoord.lat + offset.lat).toFixed(6)));
-    next.longitude = String(Number((baseCoord.lng + offset.lng).toFixed(6)));
-  }
-  return next;
-}
-
-function finishResponse(obj, changed) {
-  if (changed) done(obj);
-  else $done({});
-}
-
-function processResponseObj(obj, skipRatioFilter) {
-  let changed = false;
-
-  if (/native_order_config\.json/i.test(url)) {
-    obj.open_native = false;
-    obj.open_ios_native = false;
-    obj.open_android_native = false;
-    obj.open_ohos_native = false;
-    obj.open_flutter_native = false;
-    console.log("[接口清理] 已关闭原生订单页配置，避免订单异常弹窗");
-    changed = true;
-  } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
-    obj = {
-      status: { code: 0 },
-      data: {
-        ad_open: 0,
-        ad_type: [],
-        ad_source: [],
-        android_ad_id: "",
-        android_slot_id: "",
-        ios_ad_id: "",
-        ios_slot_id: "",
-        ad_photo: "",
-      },
-    };
-    changed = true;
-  } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
-    obj = emptyOk();
-    console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${methodLogName()}`);
-    changed = true;
-  } else {
-    changed = filterPromotionRebateItems(obj) > 0 || changed;
-    if (!skipRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
-    changed = disableOrderAbnormalPopup(obj) || changed;
-    changed = stripPlacementResources(obj) || changed;
-    changed = disablePopupLike(obj) || changed;
-  }
-
-  return { obj, changed };
-}
-
-function finishCitySweep(obj, changed, needsRatioFilter) {
-  changed = filterPromotionRebateItems(obj) > 0 || changed;
-  if (needsRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
-  finishResponse(obj, changed);
-}
-
-function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
-  if (!isResponse || isCitySweepRequest() || !methodLooksLikeShopList()) {
-    finishCitySweep(obj, changed, needsRatioFilter);
-    return;
-  }
-
-  if (typeof $task === "undefined") {
-    console.log(`[接口清理] ${methodLogName()} 无法同城多点：$task 不可用`);
-    finishCitySweep(obj, changed, needsRatioFilter);
-    return;
-  }
-
-  let reqObj = null;
-  let requestBodyIsJson = true;
-  try {
-    reqObj = JSON.parse(readRequestBody());
-    if (findCoordPairs(reqObj).length > 0) {
-      console.log(`[接口清理] ${methodLogName()} 响应阶段读到请求体坐标`);
-    }
-  } catch (e) {
-    requestBodyIsJson = false;
-    reqObj = readCachedRequestObj();
-    if (reqObj) console.log(`[接口清理] ${methodLogName()} 使用缓存请求体做同城多点`);
-  }
-
-  const listCount = collectResultLists(obj).length;
-  const bodyCoordCount = reqObj ? findCoordPairs(reqObj).length : 0;
-  const headerCoordCount = findHeaderCoordPairs(headers).length;
-  const responseBaseCoord = firstCoordFrom(obj);
-  if (listCount === 0 || (bodyCoordCount === 0 && headerCoordCount === 0 && !responseBaseCoord)) {
-    console.log(`[接口清理] ${methodLogName()} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，响应坐标 ${responseBaseCoord ? 1 : 0}，列表 ${listCount}`);
-    finishCitySweep(obj, changed, needsRatioFilter);
-    return;
-  }
-
-  const requests = citySweepOffsets().map((offset) => {
-    let nextBody = readRequestBody() || readCachedRawRequestBody();
-    if (bodyCoordCount > 0) {
-      const next = cloneJson(reqObj);
-      if (applyCoordOffset(next, offset) === 0) return null;
-      widenCityShopRequest(next);
-      nextBody = JSON.stringify(next);
-    } else if (requestBodyIsJson) {
-      return null;
-    }
-
-    return $task.fetch({
-      url,
-      method: "POST",
-      headers: citySweepHeaders(bodyCoordCount > 0 ? null : offset, responseBaseCoord),
-      body: nextBody,
-    }).then((resp) => {
-      try {
-        return JSON.parse(resp.body || "{}");
-      } catch (e) {
-        return null;
-      }
-    }, () => null);
-  }).filter(Boolean);
-
-  if (requests.length === 0) {
-    finishResponse(obj, changed);
-    return;
-  }
-
-  Promise.all(requests).then((results) => {
-    let added = 0;
-    results.forEach((extra) => {
-      if (extra) added += mergeCitySweepResults(obj, extra);
-    });
-    if (added > 0) {
-      obj._qx_city_sweep_added_count = added;
-      console.log(`[接口清理] ${methodLogName()} 同城多点合并新增 ${added} 条店铺`);
-      changed = true;
-    }
-    finishCitySweep(obj, changed, needsRatioFilter);
-  }, () => {
-    finishCitySweep(obj, changed, needsRatioFilter);
-  });
-}
-
 if (!body) {
   $done({});
 } else {
@@ -933,30 +335,50 @@ if (!body) {
   try {
     obj = JSON.parse(body);
   } catch (e) {
-    obj = null;
+    $done({});
   }
 
-  if (obj == null) {
-    if (!isResponse && body) saveRawRequestBodyForSweep(body);
-    $done({});
-  } else try {
-    if (!isResponse) {
-      let changed = false;
-      saveRequestObjForSweep(obj);
-      const widened = widenCityShopRequest(obj);
-      if (widened > 0) {
-        console.log(`[接口清理] ${methodLogName()} 已放宽同城店铺请求范围/数量：${widened} 处`);
-        changed = true;
-      }
-      if (changed) done(obj);
-      else $done({});
+  try {
+    let changed = false;
+
+    if (/native_order_config\.json/i.test(url)) {
+      obj.open_native = false;
+      obj.open_ios_native = false;
+      obj.open_android_native = false;
+      obj.open_ohos_native = false;
+      obj.open_flutter_native = false;
+      console.log("[小蚕清理] 已关闭原生订单页配置，避免订单异常弹窗");
+      changed = true;
+    } else if (method === "AdMobileService.MatchPlacement" || /SilkwormAd/i.test(server)) {
+      obj = {
+        status: { code: 0 },
+        data: {
+          ad_open: 0,
+          ad_type: [],
+          ad_source: [],
+          android_ad_id: "",
+          android_slot_id: "",
+          ios_ad_id: "",
+          ios_slot_id: "",
+          ad_photo: "",
+        },
+      };
+      changed = true;
+    } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
+      obj = emptyOk();
+      console.log(`[清理] 已关闭订单异常/订单奖励弹窗：${method}`);
+      changed = true;
     } else {
-      const deferRatioFilter = methodLooksLikeShopList();
-      const result = processResponseObj(obj, deferRatioFilter);
-      tryCitySweepAndFinish(result.obj, result.changed, deferRatioFilter);
+      changed = filterRatioRebateItems(obj) > 0 || changed;
+      changed = disableOrderAbnormalPopup(obj) || changed;
+      changed = stripPlacementResources(obj) || changed;
+      changed = disablePopupLike(obj) || changed;
     }
+
+    if (changed) done(obj);
+    else $done({});
   } catch (e) {
-    console.log(`[接口清理] 异常：${e.message || e}`);
+    console.log(`[清理] 异常：${e.message || e}`);
     $done({});
   }
 }
