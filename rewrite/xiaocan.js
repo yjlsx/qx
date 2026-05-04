@@ -461,46 +461,13 @@ function filterRatioRebateItems(obj) {
 }
 
 function filterPromotionRebateItems(obj) {
-  let scrubbed = 0;
+  let removed = 0;
 
-  function isPromotionRebate(item) {
+  function isPromotionRatioRebate(item) {
     if (!isObj(item)) return false;
-    if (Number(item.user_rebate || item.rebate_price || 0) > 0) return true;
-    if (item.rebate_condition != null && String(item.rebate_condition) !== "" && String(item.rebate_condition) !== "0") return true;
+    if (String(item.rebate_condition == null ? "" : item.rebate_condition) === "99") return true;
     if (textLooksLikeRatioRebate(item.rebate_condition_str)) return true;
     return false;
-  }
-
-  function scrubPromotionRebate(item) {
-    if (!isPromotionRebate(item)) return false;
-
-    const zeroKeys = [
-      "user_rebate",
-      "rebate_price",
-      "media_rebate",
-      "shop_rebate",
-      "commission",
-      "commission_amount",
-      "rebate_condition",
-    ];
-    const emptyKeys = [
-      "rebate_condition_str",
-      "rebate_desc",
-      "rebate_text",
-      "commission_desc",
-      "commission_text",
-      "fanli_desc",
-      "fanli_text",
-    ];
-
-    zeroKeys.forEach((key) => {
-      if (Object.prototype.hasOwnProperty.call(item, key)) item[key] = 0;
-    });
-    emptyKeys.forEach((key) => {
-      if (Object.prototype.hasOwnProperty.call(item, key)) item[key] = "";
-    });
-
-    return true;
   }
 
   function walk(node, path) {
@@ -513,16 +480,15 @@ function filterPromotionRebateItems(obj) {
 
     for (const key in node) {
       const val = node[key];
-      if (Array.isArray(val) && /^promotions$/i.test(key) && val.some(isPromotionRebate)) {
-        let count = 0;
-        val.forEach((item) => {
-          if (scrubPromotionRebate(item)) count += 1;
-        });
-        if (count > 0) {
-          scrubbed += count;
-          console.log(`[接口清理] ${path ? path + "." : ""}${key} 清理 ${count} 条返利字段`);
+      if (Array.isArray(val) && /^promotions$/i.test(key) && val.some(isPromotionRatioRebate)) {
+        const before = val.length;
+        node[key] = val.filter((item) => !isPromotionRatioRebate(item));
+        const diff = before - node[key].length;
+        if (diff > 0) {
+          removed += diff;
+          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条按比例返利活动`);
         }
-        val.forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
+        node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
       } else if (val && typeof val === "object") {
         walk(val, `${path ? path + "." : ""}${key}`);
       }
@@ -530,8 +496,8 @@ function filterPromotionRebateItems(obj) {
   }
 
   walk(obj, "");
-  if (scrubbed > 0) obj._qx_scrubbed_promotion_rebate_count = scrubbed;
-  return scrubbed;
+  if (removed > 0) obj._qx_removed_promotion_ratio_rebate_count = removed;
+  return removed;
 }
 
 function stripPlacementResources(obj) {
