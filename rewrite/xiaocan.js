@@ -460,6 +460,48 @@ function filterRatioRebateItems(obj) {
   return removed;
 }
 
+function filterPromotionRebateItems(obj) {
+  let removed = 0;
+
+  function isPromotionRebate(item) {
+    if (!isObj(item)) return false;
+    if (Number(item.user_rebate || item.rebate_price || 0) > 0) return true;
+    if (item.rebate_condition != null && String(item.rebate_condition) !== "" && String(item.rebate_condition) !== "0") return true;
+    if (textLooksLikeRatioRebate(item.rebate_condition_str)) return true;
+    if (item.promotion_id != null && (item.user_rebate != null || item.rebate_price != null || item.rebate_condition != null)) return true;
+    return false;
+  }
+
+  function walk(node, path) {
+    if (!node || typeof node !== "object") return;
+
+    if (Array.isArray(node)) {
+      node.forEach((x, i) => walk(x, `${path}[${i}]`));
+      return;
+    }
+
+    for (const key in node) {
+      const val = node[key];
+      if (Array.isArray(val) && /^promotions$/i.test(key) && val.some(isPromotionRebate)) {
+        const before = val.length;
+        node[key] = val.filter((item) => !isPromotionRebate(item));
+        const diff = before - node[key].length;
+        if (diff > 0) {
+          removed += diff;
+          console.log(`[接口清理] ${path ? path + "." : ""}${key} 移除 ${diff} 条返利活动`);
+        }
+        node[key].forEach((x, i) => walk(x, `${path ? path + "." : ""}${key}[${i}]`));
+      } else if (val && typeof val === "object") {
+        walk(val, `${path ? path + "." : ""}${key}`);
+      }
+    }
+  }
+
+  walk(obj, "");
+  if (removed > 0) obj._qx_removed_promotion_rebate_count = removed;
+  return removed;
+}
+
 function stripPlacementResources(obj) {
   if (!Array.isArray(obj.resources)) return false;
 
@@ -786,6 +828,7 @@ function processResponseObj(obj, skipRatioFilter) {
     console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${method}`);
     changed = true;
   } else {
+    changed = filterPromotionRebateItems(obj) > 0 || changed;
     if (!skipRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
     changed = disableOrderAbnormalPopup(obj) || changed;
     changed = stripPlacementResources(obj) || changed;
@@ -796,6 +839,7 @@ function processResponseObj(obj, skipRatioFilter) {
 }
 
 function finishCitySweep(obj, changed, needsRatioFilter) {
+  changed = filterPromotionRebateItems(obj) > 0 || changed;
   if (needsRatioFilter) changed = filterRatioRebateItems(obj) > 0 || changed;
   finishResponse(obj, changed);
 }
