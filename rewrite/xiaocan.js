@@ -336,8 +336,75 @@ function looksLikeResultList(key, arr) {
 function filterRatioRebateItems(obj) {
   let removed = 0;
 
+  function isShopItem(item) {
+    return isObj(item) && (
+      item.wm_poi_id != null ||
+      item.poi_id != null ||
+      item.store_id != null ||
+      item.shop_id != null ||
+      (item.name != null && (item.action_url != null || item.picture != null))
+    );
+  }
+
+  function isRatioActivity(item) {
+    if (!isObj(item)) return false;
+    const type = String(item.plan_activity_type || "");
+    const condition = String(item.rebate_condition == null ? "" : item.rebate_condition);
+    return (type === "2" || condition === "99") && Number(item.ratio || item.user_ratio || item.media_ratio || 0) > 0;
+  }
+
+  function hasAvailableNormalActivity(item) {
+    if (!Array.isArray(item.plan_activity_info_list)) return false;
+    return item.plan_activity_info_list.some((activity) => {
+      if (!isObj(activity)) return false;
+      if (String(activity.plan_activity_type || "") !== "1") return false;
+      if (activity.inventory == null) return true;
+      return Number(activity.inventory || 0) > 0;
+    });
+  }
+
+  function shouldRemoveShopItem(item) {
+    if (!isShopItem(item) || !Array.isArray(item.plan_activity_info_list)) return false;
+    return item.plan_activity_info_list.some(isRatioActivity) && !hasAvailableNormalActivity(item);
+  }
+
+  function syncTopActivityFields(item) {
+    if (!isObj(item) || !Array.isArray(item.plan_activity_info_list)) return;
+    const activity = item.plan_activity_info_list.find((x) => isObj(x) && String(x.plan_activity_type || "") === "1");
+    if (!activity) return;
+
+    const keys = [
+      "ratio",
+      "max_commission",
+      "inventory",
+      "poi_event_id",
+      "total_inventory",
+      "plan_activity_type",
+      "rebate_condition",
+      "user_ratio",
+      "media_ratio",
+      "user_max_commission",
+      "media_max_commission",
+    ];
+    keys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(activity, key)) item[key] = activity[key];
+    });
+  }
+
+  function scrubRatioActivities(item) {
+    if (!isObj(item) || !Array.isArray(item.plan_activity_info_list)) return 0;
+    const before = item.plan_activity_info_list.length;
+    item.plan_activity_info_list = item.plan_activity_info_list.filter((activity) => !isRatioActivity(activity));
+    const diff = before - item.plan_activity_info_list.length;
+    if (diff > 0) syncTopActivityFields(item);
+    return diff;
+  }
+
   function shouldRemoveItem(item) {
-    return isObj(item) && deepHasRatioRebate(item, 0);
+    if (!isObj(item)) return false;
+    if (isShopItem(item)) return shouldRemoveShopItem(item);
+    if (item.plan_activity_type != null || item.rebate_condition != null) return isRatioActivity(item);
+    return isRatioActivity(item) || deepHasRatioRebate(item, 0);
   }
 
   function walk(node, path) {
@@ -367,11 +434,20 @@ function filterRatioRebateItems(obj) {
 
   if (Array.isArray(obj.poi_list)) {
     const before = obj.poi_list.length;
-    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveItem(item));
+    obj.poi_list = obj.poi_list.filter((item) => !shouldRemoveShopItem(item));
     const diff = before - obj.poi_list.length;
     if (diff > 0) {
       removed += diff;
       console.log(`[接口清理] poi_list 移除 ${diff} 条按比例返利店铺`);
+    }
+
+    let scrubbed = 0;
+    obj.poi_list.forEach((item) => {
+      scrubbed += scrubRatioActivities(item);
+    });
+    if (scrubbed > 0) {
+      removed += scrubbed;
+      console.log(`[接口清理] poi_list 移除 ${scrubbed} 条按比例返利活动`);
     }
   }
 
