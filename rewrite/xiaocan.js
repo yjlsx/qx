@@ -57,6 +57,11 @@ function h(name) {
 const method = h("methodname");
 const server = h("servername");
 
+function methodLogName() {
+  const name = method || "RPC";
+  return String(name).replace(/^Silkworm[^.]*\./i, "");
+}
+
 function done(obj) {
   $done({ body: JSON.stringify(obj) });
 }
@@ -122,13 +127,13 @@ function saveRequestObjForSweep(obj) {
   if (typeof $prefs === "undefined" || !methodLooksLikeShopList()) return;
   if (findCoordPairs(obj).length === 0) return;
   $prefs.setValueForKey(JSON.stringify(obj), requestCacheKey());
-  console.log(`[接口清理] ${method || "RPC"} 已缓存同城多点请求体`);
+  console.log(`[接口清理] ${methodLogName()} 已缓存同城多点请求体`);
 }
 
 function saveRawRequestBodyForSweep(rawBody) {
   if (typeof $prefs === "undefined" || !methodLooksLikeShopList() || !rawBody) return;
   $prefs.setValueForKey(String(rawBody), rawRequestCacheKey());
-  console.log(`[接口清理] ${method || "RPC"} 已缓存原始请求体`);
+  console.log(`[接口清理] ${methodLogName()} 已缓存原始请求体`);
 }
 
 function widenCityShopRequest(obj) {
@@ -351,7 +356,6 @@ function filterRatioRebateItems(obj) {
     const type = String(item.plan_activity_type || "");
     const condition = String(item.rebate_condition == null ? "" : item.rebate_condition);
     return (
-      (type === "1" && condition === "0") ||
       type === "2" ||
       condition === "99"
     ) && Number(item.ratio || item.user_ratio || item.media_ratio || 0) > 0;
@@ -362,8 +366,7 @@ function filterRatioRebateItems(obj) {
     return item.plan_activity_info_list.some((activity) => {
       if (!isObj(activity)) return false;
       if (isRatioActivity(activity)) return false;
-      if (activity.inventory == null) return true;
-      return Number(activity.inventory || 0) > 0;
+      return true;
     });
   }
 
@@ -823,7 +826,7 @@ function processResponseObj(obj, skipRatioFilter) {
     changed = true;
   } else if (/GetOrderRejectionRecord|GetPendingResurrectionOrder|IsShowOrderAwardPopup/i.test(method)) {
     obj = emptyOk();
-    console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${method}`);
+    console.log(`[接口清理] 已关闭订单异常/订单奖励弹窗：${methodLogName()}`);
     changed = true;
   } else {
     changed = filterPromotionRebateItems(obj) > 0 || changed;
@@ -849,7 +852,7 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   }
 
   if (typeof $task === "undefined") {
-    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：$task 不可用`);
+    console.log(`[接口清理] ${methodLogName()} 无法同城多点：$task 不可用`);
     finishCitySweep(obj, changed, needsRatioFilter);
     return;
   }
@@ -859,12 +862,12 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   try {
     reqObj = JSON.parse(readRequestBody());
     if (findCoordPairs(reqObj).length > 0) {
-      console.log(`[接口清理] ${method || "RPC"} 响应阶段读到请求体坐标`);
+      console.log(`[接口清理] ${methodLogName()} 响应阶段读到请求体坐标`);
     }
   } catch (e) {
     requestBodyIsJson = false;
     reqObj = readCachedRequestObj();
-    if (reqObj) console.log(`[接口清理] ${method || "RPC"} 使用缓存请求体做同城多点`);
+    if (reqObj) console.log(`[接口清理] ${methodLogName()} 使用缓存请求体做同城多点`);
   }
 
   const listCount = collectResultLists(obj).length;
@@ -872,7 +875,7 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
   const headerCoordCount = findHeaderCoordPairs(headers).length;
   const responseBaseCoord = firstCoordFrom(obj);
   if (listCount === 0 || (bodyCoordCount === 0 && headerCoordCount === 0 && !responseBaseCoord)) {
-    console.log(`[接口清理] ${method || "RPC"} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，响应坐标 ${responseBaseCoord ? 1 : 0}，列表 ${listCount}`);
+    console.log(`[接口清理] ${methodLogName()} 无法同城多点：body坐标 ${bodyCoordCount}，header坐标 ${headerCoordCount}，响应坐标 ${responseBaseCoord ? 1 : 0}，列表 ${listCount}`);
     finishCitySweep(obj, changed, needsRatioFilter);
     return;
   }
@@ -914,7 +917,7 @@ function tryCitySweepAndFinish(obj, changed, needsRatioFilter) {
     });
     if (added > 0) {
       obj._qx_city_sweep_added_count = added;
-      console.log(`[接口清理] ${method || "RPC"} 同城多点合并新增 ${added} 条店铺`);
+      console.log(`[接口清理] ${methodLogName()} 同城多点合并新增 ${added} 条店铺`);
       changed = true;
     }
     finishCitySweep(obj, changed, needsRatioFilter);
@@ -942,7 +945,7 @@ if (!body) {
       saveRequestObjForSweep(obj);
       const widened = widenCityShopRequest(obj);
       if (widened > 0) {
-        console.log(`[接口清理] ${method || "RPC"} 已放宽同城店铺请求范围/数量：${widened} 处`);
+        console.log(`[接口清理] ${methodLogName()} 已放宽同城店铺请求范围/数量：${widened} 处`);
         changed = true;
       }
       if (changed) done(obj);
