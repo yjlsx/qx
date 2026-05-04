@@ -350,14 +350,18 @@ function filterRatioRebateItems(obj) {
     if (!isObj(item)) return false;
     const type = String(item.plan_activity_type || "");
     const condition = String(item.rebate_condition == null ? "" : item.rebate_condition);
-    return (type === "2" || condition === "99") && Number(item.ratio || item.user_ratio || item.media_ratio || 0) > 0;
+    return (
+      (type === "1" && condition === "0") ||
+      type === "2" ||
+      condition === "99"
+    ) && Number(item.ratio || item.user_ratio || item.media_ratio || 0) > 0;
   }
 
   function hasAvailableNormalActivity(item) {
     if (!Array.isArray(item.plan_activity_info_list)) return false;
     return item.plan_activity_info_list.some((activity) => {
       if (!isObj(activity)) return false;
-      if (String(activity.plan_activity_type || "") !== "1") return false;
+      if (isRatioActivity(activity)) return false;
       if (activity.inventory == null) return true;
       return Number(activity.inventory || 0) > 0;
     });
@@ -370,7 +374,7 @@ function filterRatioRebateItems(obj) {
 
   function syncTopActivityFields(item) {
     if (!isObj(item) || !Array.isArray(item.plan_activity_info_list)) return;
-    const activity = item.plan_activity_info_list.find((x) => isObj(x) && String(x.plan_activity_type || "") === "1");
+    const activity = item.plan_activity_info_list.find((x) => isObj(x) && !isRatioActivity(x));
     if (!activity) return;
 
     const keys = [
