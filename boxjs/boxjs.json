@@ -376,8 +376,71 @@
           }
         }
       }
+    },
+    {
+      "id": "iqiyi_daily_bonus",
+      "name": "爱奇艺签到",
+      "author": "@NobyDa",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/qwe.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/iQIYI.js",
+      "keys": [
+        "CookieQY",
+        "iQIYI_LogDetails",
+        "iQIYI_ShakeLottery"
+      ],
+      "settings": [
+        {
+          "id": "CookieQY",
+          "name": "爱奇艺 Cookie",
+          "val": "",
+          "type": "textarea",
+          "desc": "Safari 打开 https://m.iqiyi.com/user.html 登录后自动捕获，或手动填写包含 P00001、P00003、__dfp 的 Cookie。"
+        },
+        {
+          "id": "iQIYI_LogDetails",
+          "name": "调试日志",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后在日志中输出接口响应详情。"
+        },
+        {
+          "id": "iQIYI_ShakeLottery",
+          "name": "摇一摇限免3次",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后会先查询今日免费次数；次数为0时跳过，避免消耗积分。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "passport.iqiyi.com"
+        ],
+        "schema": {
+          "CookieQY": {
+            "type": "textarea",
+            "label": "爱奇艺 Cookie",
+            "default": "",
+            "desc": "支持自动捕获，或手动填写包含 P00001、P00003、__dfp 的 Cookie。",
+            "rows": 4,
+            "placeholder": "P00001=xxx; P00003=xxx; __dfp=xxx;"
+          },
+          "iQIYI_LogDetails": {
+            "type": "boolean",
+            "label": "调试日志",
+            "default": false,
+            "desc": "开启后输出接口响应详情。"
+          },
+          "iQIYI_ShakeLottery": {
+            "type": "boolean",
+            "label": "摇一摇限免3次",
+            "default": false,
+            "desc": "开启后会先查询今日免费次数；次数为0时跳过，避免消耗积分。"
+          }
+        }
+      }
     }
   ]
 }
-
-
