@@ -2,7 +2,11 @@
 ZA Bank签到
 
 [rewrite_local]
-^https:\/\/bankappgw\.za\.group\/(?:dmb|mb|activity|openapi_xman)\/.*(?:sign|quest|collection|activity).* url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
+^https:\/\/bankappgw\.za\.group\/dmb\/nsjkd\/week\/sign\/list url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
+^https:\/\/bankappgw\.za\.group\/dmb\/t95n10\/signIn\/tips url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
+^https:\/\/bankappgw\.za\.group\/dmb\/nsjkgu\/user\/quest\/(?:list|group\/list|popup\/grouping\/list) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
+^https:\/\/bankappgw\.za\.group\/dmb\/ns3gf\/user\/collection\/count url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
+^https:\/\/bankappgw\.za\.group\/dmb\/nvpexa\/collection\/exchange\/status\/prizeId url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
 
 [task_local]
 10 9 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/za_bank.js
