@@ -516,6 +516,59 @@
       }
     },
     {
+      "id": "lixianla",
+      "name": "离线啦签到",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/qwe.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js",
+      "keys": [
+        "lixianla_cookie",
+        "lixianla_ocr_key"
+      ],
+      "settings": [
+        {
+          "id": "lixianla_cookie",
+          "name": "离线啦 Cookie",
+          "val": "",
+          "type": "textarea",
+          "desc": "开启重写后访问 lixianla.com 自动写入，也可手动填写包含 bbs_token、bbs_sid 的 Cookie。"
+        },
+        {
+          "id": "lixianla_ocr_key",
+          "name": "OCR Space API Key",
+          "val": "",
+          "type": "text",
+          "desc": "填写 ocr.space 的 apikey，用于自动识别签到验证码。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "lixianla.com"
+        ],
+        "schema": {
+          "lixianla_cookie": {
+            "type": "textarea",
+            "label": "离线啦 Cookie",
+            "default": "",
+            "desc": "开启重写后访问 lixianla.com 自动写入，也可手动填写包含 bbs_token、bbs_sid 的 Cookie。",
+            "rows": 4,
+            "placeholder": "bbs_token=xxx; bbs_sid=xxx;"
+          },
+          "lixianla_ocr_key": {
+            "type": "text",
+            "label": "OCR Space API Key",
+            "default": "",
+            "desc": "填写 ocr.space 的 apikey，用于自动识别签到验证码。",
+            "input": "password",
+            "placeholder": "Kxxxxxxxxxxxx"
+          }
+        }
+      }
+    },
+    {
       "id": "iqiyi_daily_bonus",
       "name": "爱奇艺签到",
       "author": "@NobyDa",

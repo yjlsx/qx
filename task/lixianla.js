@@ -1,124 +1,427 @@
 /*
- * 离线啦全能助手 (Cookie 抓取 + 自动 OCR 签到)
- * * [rewrite_local]
- * ^https?:\/\/lixianla\.com\/(index\.php|sg_sign\.htm|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js
- * * [task_local]
- * 10 0 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js, tag=离线啦签到, enabled=true
+ * lxian自动 OCR 签到
+ *
+ * [rewrite_local]
+^https?:\/\/lixianla\.com\/ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js
 
  * [mitm]
 hostname = lixianla.com
 
  */
 
-const OCR_KEY = 'K81085631088957'; 
-const COOKIE_KEY = "lixianla_cookie";
 
-// --- 自动判断运行模式 ---
+const COOKIE_KEY = 'lixianla_cookie';
+const OCR_KEY_NAME = 'lixianla_ocr_key';
+
+let OCR_KEY = readData(OCR_KEY_NAME) || '';
+
+let currentCookie = readData(COOKIE_KEY) || '';
+
+const MAX_RETRY = 10;
+
+const mainReferer = 'https://lixianla.com/index-4-5.htm';
+
 if (typeof $request !== 'undefined') {
-    getCookie();
+    captureCookie();
 } else {
     startSign();
 }
 
-/**
- * 逻辑 A: 自动抓取 Cookie (精准匹配模式)
- */
-function getCookie() {
-    if ($request.headers && $request.headers["Cookie"]) {
-        const ck = $request.headers["Cookie"];
-        if (ck.indexOf("bbs_token") > -1 && ck.indexOf("bbs_sid") > -1) {
-            let oldCk = $prefs.valueForKey(COOKIE_KEY);
-            if (ck !== oldCk) {
-                if ($prefs.setValue(ck, COOKIE_KEY)) {
-                    $notify("离线啦助手", "Cookie 抓取成功 ✅", "已自动存储关键凭证");
-                }
-            }
-        }
-    }
-    // 立即放行请求，不加参数，防止网页加载卡死
-    $done({});
-}
-
-/**
- * 逻辑 B: 自动化签到逻辑
- */
 async function startSign() {
-    const savedCookie = $prefs.valueForKey(COOKIE_KEY);
-    if (!savedCookie) {
-        $notify("离线啦签到", "失败 ❌", "本地无 Cookie，请先在浏览器登录网站");
-        $done(); return;
-    }
 
     try {
-        console.log("[1/4] 获取动态 Action ID...");
-        const entryRes = await $task.fetch({
-            url: `https://lixianla.com/sg_sign.htm`,
-            headers: { 'Cookie': savedCookie, 'X-Requested-With': 'XMLHttpRequest' }
-        });
 
-        const actionMatch = entryRes.body.match(/action="(sg_sign-lx-\d+\.htm)"/);
-        if (!actionMatch) throw "未能提取到动态 ID，可能已签到/过期";
-        const signPath = actionMatch[1];
+        if (!currentCookie) {
 
-        console.log("[2/4] 获取验证码...");
-        const vcodeRes = await $task.fetch({
-            url: `https://lixianla.com/vcode.htm?${Math.random()}`,
-            headers: { 'Cookie': savedCookie, 'Referer': 'https://lixianla.com/' }
-        });
-        const base64Img = iArrayBufferToBase64(vcodeRes.bodyBytes);
+            $notify("离线啦签到", "停止 ❌", "缺少 Cookie，请先开启重写访问 lixianla.com 自动抓取");
 
-        console.log("[3/4] OCR 识别中...");
-        const code = await doOCR(base64Img);
-        console.log(`[离线啦] 识别文字: ${code}`);
+            $done();
 
-        console.log("[4/4] 提交签到...");
-        const signRes = await $task.fetch({
-            url: `https://lixianla.com/${signPath}`,
-            method: 'POST',
-            headers: {
-                'Cookie': savedCookie,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://lixianla.com',
-                'Referer': 'https://lixianla.com/',
-                'X-Requested-With': 'XMLHttpRequest',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-            },
-            body: `vcode=${code}`
-        });
+            return;
 
-        if (signRes.body.includes("成功") || signRes.body.includes("恭喜") || signRes.body.includes("已经签到")) {
-            $notify("离线啦签到", "签到完成 ✅", `识别码: ${code}\n${signRes.body.includes("已经") ? "今日已签到" : "签到成功"}`);
-        } else {
-            console.log("详细回复：" + signRes.body);
-            $notify("离线啦签到", "状态待确认 ⚠️", "请在日志中查看详细返回");
         }
 
+        if (!OCR_KEY) {
+
+            $notify("离线啦签到", "停止 ❌", "缺少 OCR Key，请先在 BoxJS 填写 lixianla_ocr_key");
+
+            $done();
+
+            return;
+
+        }
+
+        const now = new Date();
+
+        const hour = now.getHours();
+
+        const minute = now.getMinutes();
+
+        if (hour === 0 && minute === 0) {
+
+            console.log(`⏰ 当前时间 ${hour}:${minute}，检测为凌晨准点启动，静默等待 18 秒...`);
+
+            await new Promise(r => setTimeout(r, 18000));
+
+        } else {
+
+            console.log(`🚀 当前时间 ${hour}:${minute}，非凌晨准点，直接开始执行...`);
+
+        }
+
+        console.log("【1/4】探测动态签到接口...");
+
+        let entry = await request('https://lixianla.com/sg_sign.htm', 'GET', 'https://lixianla.com/');
+
+        let actionMatch = entry.body?.match(/sg_sign-lx-\d+\.htm/);
+
+        if (!actionMatch && !entry.body?.includes("已经签到")) {
+
+            console.log("⚠️ 接口仍未就绪，缓冲 5 秒后重试探测...");
+
+            await new Promise(r => setTimeout(r, 5000));
+
+            entry = await request('https://lixianla.com/sg_sign.htm', 'GET', 'https://lixianla.com/');
+
+            actionMatch = entry.body?.match(/sg_sign-lx-\d+\.htm/);
+
+        }
+
+        if (!actionMatch) {
+
+            if (entry.body?.includes("已经签到")) {
+
+                console.log("检测到今日已签到，直接获取积分...");
+
+                const info = await fetchCredits();
+
+                $notify("离线啦", "成功 ✅", `今天已签过！\n${info}`);
+
+                $done();
+
+                return;
+
+            }
+
+            throw "Cookie失效或未找到接口";
+
+        }
+
+        const fullSignUrl = `https://lixianla.com/${actionMatch[0]}`;
+
+        console.log(`✅ 接口地址: ${fullSignUrl}`);
+
+        for (let i = 1; i <= MAX_RETRY; i++) {
+
+            console.log(`\n--- [第 ${i} 次尝试] ---`);
+
+            await request(fullSignUrl, 'GET', mainReferer);
+
+            const vcodeUrl = `https://lixianla.com/vcode.htm?${Math.random()}`;
+
+            console.log(`【2/4】正在获取验证码... \n🔗 地址: ${vcodeUrl}`);
+
+            const vcodeRes = await request(vcodeUrl, 'GET', mainReferer, null, true);
+
+            console.log(`验证码状态码: ${vcodeRes.statusCode}`);
+
+            console.log(`bodyBytes: ${vcodeRes.bodyBytes ? vcodeRes.bodyBytes.byteLength : "无"}`);
+
+            if (!vcodeRes.bodyBytes || vcodeRes.bodyBytes.byteLength < 100) {
+
+                console.log("⚠️ 验证码图片获取失败，准备重试...");
+
+                await new Promise(r => setTimeout(r, 1000));
+
+                continue;
+
+            }
+
+            const code = await doOCR(iArrayBufferToBase64(vcodeRes.bodyBytes));
+
+            console.log(`OCR识别结果: [${code}]`);
+
+            if (!code || code.length < 3) {
+
+                console.log("⚠️ 识别结果异常，准备重试...");
+
+                await new Promise(r => setTimeout(r, 1000));
+
+                continue;
+
+            }
+
+            console.log("【3/4】提交签到请求...");
+
+            const postRes = await request(
+
+                fullSignUrl,
+
+                'POST',
+
+                mainReferer,
+
+                `vcode=${encodeURIComponent(code)}`
+
+            );
+
+            let resMsg = String(postRes.body || "");
+
+            try {
+
+                const parsed = JSON.parse(postRes.body);
+
+                resMsg = String(parsed.message || postRes.body || "");
+
+            } catch (e) {}
+
+            console.log(`📩 响应: ${resMsg}`);
+
+            if (resMsg.includes("成功") || resMsg.includes("恭喜") || resMsg.includes("已经签过")) {
+
+                const info = await fetchCredits();
+
+                $notify("离线啦签到", "🎉成功 ✅", `${resMsg}\n${info}`);
+
+                $done();
+
+                return;
+
+            }
+
+            if (!resMsg.includes("验证码错误")) {
+
+                throw resMsg;
+
+            }
+
+            await new Promise(r => setTimeout(r, 1000));
+
+        }
+
+        $notify("离线啦签到", "停止 ❌", "重试次数已达上限");
+
     } catch (e) {
-        $notify("离线啦签到", "脚本异常 ❌", e);
+
+        console.log(`❌ 程序出错: ${e}`);
+
+        $notify("离线啦签到", "停止 ❌", String(e).substring(0, 50));
+
     }
+
     $done();
+
 }
 
-/**
- * --- 辅助库 ---
- */
-async function doOCR(base64) {
-    const res = await $task.fetch({
-        url: "https://api.ocr.space/parse/image",
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `apikey=${OCR_KEY}&base64Image=data:image/jpeg;base64,${encodeURIComponent(base64)}&language=eng&OCREngine=2`
-    });
-    const data = JSON.parse(res.body);
-    if (data.ParsedResults && data.ParsedResults[0]) {
-        return data.ParsedResults[0].ParsedText.replace(/\s+/g, "");
+async function fetchCredits() {
+
+    console.log("【4/4】正在抓取积分信息...");
+
+    try {
+
+        const res = await request(
+
+            'https://lixianla.com/my-credits.htm',
+
+            'GET',
+
+            'https://lixianla.com/my.htm'
+
+        );
+
+        const exp = res.body.match(/经验.*?value="(\d+)"/)?.[1] || "未知";
+
+        const coin = res.body.match(/金币.*?value="(\d+)"/)?.[1] || "未知";
+
+        const result = `经验: ${exp} | 金币: ${coin}`;
+
+        console.log(`✅ 获取成功: ${result}`);
+
+        return result;
+
+    } catch (e) {
+
+        console.log("❌ 积分信息获取失败");
+
+        return "积分信息获取失败";
+
     }
-    throw "OCR 识别失败";
+
+}
+
+async function request(url, method, referer, body = null, isBinary = false) {
+
+    const headers = {
+
+        'Cookie': currentCookie,
+
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+
+        'X-Requested-With': 'XMLHttpRequest',
+
+        'Referer': referer
+
+    };
+
+    if (method === 'POST') {
+
+        headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+
+    }
+
+    const req = {
+
+        url,
+
+        method,
+
+        headers
+
+    };
+
+    if (body !== null) {
+
+        req.body = body;
+
+    }
+
+    if (isBinary) {
+
+        req.opts = {
+
+            responseType: 'arraybuffer'
+
+        };
+
+    }
+
+    const response = await $task.fetch(req);
+
+    const sc = response.headers?.['Set-Cookie'] || response.headers?.['set-cookie'];
+
+    if (sc) updateCookie(sc);
+
+    return response;
+
+}
+
+function updateCookie(setCookie) {
+
+    const parts = setCookie.split(/,(?=[^;]+=[^;]+)/);
+
+    parts.forEach(p => {
+
+        const cookie = p.split(';')[0].trim();
+
+        const [key] = cookie.split('=');
+
+        if (key && currentCookie.includes(key + "=")) {
+
+            currentCookie = currentCookie.replace(new RegExp(`${key}=[^;]+`), cookie);
+
+        } else if (key) {
+
+            currentCookie += `; ${cookie}`;
+
+        }
+
+    });
+
+    writeData(currentCookie, COOKIE_KEY);
+
+}
+
+function captureCookie() {
+
+    const cookie = $request.headers?.Cookie || $request.headers?.cookie || "";
+
+    if (cookie && /bbs_(token|sid)=/.test(cookie)) {
+
+        const oldCookie = readData(COOKIE_KEY) || "";
+
+        if (oldCookie !== cookie) {
+
+            writeData(cookie, COOKIE_KEY);
+
+            $notify("离线啦", "Cookie 已写入 BoxJS ✅", "lixianla_cookie");
+
+        } else {
+
+            console.log("离线啦 Cookie 未变化，跳过写入");
+
+        }
+
+    } else {
+
+        console.log("未找到离线啦 Cookie");
+
+    }
+
+    $done({});
+
+}
+
+async function doOCR(base64) {
+
+    try {
+
+        const res = await $task.fetch({
+
+            url: "https://api.ocr.space/parse/image",
+
+            method: "POST",
+
+            headers: {
+
+                "Content-Type": "application/x-www-form-urlencoded"
+
+            },
+
+            body: `apikey=${encodeURIComponent(OCR_KEY)}&base64Image=data:image/png;base64,${encodeURIComponent(base64)}&OCREngine=2&scale=true&isOverlayRequired=false`
+
+        });
+
+        const resJson = JSON.parse(res.body);
+
+        const text = resJson.ParsedResults?.[0]?.ParsedText || "";
+
+        return text.replace(/[^a-zA-Z0-9]/g, "").trim();
+
+    } catch (e) {
+
+        console.log(`❌ OCR请求失败: ${e}`);
+
+        return "";
+
+    }
+
 }
 
 function iArrayBufferToBase64(buffer) {
-    var binary = '';
-    var bytes = new Uint8Array(buffer);
-    for (var i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+
+    let binary = '';
+
+    const bytes = new Uint8Array(buffer);
+
+    for (let i = 0; i < bytes.byteLength; i++) {
+
+        binary += String.fromCharCode(bytes[i]);
+
+    }
+
     return btoa(binary);
+
 }
+
+function readData(key) {
+
+    return typeof $prefs !== 'undefined' ? $prefs.valueForKey(key) : "";
+
+}
+
+function writeData(value, key) {
+
+    return typeof $prefs !== 'undefined' ? $prefs.setValueForKey(value, key) : false;
+
+}
+
