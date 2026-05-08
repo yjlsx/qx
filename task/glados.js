@@ -91,7 +91,6 @@ function signin() {
    const header = {
      'Sec-Fetch-Dest' : `empty`,
      'Connection' : `keep-alive`,
-     'Accept-Encoding' : `gzip, deflate, br`,
      'Content-Type' : `application/json;charset=utf-8`,
      'Sec-Fetch-Site' : `same-origin`,
      'Origin' : BASE_URL,
@@ -114,7 +113,7 @@ function signin() {
        if (error) {
          $.log("签到请求错误: " + error);
        } else {
-         var obj = JSON.parse(response.body);
+         var obj = parseJsonBody(data, response);
          if (obj.code === 0 || obj.code === 1) {
            if (obj.message.includes("Please Try Tomorrow") || obj.code === 1) {
              message += "今日已签到";
@@ -128,6 +127,7 @@ function signin() {
        }
      } catch (e) {
        $.log("签到解析异常: " + e);
+       $.log("签到原始响应: " + previewBody(data, response));
      }
      resolve(); // 确保 resolve 运行，防止转圈
    });
@@ -148,7 +148,7 @@ function status() {
        if (error) {
          $.log("状态请求错误");
        } else {
-         var obj = JSON.parse(response.body);
+         var obj = parseJsonBody(data, response);
          if (obj.code == 0) {
            account = obj.data.email;
            remainday = parseInt(obj.data.leftDays);
@@ -158,10 +158,21 @@ function status() {
        }
      } catch (e) {
        $.log("状态解析异常");
+       $.log("状态原始响应: " + previewBody(data, response));
      }
      resolve();
    });
  });
+}
+
+function parseJsonBody(data, response) {
+ const body = data || (response && response.body) || "";
+ return typeof body === "string" ? JSON.parse(body) : body;
+}
+
+function previewBody(data, response) {
+ const body = data || (response && response.body) || "";
+ return typeof body === "string" ? body.slice(0, 300) : JSON.stringify(body).slice(0, 300);
 }
 
 function getCookie() {
