@@ -313,14 +313,19 @@ async function enrichItemsWithArticleText(items) {
    try {
      const html = await fetchText(item.link, `文章 ${i + 1}`);
      const articleText = extractArticleText(html);
+     const articleImage = extractArticleImage(html) || item.image;
      if (articleText) {
        nextItems[i] = {
          ...item,
          articleText: limitText(articleText, ARTICLE_TEXT_LENGTH),
-         image: item.image || extractFirstImage(html)
+         image: articleImage
        };
        console.log(`✅ 正文提取成功 ${i + 1}: ${item.title.slice(0, 20)}...`);
      } else {
+       nextItems[i] = {
+         ...item,
+         image: articleImage
+       };
        console.log(`⚠️ 未提取到正文 ${i + 1}: ${item.title.slice(0, 20)}...`);
      }
    } catch (e) {
@@ -347,8 +352,31 @@ function extractArticleText(html) {
 }
 
 function extractFirstImage(html) {
- const match = String(html || '').match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+ const match = String(html || '').match(/<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]*>/i);
  return match ? decodeHtml(match[1]) : null;
+}
+
+function extractArticleImage(html) {
+ const source = String(html || '');
+ const imagePatterns = [
+   /<figure[^>]+class=["'][^"']*(?:article-span-photo|article-inline-photo)[^"']*["'][\s\S]*?<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]*>/i,
+   /<section[^>]+class=["'][^"']*article-body[^"']*["'][^>]*>[\s\S]*?<img[^>]+(?:data-src|src)=["']([^"']+)["'][^>]*>/i,
+   /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+   /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["'][^>]*>/i
+ ];
+
+ for (const pattern of imagePatterns) {
+   const match = source.match(pattern);
+   if (match && match[1]) return normalizeImageUrl(match[1]);
+ }
+
+ return null;
+}
+
+function normalizeImageUrl(url) {
+ return decodeHtml(String(url || '').trim())
+   .replace(/-articleLarge(?=\.)/, '-master1050')
+   .replace(/-videoLarge(?=\.)/, '-master1050');
 }
 
 function htmlToText(html) {
@@ -501,11 +529,12 @@ function buildTelegraphContent(items) {
    const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
    if (meta) nodes.push({ tag: 'p', children: [meta] });
 
-   if (item.image) {
+ const image = item.image ? normalizeImageUrl(item.image) : '';
+ if (image) {
      nodes.push({
        tag: 'figure',
        children: [
-         { tag: 'img', attrs: { src: item.image } }
+         { tag: 'img', attrs: { src: image } }
        ]
      });
    }
@@ -552,11 +581,11 @@ function formatPubDate(pubDate) {
 
 // 推送通知：短提醒，点击打开聚合阅读页
 async function sendNotification(items, readingPageUrl) {
- const title = "📰 纽约时报新闻精选";
+ const title = "纽约时报新闻精选";
  const content = buildNotificationContent(items, readingPageUrl);
  const options = readingPageUrl ? { "open-url": readingPageUrl } : {};
 
- $notify(title, readingPageUrl ? "点击打开图文聚合页" : "聚合页生成失败", content, options);
+ $notify(title, "", content, options);
 
  // Bark推送（可选）
  if (USE_BARK && BARK_KEY && BARK_KEY !== 'your_key_here') {
@@ -575,7 +604,7 @@ function buildNotificationContent(items, readingPageUrl) {
    .map((item, index) => `${index + 1}. ${item.title}`)
    .join('\n');
  const rest = items.length > NOTIFY_TITLE_COUNT ? `\n等 ${items.length} 条新闻` : '';
- const hint = readingPageUrl ? '\n\n点通知看图文聚合页' : '\n\n聚合页生成失败，见日志';
+ const hint = readingPageUrl ? '' : '\n\n聚合页生成失败，见日志';
  return `${titles}${rest}${hint}`;
 }
 
