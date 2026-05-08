@@ -23,8 +23,9 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?")) {
     console.log("🔍 检测 hash 参数：" + (hash || "未找到"));
 
     if (hash) {
-        const newUrl = `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
-        headers['x-router'] = 'm.kugou.com';
+        // 旧方案保留：const oldUrl = `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
+        const newUrl = url.replace("gateway.kugou.com/tracker/v5/url", "gateway.kugou.com/v5/url");
+        headers['x-router'] = 'trackercdn.kugou.com';
 
         console.log("✅ 请求重写成功！");
         console.log("🎯 新 URL：" + newUrl);
