@@ -5,6 +5,7 @@ const DEFAULT_CONFIG = {
  SHOW_SUMMARY: true,
  SUMMARY_LENGTH: 180,
  FETCH_ARTICLE_TEXT: true,       // 自动抓取文章页正文
+ ARTICLE_POLICY: '',             // 文章页抓取策略，留空为 direct + 默认策略
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
  ARTICLE_TEXT_LENGTH: 1200,      // 聚合页里每篇正文预览长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
@@ -19,6 +20,7 @@ const MAX_ITEMS = CONFIG.MAX_ITEMS;
 const SHOW_SUMMARY = CONFIG.SHOW_SUMMARY;
 const SUMMARY_LENGTH = CONFIG.SUMMARY_LENGTH;
 const FETCH_ARTICLE_TEXT = CONFIG.FETCH_ARTICLE_TEXT;
+const ARTICLE_POLICY = CONFIG.ARTICLE_POLICY;
 const ARTICLE_FETCH_LIMIT = CONFIG.ARTICLE_FETCH_LIMIT;
 const ARTICLE_TEXT_LENGTH = CONFIG.ARTICLE_TEXT_LENGTH;
 const CREATE_READING_PAGE = CONFIG.CREATE_READING_PAGE;
@@ -34,6 +36,7 @@ function loadConfig() {
    SHOW_SUMMARY: readBoolean('nysb_show_summary', DEFAULT_CONFIG.SHOW_SUMMARY),
    SUMMARY_LENGTH: readNumber('nysb_summary_length', DEFAULT_CONFIG.SUMMARY_LENGTH, 50, 1000),
    FETCH_ARTICLE_TEXT: readBoolean('nysb_fetch_article_text', DEFAULT_CONFIG.FETCH_ARTICLE_TEXT),
+   ARTICLE_POLICY: readString('nysb_article_policy', DEFAULT_CONFIG.ARTICLE_POLICY),
    ARTICLE_FETCH_LIMIT: readNumber('nysb_article_fetch_limit', DEFAULT_CONFIG.ARTICLE_FETCH_LIMIT, 0, 20),
    ARTICLE_TEXT_LENGTH: readNumber('nysb_article_text_length', DEFAULT_CONFIG.ARTICLE_TEXT_LENGTH, 100, 5000),
    CREATE_READING_PAGE: readBoolean('nysb_create_reading_page', DEFAULT_CONFIG.CREATE_READING_PAGE),
@@ -105,16 +108,34 @@ function fetchRSS() {
 }
 
 function fetchText(url, label = '页面') {
- return fetchTextWithPolicy(url, label, 'direct').catch(error => {
-   if (label === 'RSS') throw error;
-   console.log(`⚠️ ${label}直连失败，改用默认策略重试: ${error.message}`);
-   return fetchTextWithPolicy(url, label, null);
- });
+ const policies = label === 'RSS' ? ['direct'] : getArticlePolicies();
+ return fetchTextByPolicies(url, label, policies);
+}
+
+async function fetchTextByPolicies(url, label, policies) {
+ let lastError = null;
+ for (const policy of policies) {
+   try {
+     return await fetchTextWithPolicy(url, label, policy);
+   } catch (error) {
+     lastError = error;
+     console.log(`⚠️ ${label}${policy ? `策略 ${policy}` : '默认策略'}失败: ${error.message}`);
+   }
+ }
+ throw lastError || new Error(`${label}请求失败`);
+}
+
+function getArticlePolicies() {
+ const policies = [];
+ if (ARTICLE_POLICY) policies.push(ARTICLE_POLICY);
+ policies.push('direct');
+ policies.push(null);
+ return policies.filter((policy, index, arr) => arr.indexOf(policy) === index);
 }
 
 function fetchTextWithPolicy(url, label = '页面', policy = null) {
  return new Promise((resolve, reject) => {
-   const TIMEOUT = 15000;
+   const TIMEOUT = 30000;
    const RETRY_DELAY = [2000, 5000, 10000];
    let retryCount = 0;
 

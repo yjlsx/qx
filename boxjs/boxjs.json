@@ -772,6 +772,7 @@
         "nysb_show_summary",
         "nysb_summary_length",
         "nysb_fetch_article_text",
+        "nysb_article_policy",
         "nysb_article_fetch_limit",
         "nysb_article_text_length",
         "nysb_create_reading_page",
@@ -814,6 +815,13 @@
           "val": true,
           "type": "boolean",
           "desc": "开启后会逐篇打开文章页提取正文预览。"
+        },
+        {
+          "id": "nysb_article_policy",
+          "name": "文章抓取策略",
+          "val": "",
+          "type": "text",
+          "desc": "文章页连接超时时填写 Quantumult X 里的代理策略名，如 Proxy、国外媒体、香港等；留空则先直连再默认策略。"
         },
         {
           "id": "nysb_article_fetch_limit",
@@ -895,6 +903,13 @@
             "label": "抓取文章正文",
             "default": true,
             "desc": "开启后会逐篇打开文章页提取正文预览。"
+          },
+          "nysb_article_policy": {
+            "type": "text",
+            "label": "文章抓取策略",
+            "default": "",
+            "desc": "文章页连接超时时填写 Quantumult X 里的代理策略名，如 Proxy、国外媒体、香港等；留空则先直连再默认策略。",
+            "placeholder": "Proxy"
           },
           "nysb_article_fetch_limit": {
             "type": "text",
