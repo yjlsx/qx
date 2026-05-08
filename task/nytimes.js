@@ -105,21 +105,32 @@ function fetchRSS() {
 }
 
 function fetchText(url, label = '页面') {
+ return fetchTextWithPolicy(url, label, 'direct').catch(error => {
+   if (label === 'RSS') throw error;
+   console.log(`⚠️ ${label}直连失败，改用默认策略重试: ${error.message}`);
+   return fetchTextWithPolicy(url, label, null);
+ });
+}
+
+function fetchTextWithPolicy(url, label = '页面', policy = null) {
  return new Promise((resolve, reject) => {
    const TIMEOUT = 15000;
    const RETRY_DELAY = [2000, 5000, 10000];
    let retryCount = 0;
 
    const attemptFetch = () => {
-     $task.fetch({
+     const request = {
        url,
        timeout: TIMEOUT,
        headers: {
-         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
-         'Accept-Encoding': 'gzip, deflate'
-       },
-       policy: 'direct' // 直连模式
-     }).then(resp => {
+         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+         'Accept-Language': 'zh-CN,zh-Hans;q=0.9,en;q=0.8'
+       }
+     };
+     if (policy) request.policy = policy;
+
+     $task.fetch(request).then(resp => {
        const statusCode = resp.statusCode || resp.status;
        if (statusCode >= 200 && statusCode < 300) {
          const decodedData = decodeResponseBody(resp);
@@ -133,20 +144,32 @@ function fetchText(url, label = '页面') {
          console.log(`⚠️ ${label} HTTP ${statusCode} 错误，第 ${retryCount + 1} 次重试...`);
          setTimeout(attemptFetch, RETRY_DELAY[retryCount++]);
        } else {
-         reject(new Error(`${label}最终请求失败: HTTP ${statusCode}`));
+         reject(new Error(`${label}最终请求失败: HTTP ${statusCode || '未知状态码'}`));
        }
      }, err => {
        if (retryCount < RETRY_DELAY.length) {
-         console.log(`⚠️ ${label}网络错误 (${err.error || err})，第 ${retryCount + 1} 次重试...`);
+         console.log(`⚠️ ${label}网络错误 (${formatFetchError(err)})，第 ${retryCount + 1} 次重试...`);
          setTimeout(attemptFetch, RETRY_DELAY[retryCount++]);
        } else {
-         reject(new Error(`${label}最终连接失败: ${err.error || err}`));
+         reject(new Error(`${label}最终连接失败: ${formatFetchError(err)}`));
        }
      });
    };
 
    attemptFetch();
  });
+}
+
+function formatFetchError(err) {
+ if (!err) return '未知错误';
+ if (typeof err === 'string') return err;
+ if (err.error) return err.error;
+ if (err.message) return err.message;
+ try {
+   return JSON.stringify(err);
+ } catch (e) {
+   return String(err);
+ }
 }
 
 function decodeResponseBody(resp) {
@@ -348,14 +371,20 @@ async function createReadingPage(items) {
        console.log(`⚠️ Telegraph重试失败: ${retryError.message}`);
      }
    }
+   console.log(`⚠️ 图文聚合页生成失败，改用纯文本页重试: ${e.message}`);
+   try {
+     return await createTelegraphPage(items, await getTelegraphToken(), true);
+   } catch (plainError) {
+     console.log(`⚠️ 纯文本聚合页也生成失败: ${plainError.message}`);
+   }
    console.log(`⚠️ 聚合阅读页生成失败: ${e.message}`);
    return null;
  }
 }
 
-async function createTelegraphPage(items, token) {
+async function createTelegraphPage(items, token, plainTextOnly = false) {
  const title = `纽约时报中文网精选 ${formatDate(new Date())}`;
- const content = buildTelegraphContent(items);
+ const content = plainTextOnly ? buildPlainTelegraphContent(items) : buildTelegraphContent(items);
  const body = [
    `access_token=${encodeURIComponent(token)}`,
    `title=${encodeURIComponent(title)}`,
@@ -380,6 +409,32 @@ async function createTelegraphPage(items, token) {
  }
 
  throw new Error(data.error || 'Telegraph返回异常');
+}
+
+function buildPlainTelegraphContent(items) {
+ const nodes = [
+   { tag: 'p', children: [`共 ${items.length} 条。图文版生成失败，本页为纯文本版。`] }
+ ];
+
+ items.forEach((item, index) => {
+   nodes.push({ tag: 'h3', children: [`${index + 1}. ${item.title}`] });
+   const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
+   if (meta) nodes.push({ tag: 'p', children: [meta] });
+
+   const text = item.articleText || item.summary || '';
+   splitParagraphs(text).forEach(paragraph => {
+     nodes.push({ tag: 'p', children: [paragraph] });
+   });
+
+   nodes.push({
+     tag: 'p',
+     children: [
+       { tag: 'a', attrs: { href: item.link }, children: ['打开原文'] }
+     ]
+   });
+ });
+
+ return nodes;
 }
 
 async function getTelegraphToken() {
