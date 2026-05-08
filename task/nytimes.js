@@ -337,35 +337,81 @@ function limitText(text, maxLength) {
 
 async function createReadingPage(items) {
  try {
-   const title = `纽约时报中文网精选 ${formatDate(new Date())}`;
-   const content = buildTelegraphContent(items);
-   const body = [
-     `title=${encodeURIComponent(title)}`,
-     `author_name=${encodeURIComponent('NYT 中文聚合')}`,
-     `content=${encodeURIComponent(JSON.stringify(content))}`,
-     `return_content=false`
-   ].join('&');
-
-   const resp = await $task.fetch({
-     url: 'https://api.telegra.ph/createPage',
-     method: 'POST',
-     headers: {
-       'Content-Type': 'application/x-www-form-urlencoded'
-     },
-     body
-   });
-
-   const data = JSON.parse(decodeResponseBody(resp));
-   if (data.ok && data.result && data.result.url) {
-     console.log(`🧾 聚合阅读页已生成: ${data.result.url}`);
-     return data.result.url;
-   }
-
-   throw new Error(data.error || 'Telegraph返回异常');
+   return await createTelegraphPage(items, await getTelegraphToken());
  } catch (e) {
+   if (/ACCESS_TOKEN_INVALID/i.test(e.message || '') && typeof $prefs !== 'undefined') {
+     console.log('⚠️ Telegraph token 失效，重新创建账号后重试');
+     $prefs.setValueForKey('', 'nysb_telegraph_token');
+     try {
+       return await createTelegraphPage(items, await getTelegraphToken());
+     } catch (retryError) {
+       console.log(`⚠️ Telegraph重试失败: ${retryError.message}`);
+     }
+   }
    console.log(`⚠️ 聚合阅读页生成失败: ${e.message}`);
    return null;
  }
+}
+
+async function createTelegraphPage(items, token) {
+ const title = `纽约时报中文网精选 ${formatDate(new Date())}`;
+ const content = buildTelegraphContent(items);
+ const body = [
+   `access_token=${encodeURIComponent(token)}`,
+   `title=${encodeURIComponent(title)}`,
+   `author_name=${encodeURIComponent('NYT 中文聚合')}`,
+   `content=${encodeURIComponent(JSON.stringify(content))}`,
+   `return_content=false`
+ ].join('&');
+
+ const resp = await $task.fetch({
+   url: 'https://api.telegra.ph/createPage',
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/x-www-form-urlencoded'
+   },
+   body
+ });
+
+ const data = JSON.parse(decodeResponseBody(resp));
+ if (data.ok && data.result && data.result.url) {
+   console.log(`🧾 聚合阅读页已生成: ${data.result.url}`);
+   return data.result.url;
+ }
+
+ throw new Error(data.error || 'Telegraph返回异常');
+}
+
+async function getTelegraphToken() {
+ const key = 'nysb_telegraph_token';
+ const savedToken = readString(key, '');
+ if (savedToken) return savedToken;
+
+ const body = [
+   `short_name=${encodeURIComponent('nyt_digest')}`,
+   `author_name=${encodeURIComponent('NYT 中文聚合')}`
+ ].join('&');
+
+ const resp = await $task.fetch({
+   url: 'https://api.telegra.ph/createAccount',
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/x-www-form-urlencoded'
+   },
+   body
+ });
+
+ const data = JSON.parse(decodeResponseBody(resp));
+ if (!data.ok || !data.result || !data.result.access_token) {
+   throw new Error(data.error || 'Telegraph账号创建失败');
+ }
+
+ if (typeof $prefs !== 'undefined') {
+   $prefs.setValueForKey(data.result.access_token, key);
+ }
+
+ console.log('🔑 Telegraph token 已创建并保存');
+ return data.result.access_token;
 }
 
 function buildTelegraphContent(items) {
