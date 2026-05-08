@@ -7,9 +7,10 @@ const DEFAULT_CONFIG = {
  FETCH_ARTICLE_TEXT: true,       // 自动抓取文章页正文
  ARTICLE_POLICY: '',             // 文章页抓取策略，留空为 direct + 默认策略
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
- ARTICLE_TEXT_LENGTH: 1200,      // 聚合页里每篇正文预览长度
+ ARTICLE_TEXT_LENGTH: 2200,      // 聚合页里每篇正文预览长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
- UPLOAD_IMAGES_TO_TELEGRAPH: true, // 先上传图片到 Telegraph，避免外链显示问号
+ SHOW_ORIGINAL_LINK: false,      // 是否在聚合页显示原文链接
+ UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
  USE_BARK: false,
@@ -26,6 +27,7 @@ const ARTICLE_POLICY = CONFIG.ARTICLE_POLICY;
 const ARTICLE_FETCH_LIMIT = CONFIG.ARTICLE_FETCH_LIMIT;
 const ARTICLE_TEXT_LENGTH = CONFIG.ARTICLE_TEXT_LENGTH;
 const CREATE_READING_PAGE = CONFIG.CREATE_READING_PAGE;
+const SHOW_ORIGINAL_LINK = CONFIG.SHOW_ORIGINAL_LINK;
 const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
@@ -44,6 +46,7 @@ function loadConfig() {
    ARTICLE_FETCH_LIMIT: readNumber('nysb_article_fetch_limit', DEFAULT_CONFIG.ARTICLE_FETCH_LIMIT, 0, 20),
    ARTICLE_TEXT_LENGTH: readNumber('nysb_article_text_length', DEFAULT_CONFIG.ARTICLE_TEXT_LENGTH, 100, 5000),
    CREATE_READING_PAGE: readBoolean('nysb_create_reading_page', DEFAULT_CONFIG.CREATE_READING_PAGE),
+   SHOW_ORIGINAL_LINK: readBoolean('nysb_show_original_link', DEFAULT_CONFIG.SHOW_ORIGINAL_LINK),
    UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
@@ -462,7 +465,7 @@ async function uploadArticleImages(items) {
        console.log(`✅ 图片 ${i + 1} 已上传到 Telegraph: ${telegraphImage}`);
      }
    } catch (e) {
-     console.log(`⚠️ 图片 ${i + 1} 上传失败，保留外链: ${e.message}`);
+     console.log(`ℹ️ 图片 ${i + 1} 转存失败，已使用代理外链: ${e.message}`);
      nextItems[i] = {
        ...nextItems[i],
        image: rawImage
@@ -605,7 +608,7 @@ function buildPlainTelegraphContent(items) {
  ];
 
  items.forEach((item, index) => {
-   nodes.push({ tag: 'h3', children: [`${index + 1}. ${item.title}`] });
+   nodes.push(buildArticleTitleNode(item, index));
    const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
    if (meta) nodes.push({ tag: 'p', children: [meta] });
 
@@ -614,12 +617,7 @@ function buildPlainTelegraphContent(items) {
      nodes.push({ tag: 'p', children: [paragraph] });
    });
 
-   nodes.push({
-     tag: 'p',
-     children: [
-       { tag: 'a', attrs: { href: item.link }, children: ['打开原文'] }
-     ]
-   });
+   if (SHOW_ORIGINAL_LINK) nodes.push(buildOriginalLinkNode(item));
  });
 
  return nodes;
@@ -659,11 +657,11 @@ async function getTelegraphToken() {
 
 function buildTelegraphContent(items) {
  const nodes = [
-   { tag: 'p', children: [`共 ${items.length} 条。点击每条末尾链接可打开原文。`] }
+   { tag: 'p', children: [`共 ${items.length} 条。以下为聚合页内正文预览。`] }
  ];
 
  items.forEach((item, index) => {
-   nodes.push({ tag: 'h3', children: [`${index + 1}. ${item.title}`] });
+   nodes.push(buildArticleTitleNode(item, index));
 
    const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
    if (meta) nodes.push({ tag: 'p', children: [meta] });
@@ -679,15 +677,33 @@ function buildTelegraphContent(items) {
      nodes.push({ tag: 'p', children: [paragraph] });
    });
 
-   nodes.push({
-     tag: 'p',
-     children: [
-       { tag: 'a', attrs: { href: item.link }, children: ['打开原文'] }
-     ]
-   });
+   if (SHOW_ORIGINAL_LINK) nodes.push(buildOriginalLinkNode(item));
  });
 
  return nodes;
+}
+
+function buildArticleTitleNode(item, index) {
+ const title = `${index + 1}. ${item.title}`;
+ if (!SHOW_ORIGINAL_LINK) {
+   return { tag: 'h3', children: [title] };
+ }
+
+ return {
+   tag: 'h3',
+   children: [
+     { tag: 'a', attrs: { href: item.link }, children: [title] }
+   ]
+ };
+}
+
+function buildOriginalLinkNode(item) {
+ return {
+   tag: 'p',
+   children: [
+     { tag: 'a', attrs: { href: item.link }, children: ['阅读全文'] }
+   ]
+ };
 }
 
 function splitParagraphs(text) {
