@@ -776,6 +776,7 @@
         "nysb_article_fetch_limit",
         "nysb_article_text_length",
         "nysb_create_reading_page",
+        "nysb_upload_images_to_telegraph",
         "nysb_use_image_proxy",
         "nysb_notify_title_count",
         "nysb_use_bark",
@@ -844,6 +845,13 @@
           "val": true,
           "type": "boolean",
           "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+        },
+        {
+          "id": "nysb_upload_images_to_telegraph",
+          "name": "上传图片到 Telegraph",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后先把图片上传到 Telegraph 自己的 file 地址，避免聚合页图片显示问号。"
         },
         {
           "id": "nysb_use_image_proxy",
@@ -936,6 +944,12 @@
             "label": "生成图文聚合页",
             "default": true,
             "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+          },
+          "nysb_upload_images_to_telegraph": {
+            "type": "boolean",
+            "label": "上传图片到 Telegraph",
+            "default": true,
+            "desc": "开启后先把图片上传到 Telegraph 自己的 file 地址，避免聚合页图片显示问号。"
           },
           "nysb_use_image_proxy": {
             "type": "boolean",

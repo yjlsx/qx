@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
  ARTICLE_TEXT_LENGTH: 1200,      // 聚合页里每篇正文预览长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
+ UPLOAD_IMAGES_TO_TELEGRAPH: true, // 先上传图片到 Telegraph，避免外链显示问号
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
  USE_BARK: false,
@@ -25,6 +26,7 @@ const ARTICLE_POLICY = CONFIG.ARTICLE_POLICY;
 const ARTICLE_FETCH_LIMIT = CONFIG.ARTICLE_FETCH_LIMIT;
 const ARTICLE_TEXT_LENGTH = CONFIG.ARTICLE_TEXT_LENGTH;
 const CREATE_READING_PAGE = CONFIG.CREATE_READING_PAGE;
+const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
 const USE_BARK = CONFIG.USE_BARK;
@@ -42,6 +44,7 @@ function loadConfig() {
    ARTICLE_FETCH_LIMIT: readNumber('nysb_article_fetch_limit', DEFAULT_CONFIG.ARTICLE_FETCH_LIMIT, 0, 20),
    ARTICLE_TEXT_LENGTH: readNumber('nysb_article_text_length', DEFAULT_CONFIG.ARTICLE_TEXT_LENGTH, 100, 5000),
    CREATE_READING_PAGE: readBoolean('nysb_create_reading_page', DEFAULT_CONFIG.CREATE_READING_PAGE),
+   UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
    USE_BARK: readBoolean('nysb_use_bark', DEFAULT_CONFIG.USE_BARK),
@@ -418,27 +421,153 @@ function limitText(text, maxLength) {
 }
 
 async function createReadingPage(items) {
+ const pageItems = UPLOAD_IMAGES_TO_TELEGRAPH ? await uploadArticleImages(items) : items;
  try {
-   return await createTelegraphPage(items, await getTelegraphToken());
+   return await createTelegraphPage(pageItems, await getTelegraphToken());
  } catch (e) {
    if (/ACCESS_TOKEN_INVALID/i.test(e.message || '') && typeof $prefs !== 'undefined') {
      console.log('⚠️ Telegraph token 失效，重新创建账号后重试');
      $prefs.setValueForKey('', 'nysb_telegraph_token');
      try {
-       return await createTelegraphPage(items, await getTelegraphToken());
+       return await createTelegraphPage(pageItems, await getTelegraphToken());
      } catch (retryError) {
        console.log(`⚠️ Telegraph重试失败: ${retryError.message}`);
      }
    }
    console.log(`⚠️ 图文聚合页生成失败，改用纯文本页重试: ${e.message}`);
    try {
-     return await createTelegraphPage(items, await getTelegraphToken(), true);
+     return await createTelegraphPage(pageItems, await getTelegraphToken(), true);
    } catch (plainError) {
      console.log(`⚠️ 纯文本聚合页也生成失败: ${plainError.message}`);
    }
    console.log(`⚠️ 聚合阅读页生成失败: ${e.message}`);
    return null;
  }
+}
+
+async function uploadArticleImages(items) {
+ const nextItems = items.slice();
+
+ for (let i = 0; i < nextItems.length; i++) {
+   const rawImage = nextItems[i].image ? normalizeImageUrl(nextItems[i].image) : '';
+   if (!rawImage) continue;
+
+   try {
+     const telegraphImage = await uploadImageToTelegraph(rawImage, `图片 ${i + 1}`);
+     if (telegraphImage) {
+       nextItems[i] = {
+         ...nextItems[i],
+         image: telegraphImage
+       };
+       console.log(`✅ 图片 ${i + 1} 已上传到 Telegraph: ${telegraphImage}`);
+     }
+   } catch (e) {
+     console.log(`⚠️ 图片 ${i + 1} 上传失败，保留外链: ${e.message}`);
+     nextItems[i] = {
+       ...nextItems[i],
+       image: rawImage
+     };
+   }
+ }
+
+ return nextItems;
+}
+
+async function uploadImageToTelegraph(imageUrl, label) {
+ const imageResp = await fetchBinary(imageUrl, label);
+ const imageBytes = toUint8Array(imageResp.bodyBytes);
+ if (!imageBytes || !imageBytes.length) {
+   throw new Error('图片内容为空');
+ }
+
+ const contentType = getHeader(imageResp.headers, 'Content-Type') || 'image/jpeg';
+ const boundary = `----NYTimes${Date.now()}${Math.floor(Math.random() * 100000)}`;
+ const filename = contentType.includes('png') ? 'image.png' : 'image.jpg';
+ const head = stringToUtf8Bytes(
+   `--${boundary}\r\n` +
+   `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+   `Content-Type: ${contentType}\r\n\r\n`
+ );
+ const tail = stringToUtf8Bytes(`\r\n--${boundary}--\r\n`);
+ const bodyBytes = concatBytes(head, imageBytes, tail);
+
+ const resp = await $task.fetch({
+   url: 'https://telegra.ph/upload',
+   method: 'POST',
+   headers: {
+     'Content-Type': `multipart/form-data; boundary=${boundary}`
+   },
+   bodyBytes
+ });
+
+ const body = decodeResponseBody(resp);
+ const data = JSON.parse(body);
+ if (Array.isArray(data) && data[0] && data[0].src) {
+   return `https://telegra.ph${data[0].src}`;
+ }
+
+ throw new Error(body.slice(0, 120) || 'Telegraph上传返回异常');
+}
+
+function fetchBinary(url, label = '图片') {
+ return new Promise((resolve, reject) => {
+   $task.fetch({
+     url,
+     timeout: 30000,
+     headers: {
+       'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+       'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+     }
+   }).then(resp => {
+     const statusCode = resp.statusCode || resp.status;
+     if (statusCode >= 200 && statusCode < 300) {
+       resolve(resp);
+     } else {
+       reject(new Error(`${label}下载失败: HTTP ${statusCode || '未知状态码'}`));
+     }
+   }, err => {
+     reject(new Error(`${label}下载失败: ${formatFetchError(err)}`));
+   });
+ });
+}
+
+function toUint8Array(value) {
+ if (!value) return null;
+ if (value instanceof Uint8Array) return value;
+ if (value instanceof ArrayBuffer) return new Uint8Array(value);
+ if (Array.isArray(value)) return new Uint8Array(value);
+ return null;
+}
+
+function stringToUtf8Bytes(text) {
+ if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(text);
+ const bytes = [];
+ for (let i = 0; i < text.length; i++) {
+   const code = text.charCodeAt(i);
+   if (code < 0x80) bytes.push(code);
+   else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+   else bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+ }
+ return new Uint8Array(bytes);
+}
+
+function concatBytes(...parts) {
+ const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
+ const output = new Uint8Array(totalLength);
+ let offset = 0;
+ parts.forEach(part => {
+   output.set(part, offset);
+   offset += part.length;
+ });
+ return output.buffer;
+}
+
+function getHeader(headers, name) {
+ if (!headers) return '';
+ const exact = headers[name] || headers[name.toLowerCase()] || headers[name.toUpperCase()];
+ if (exact) return Array.isArray(exact) ? exact[0] : exact;
+ const foundKey = Object.keys(headers).find(key => key.toLowerCase() === name.toLowerCase());
+ return foundKey ? headers[foundKey] : '';
 }
 
 async function createTelegraphPage(items, token, plainTextOnly = false) {
