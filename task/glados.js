@@ -61,6 +61,7 @@ var account;
 var expday;
 var remain;
 var remainday;
+var points;
 var change;
 var changeday;
 var msge;
@@ -76,6 +77,7 @@ var message = "";
    return;
  }
  await signin();
+ await getPoints();
  await status();
 })()
  .catch((e) => {
@@ -152,7 +154,11 @@ function status() {
          if (obj.code == 0) {
            account = obj.data.email;
            remainday = parseInt(obj.data.leftDays);
-           message += `\n账户：${account}\n剩余：${remainday}天`;
+           message += `\n账户：${account}`;
+           if (typeof points !== "undefined") {
+             message += `\n积分：${points}`;
+           }
+           message += `\n剩余：${remainday}天`;
            $.msg("GLaDOS", "", message);
          } else {
            message += `\n状态查询失败：${obj.message || obj.code}`;
@@ -162,6 +168,37 @@ function status() {
      } catch (e) {
        $.log("状态解析异常");
        $.log("状态原始响应: " + previewBody(data, response));
+     }
+     resolve();
+   });
+ });
+}
+
+function getPoints() {
+ return new Promise((resolve) => {
+   const pointsRequest = {
+     url: `${BASE_URL}/api/user/points`,
+     headers: {
+       'Cookie': sicookie,
+       'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
+       'Accept' : `application/json, text/plain, */*`
+     },
+   };
+   $.get(pointsRequest, (error, response, data) => {
+     try {
+       if (error) {
+         $.log("积分请求错误");
+       } else {
+         var obj = parseJsonBody(data, response);
+         if (obj.code == 0 && typeof obj.points !== "undefined") {
+           points = obj.points;
+         } else {
+           $.log("积分查询失败: " + (obj.message || obj.code));
+         }
+       }
+     } catch (e) {
+       $.log("积分解析异常: " + e);
+       $.log("积分原始响应: " + previewBody(data, response));
      }
      resolve();
    });
