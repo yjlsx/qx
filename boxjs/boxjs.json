@@ -756,6 +756,186 @@
           }
         }
       }
+    },
+    {
+      "id": "nyt_chinese_digest",
+      "name": "纽约时报中文网",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/qwe.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/nysb.js",
+      "keys": [
+        "nysb_rss_url",
+        "nysb_max_items",
+        "nysb_show_summary",
+        "nysb_summary_length",
+        "nysb_fetch_article_text",
+        "nysb_article_fetch_limit",
+        "nysb_article_text_length",
+        "nysb_create_reading_page",
+        "nysb_notify_title_count",
+        "nysb_use_bark",
+        "nysb_bark_key"
+      ],
+      "settings": [
+        {
+          "id": "nysb_rss_url",
+          "name": "RSS 地址",
+          "val": "https://feeds.feedburner.com/nytcn",
+          "type": "text",
+          "desc": "纽约时报中文网 RSS 地址。一般无需修改。"
+        },
+        {
+          "id": "nysb_max_items",
+          "name": "最多解析条数",
+          "val": 10,
+          "type": "text",
+          "desc": "从 RSS 中最多读取多少条新闻。建议 5-10。"
+        },
+        {
+          "id": "nysb_show_summary",
+          "name": "显示 RSS 摘要",
+          "val": true,
+          "type": "boolean",
+          "desc": "文章页正文抓取失败时，用 RSS 摘要兜底。"
+        },
+        {
+          "id": "nysb_summary_length",
+          "name": "摘要长度",
+          "val": 180,
+          "type": "text",
+          "desc": "RSS 摘要最大字数。"
+        },
+        {
+          "id": "nysb_fetch_article_text",
+          "name": "抓取文章正文",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后会逐篇打开文章页提取正文预览。"
+        },
+        {
+          "id": "nysb_article_fetch_limit",
+          "name": "正文抓取篇数",
+          "val": 5,
+          "type": "text",
+          "desc": "最多抓取前几篇正文。数值越大运行越久。"
+        },
+        {
+          "id": "nysb_article_text_length",
+          "name": "每篇正文长度",
+          "val": 1200,
+          "type": "text",
+          "desc": "聚合页里每篇正文预览的最大字数。"
+        },
+        {
+          "id": "nysb_create_reading_page",
+          "name": "生成图文聚合页",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+        },
+        {
+          "id": "nysb_notify_title_count",
+          "name": "通知标题数量",
+          "val": 3,
+          "type": "text",
+          "desc": "通知正文里显示前几个标题。"
+        },
+        {
+          "id": "nysb_use_bark",
+          "name": "启用 Bark",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后额外通过 Bark 推送。"
+        },
+        {
+          "id": "nysb_bark_key",
+          "name": "Bark Key",
+          "val": "",
+          "type": "text",
+          "desc": "填写 Bark key，仅在启用 Bark 时生效。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "cn.nytimes.com",
+          "feeds.feedburner.com",
+          "api.telegra.ph"
+        ],
+        "schema": {
+          "nysb_rss_url": {
+            "type": "text",
+            "label": "RSS 地址",
+            "default": "https://feeds.feedburner.com/nytcn",
+            "desc": "纽约时报中文网 RSS 地址。一般无需修改。",
+            "placeholder": "https://feeds.feedburner.com/nytcn"
+          },
+          "nysb_max_items": {
+            "type": "text",
+            "label": "最多解析条数",
+            "default": 10,
+            "desc": "从 RSS 中最多读取多少条新闻。建议 5-10。"
+          },
+          "nysb_show_summary": {
+            "type": "boolean",
+            "label": "显示 RSS 摘要",
+            "default": true,
+            "desc": "文章页正文抓取失败时，用 RSS 摘要兜底。"
+          },
+          "nysb_summary_length": {
+            "type": "text",
+            "label": "摘要长度",
+            "default": 180,
+            "desc": "RSS 摘要最大字数。"
+          },
+          "nysb_fetch_article_text": {
+            "type": "boolean",
+            "label": "抓取文章正文",
+            "default": true,
+            "desc": "开启后会逐篇打开文章页提取正文预览。"
+          },
+          "nysb_article_fetch_limit": {
+            "type": "text",
+            "label": "正文抓取篇数",
+            "default": 5,
+            "desc": "最多抓取前几篇正文。数值越大运行越久。"
+          },
+          "nysb_article_text_length": {
+            "type": "text",
+            "label": "每篇正文长度",
+            "default": 1200,
+            "desc": "聚合页里每篇正文预览的最大字数。"
+          },
+          "nysb_create_reading_page": {
+            "type": "boolean",
+            "label": "生成图文聚合页",
+            "default": true,
+            "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+          },
+          "nysb_notify_title_count": {
+            "type": "text",
+            "label": "通知标题数量",
+            "default": 3,
+            "desc": "通知正文里显示前几个标题。"
+          },
+          "nysb_use_bark": {
+            "type": "boolean",
+            "label": "启用 Bark",
+            "default": false,
+            "desc": "开启后额外通过 Bark 推送。"
+          },
+          "nysb_bark_key": {
+            "type": "text",
+            "label": "Bark Key",
+            "default": "",
+            "desc": "填写 Bark key，仅在启用 Bark 时生效。",
+            "input": "password",
+            "placeholder": "xxxxxxxxxxxxxxxx"
+          }
+        }
+      }
     }
   ]
 }
