@@ -13,7 +13,7 @@
 6、如果任何单位或个人认为此脚本可能涉嫌侵犯其权利，应及时通知并提供身份证明，所有权证明，我们将在收到认证文件确认后删除此脚本。
 7、所有直接或间接使用、查看此脚本的人均应该仔细阅读此声明。本人保留随时更改或补充此声明的权利。一旦您使用或复制了此脚本，即视为您已接受此免责声明。
 
-登陆链接：https://glados.cloud/，登陆即可获取Cookie。
+登陆链接：https://railgun.info/，登陆即可获取Cookie。
 注册地址：https://github.com/glados-network/GLaDOS
 
 【Surge】
@@ -22,20 +22,20 @@
 GLaDOS签到 = type=cron,cronexp=5 0 * * *,wake-system=1,timeout=20,script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
-获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/glados\.cloud\/api\/user\/checkin, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/railgun\.info\/api\/user\/checkin, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 【Loon】
 -----------------
 [Script]
 cron "5 0 * * *" tag=GLaDOS签到, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
-http-request https:\/\/glados\.cloud\/api\/user\/checkin tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+http-request https:\/\/railgun\.info\/api\/user\/checkin tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
 【Quantumult X】
 -----------------
 [rewrite_local]
-https:\/\/glados\.cloud\/api\/user\/checkin url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+https:\/\/railgun\.info\/api\/user\/checkin url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
 [task_local]
@@ -43,13 +43,15 @@ https:\/\/glados\.cloud\/api\/user\/checkin url script-request-header https://ra
 
 
 【All App MitM】
-hostname = glados.rocks
+hostname = railgun.info
 */
 
 
 
 
 const $ = new Env("GLaDOS");
+const BASE_URL = "https://railgun.info";
+const BASE_HOST = "railgun.info";
 const signcookie = "evil_gladoscookie";
 const signauthorization = "evil_gladosauthorization";
 
@@ -70,7 +72,7 @@ var message = "";
    return;
  }
  if (!sicookie) {
-   $.msg("GLaDOS", "【提示】", "❌ 未获取到数据，请先手动登录 glados.cloud 抓取");
+   $.msg("GLaDOS", "【提示】", `❌ 未获取到数据，请先手动登录 ${BASE_HOST} 抓取`);
    return;
  }
  await signin();
@@ -85,25 +87,25 @@ var message = "";
 
 function signin() {
  return new Promise((resolve) => {
-   // 使用你提供的最新 glados.cloud 参数
+   // 使用你提供的最新 railgun.info 参数
    const header = {
      'Sec-Fetch-Dest' : `empty`,
      'Connection' : `keep-alive`,
      'Accept-Encoding' : `gzip, deflate, br`,
      'Content-Type' : `application/json;charset=utf-8`,
      'Sec-Fetch-Site' : `same-origin`,
-     'Origin' : `https://glados.cloud`,
+     'Origin' : BASE_URL,
      'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
      'Sec-Fetch-Mode' : `cors`,
      'Cookie' : sicookie,
-     'Host' : `glados.cloud`,
+     'Host' : BASE_HOST,
      'Authorization': siauthorization || "",
      'Accept-Language' : `zh-CN,zh-Hans;q=0.9`,
      'Accept' : `application/json, text/plain, */*`
    };
-   const body = JSON.stringify({ "token": "glados.cloud" });
+   const body = JSON.stringify({ "token": BASE_HOST });
    const signinRequest = {
-     url: "https://glados.cloud/api/user/checkin",
+     url: `${BASE_URL}/api/user/checkin`,
      headers: header,
      body: body,
    };
@@ -135,7 +137,7 @@ function signin() {
 function status() {
  return new Promise((resolve) => {
    const statusRequest = {
-     url: "https://glados.cloud/api/user/status",
+     url: `${BASE_URL}/api/user/status`,
      headers: {
        'Cookie': sicookie,
        'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
@@ -169,7 +171,7 @@ function getCookie() {
    const siauthorization_val = $request.headers["Authorization"] || $request.headers["authorization"];
    $.setdata(siauthorization_val, signauthorization);
    $.log("抓取到 Cookie: " + sicookie_val);
-   $.msg("GLaDOS", "", "获取 glados.cloud 数据成功🎉");
+   $.msg("GLaDOS", "", `获取 ${BASE_HOST} 数据成功🎉`);
  }
 }
 
