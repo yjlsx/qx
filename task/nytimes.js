@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
  ARTICLE_TEXT_LENGTH: 1200,      // 聚合页里每篇正文预览长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
+ USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
  USE_BARK: false,
  BARK_KEY: ''
@@ -24,6 +25,7 @@ const ARTICLE_POLICY = CONFIG.ARTICLE_POLICY;
 const ARTICLE_FETCH_LIMIT = CONFIG.ARTICLE_FETCH_LIMIT;
 const ARTICLE_TEXT_LENGTH = CONFIG.ARTICLE_TEXT_LENGTH;
 const CREATE_READING_PAGE = CONFIG.CREATE_READING_PAGE;
+const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
 const USE_BARK = CONFIG.USE_BARK;
 const BARK_KEY = CONFIG.BARK_KEY;
@@ -40,6 +42,7 @@ function loadConfig() {
    ARTICLE_FETCH_LIMIT: readNumber('nysb_article_fetch_limit', DEFAULT_CONFIG.ARTICLE_FETCH_LIMIT, 0, 20),
    ARTICLE_TEXT_LENGTH: readNumber('nysb_article_text_length', DEFAULT_CONFIG.ARTICLE_TEXT_LENGTH, 100, 5000),
    CREATE_READING_PAGE: readBoolean('nysb_create_reading_page', DEFAULT_CONFIG.CREATE_READING_PAGE),
+   USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
    USE_BARK: readBoolean('nysb_use_bark', DEFAULT_CONFIG.USE_BARK),
    BARK_KEY: readString('nysb_bark_key', DEFAULT_CONFIG.BARK_KEY)
@@ -374,9 +377,16 @@ function extractArticleImage(html) {
 }
 
 function normalizeImageUrl(url) {
- return decodeHtml(String(url || '').trim())
+ const imageUrl = decodeHtml(String(url || '').trim())
    .replace(/-articleLarge(?=\.)/, '-master1050')
    .replace(/-videoLarge(?=\.)/, '-master1050');
+ return USE_IMAGE_PROXY ? proxyImageUrl(imageUrl) : imageUrl;
+}
+
+function proxyImageUrl(url) {
+ if (!/^https?:\/\/static\d*\.nyt\.com\//i.test(url)) return url;
+ const noScheme = url.replace(/^https?:\/\//i, '');
+ return `https://images.weserv.nl/?url=${encodeURIComponent(noScheme)}`;
 }
 
 function htmlToText(html) {
@@ -531,12 +541,8 @@ function buildTelegraphContent(items) {
 
  const image = item.image ? normalizeImageUrl(item.image) : '';
  if (image) {
-     nodes.push({
-       tag: 'figure',
-       children: [
-         { tag: 'img', attrs: { src: image } }
-       ]
-     });
+     nodes.push({ tag: 'img', attrs: { src: image } });
+     console.log(`🖼️ 文章 ${index + 1} 图片: ${image}`);
    }
 
    const text = item.articleText || item.summary || '';

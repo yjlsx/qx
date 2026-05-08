@@ -776,6 +776,7 @@
         "nysb_article_fetch_limit",
         "nysb_article_text_length",
         "nysb_create_reading_page",
+        "nysb_use_image_proxy",
         "nysb_notify_title_count",
         "nysb_use_bark",
         "nysb_bark_key"
@@ -843,6 +844,13 @@
           "val": true,
           "type": "boolean",
           "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+        },
+        {
+          "id": "nysb_use_image_proxy",
+          "name": "图片代理",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后将 NYT 图片转为 images.weserv.nl 代理地址，解决 static01.nyt.com 无法直连导致不显示图片。"
         },
         {
           "id": "nysb_notify_title_count",
@@ -928,6 +936,12 @@
             "label": "生成图文聚合页",
             "default": true,
             "desc": "开启后通知会跳转到 Telegraph 图文聚合页。"
+          },
+          "nysb_use_image_proxy": {
+            "type": "boolean",
+            "label": "图片代理",
+            "default": true,
+            "desc": "开启后将 NYT 图片转为 images.weserv.nl 代理地址，解决 static01.nyt.com 无法直连导致不显示图片。"
           },
           "nysb_notify_title_count": {
             "type": "text",
