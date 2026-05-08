@@ -9,7 +9,7 @@ const DEFAULT_CONFIG = {
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
  ARTICLE_TEXT_LENGTH: 2200,      // 聚合页里每篇正文预览长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
- SHOW_ORIGINAL_LINK: false,      // 是否在聚合页显示原文链接
+ SHOW_ORIGINAL_LINK: true,       // 是否在每篇精读版末尾显示“完整内容”
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -604,7 +604,7 @@ async function createTelegraphPage(items, token, plainTextOnly = false) {
 
 function buildPlainTelegraphContent(items) {
  const nodes = [
-   { tag: 'p', children: [`共 ${items.length} 条。图文版生成失败，本页为纯文本版。`] }
+   { tag: 'p', children: [`共 ${items.length} 条。图文版生成失败，本页为纯文本精读版。`] }
  ];
 
  items.forEach((item, index) => {
@@ -657,7 +657,7 @@ async function getTelegraphToken() {
 
 function buildTelegraphContent(items) {
  const nodes = [
-   { tag: 'p', children: [`共 ${items.length} 条。以下为聚合页内正文预览。`] }
+   { tag: 'p', children: [`共 ${items.length} 条。以下为聚合页内精读版，每篇末尾可点“完整内容”。`] }
  ];
 
  items.forEach((item, index) => {
@@ -685,23 +685,14 @@ function buildTelegraphContent(items) {
 
 function buildArticleTitleNode(item, index) {
  const title = `${index + 1}. ${item.title}`;
- if (!SHOW_ORIGINAL_LINK) {
-   return { tag: 'h3', children: [title] };
- }
-
- return {
-   tag: 'h3',
-   children: [
-     { tag: 'a', attrs: { href: item.link }, children: [title] }
-   ]
- };
+ return { tag: 'h3', children: [title] };
 }
 
 function buildOriginalLinkNode(item) {
  return {
    tag: 'p',
    children: [
-     { tag: 'a', attrs: { href: item.link }, children: ['阅读全文'] }
+     { tag: 'a', attrs: { href: item.link }, children: ['完整内容'] }
    ]
  };
 }

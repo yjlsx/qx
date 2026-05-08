@@ -763,7 +763,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/nytimes.png"
+        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/nytimes.png?v=20260509"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/nytimes.js",
       "keys": [
@@ -849,10 +849,10 @@
         },
         {
           "id": "nysb_show_original_link",
-          "name": "显示原文链接",
-          "val": false,
+          "name": "显示完整内容链接",
+          "val": true,
           "type": "boolean",
-          "desc": "关闭后聚合页标题不可点击，也不显示阅读全文链接，阅读停留在聚合页内。"
+          "desc": "开启后在每篇精读版末尾显示“完整内容”，点击可查看当前文章完整原文。标题仍保持不可点击。"
         },
         {
           "id": "nysb_upload_images_to_telegraph",
@@ -955,9 +955,9 @@
           },
           "nysb_show_original_link": {
             "type": "boolean",
-            "label": "显示原文链接",
-            "default": false,
-            "desc": "关闭后聚合页标题不可点击，也不显示阅读全文链接，阅读停留在聚合页内。"
+            "label": "显示完整内容链接",
+            "default": true,
+            "desc": "开启后在每篇精读版末尾显示“完整内容”，点击可查看当前文章完整原文。标题仍保持不可点击。"
           },
           "nysb_upload_images_to_telegraph": {
             "type": "boolean",
