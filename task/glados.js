@@ -118,8 +118,8 @@ function signin() {
            if (obj.message.includes("Please Try Tomorrow") || obj.code === 1) {
              message += "今日已签到";
            } else {
-             change = obj.list[0].change;
-             message += `今日签到获得${parseInt(change)}天`;
+             change = obj.points || (obj.list && obj.list[0] && obj.list[0].change);
+             message += change ? `今日签到获得${parseInt(change)}积分` : obj.message;
            }
          } else {
            message += obj.message;
@@ -153,6 +153,9 @@ function status() {
            account = obj.data.email;
            remainday = parseInt(obj.data.leftDays);
            message += `\n账户：${account}\n剩余：${remainday}天`;
+           $.msg("GLaDOS", "", message);
+         } else {
+           message += `\n状态查询失败：${obj.message || obj.code}`;
            $.msg("GLaDOS", "", message);
          }
        }
