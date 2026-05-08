@@ -121,7 +121,7 @@ function signin() {
              message += "今日已签到";
            } else {
              change = obj.points || (obj.list && obj.list[0] && obj.list[0].change);
-             message += change ? `今日签到获得${parseInt(change)}积分` : obj.message;
+             message += change ? `今日签到获得${formatPoints(change)}积分` : obj.message;
            }
          } else {
            message += obj.message;
@@ -191,7 +191,7 @@ function getPoints() {
        } else {
          var obj = parseJsonBody(data, response);
          if (obj.code == 0 && typeof obj.points !== "undefined") {
-           points = obj.points;
+           points = formatPoints(obj.points);
          } else {
            $.log("积分查询失败: " + (obj.message || obj.code));
          }
@@ -213,6 +213,11 @@ function parseJsonBody(data, response) {
 function previewBody(data, response) {
  const body = data || (response && response.body) || "";
  return typeof body === "string" ? body.slice(0, 300) : JSON.stringify(body).slice(0, 300);
+}
+
+function formatPoints(value) {
+ const number = Number(value);
+ return Number.isFinite(number) ? Math.floor(number) : value;
 }
 
 function getCookie() {
