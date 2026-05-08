@@ -7,9 +7,9 @@ const DEFAULT_CONFIG = {
  FETCH_ARTICLE_TEXT: true,       // 自动抓取文章页正文
  ARTICLE_POLICY: '',             // 文章页抓取策略，留空为 direct + 默认策略
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
- ARTICLE_TEXT_LENGTH: 2200,      // 聚合页里每篇正文预览长度
+ ARTICLE_TEXT_LENGTH: 3000,      // 聚合页里每篇精读内容长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
- SHOW_ORIGINAL_LINK: true,       // 是否在每篇精读版末尾显示“完整内容”
+ SHOW_ORIGINAL_LINK: false,      // 是否在每篇精读版末尾显示原文入口
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -657,7 +657,7 @@ async function getTelegraphToken() {
 
 function buildTelegraphContent(items) {
  const nodes = [
-   { tag: 'p', children: [`共 ${items.length} 条。以下为聚合页内精读版，每篇末尾可点“完整内容”。`] }
+   { tag: 'p', children: [`共 ${items.length} 条。以下为聚合页内精读版。`] }
  ];
 
  items.forEach((item, index) => {
@@ -692,7 +692,7 @@ function buildOriginalLinkNode(item) {
  return {
    tag: 'p',
    children: [
-     { tag: 'a', attrs: { href: item.link }, children: ['完整内容'] }
+     { tag: 'a', attrs: { href: item.link }, children: ['阅读原文'] }
    ]
  };
 }

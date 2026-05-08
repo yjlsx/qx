@@ -836,9 +836,9 @@
         {
           "id": "nysb_article_text_length",
           "name": "每篇正文长度",
-          "val": 2200,
+          "val": 3000,
           "type": "text",
-          "desc": "聚合页里每篇正文预览的最大字数。建议 1200-2500。"
+          "desc": "聚合页里每篇精读内容的最大字数。建议 2000-3000。"
         },
         {
           "id": "nysb_create_reading_page",
@@ -849,10 +849,10 @@
         },
         {
           "id": "nysb_show_original_link",
-          "name": "显示完整内容链接",
-          "val": true,
+          "name": "显示原文入口",
+          "val": false,
           "type": "boolean",
-          "desc": "开启后在每篇精读版末尾显示“完整内容”，点击可查看当前文章完整原文。标题仍保持不可点击。"
+          "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
         },
         {
           "id": "nysb_upload_images_to_telegraph",
@@ -944,8 +944,8 @@
           "nysb_article_text_length": {
             "type": "text",
             "label": "每篇正文长度",
-            "default": 2200,
-            "desc": "聚合页里每篇正文预览的最大字数。建议 1200-2500。"
+            "default": 3000,
+            "desc": "聚合页里每篇精读内容的最大字数。建议 2000-3000。"
           },
           "nysb_create_reading_page": {
             "type": "boolean",
@@ -955,9 +955,9 @@
           },
           "nysb_show_original_link": {
             "type": "boolean",
-            "label": "显示完整内容链接",
-            "default": true,
-            "desc": "开启后在每篇精读版末尾显示“完整内容”，点击可查看当前文章完整原文。标题仍保持不可点击。"
+            "label": "显示原文入口",
+            "default": false,
+            "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
           },
           "nysb_upload_images_to_telegraph": {
             "type": "boolean",
