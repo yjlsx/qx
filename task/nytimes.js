@@ -17,6 +17,9 @@ const DEFAULT_CONFIG = {
  AI_ANALYSIS_LIMIT: 5,
  AI_TIMEOUT: 90000,
  AI_INPUT_LENGTH: 2500,
+ AI_CACHE_ENABLED: true,
+ AI_CACHE_MAX_ITEMS: 80,
+ AI_CACHE_TTL_DAYS: 14,
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -42,6 +45,9 @@ const AI_MODEL = CONFIG.AI_MODEL;
 const AI_ANALYSIS_LIMIT = CONFIG.AI_ANALYSIS_LIMIT;
 const AI_TIMEOUT = CONFIG.AI_TIMEOUT;
 const AI_INPUT_LENGTH = CONFIG.AI_INPUT_LENGTH;
+const AI_CACHE_ENABLED = CONFIG.AI_CACHE_ENABLED;
+const AI_CACHE_MAX_ITEMS = CONFIG.AI_CACHE_MAX_ITEMS;
+const AI_CACHE_TTL_DAYS = CONFIG.AI_CACHE_TTL_DAYS;
 const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
@@ -68,6 +74,9 @@ function loadConfig() {
    AI_ANALYSIS_LIMIT: readNumber('nysb_ai_analysis_limit', DEFAULT_CONFIG.AI_ANALYSIS_LIMIT, 0, 20),
    AI_TIMEOUT: readNumber('nysb_ai_timeout', DEFAULT_CONFIG.AI_TIMEOUT, 10000, 180000),
    AI_INPUT_LENGTH: readNumber('nysb_ai_input_length', DEFAULT_CONFIG.AI_INPUT_LENGTH, 800, 6000),
+   AI_CACHE_ENABLED: readBoolean('nysb_ai_cache_enabled', DEFAULT_CONFIG.AI_CACHE_ENABLED),
+   AI_CACHE_MAX_ITEMS: readNumber('nysb_ai_cache_max_items', DEFAULT_CONFIG.AI_CACHE_MAX_ITEMS, 10, 300),
+   AI_CACHE_TTL_DAYS: readNumber('nysb_ai_cache_ttl_days', DEFAULT_CONFIG.AI_CACHE_TTL_DAYS, 1, 90),
    UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
@@ -378,11 +387,24 @@ async function enrichItemsWithAiAnalysis(items) {
 
  const nextItems = items.slice();
  const count = Math.min(nextItems.length, AI_ANALYSIS_LIMIT || nextItems.length);
+ const cache = AI_CACHE_ENABLED ? loadAiAnalysisCache() : {};
  console.log(`🤖 开始 AI 分析：前 ${count} 篇，模型 ${AI_MODEL}`);
 
  for (let i = 0; i < count; i++) {
    const item = nextItems[i];
    const sourceText = (item.articleText || item.summary || '').trim();
+   const cacheKey = getAiAnalysisCacheKey(item);
+   const cachedAnalysis = AI_CACHE_ENABLED ? getCachedAiAnalysis(cache, cacheKey) : null;
+
+   if (cachedAnalysis) {
+     nextItems[i] = {
+       ...item,
+       aiAnalysis: cachedAnalysis
+     };
+     console.log(`♻️ 使用缓存 AI 分析 ${i + 1}: ${item.title.slice(0, 20)}...`);
+     continue;
+   }
+
    if (!sourceText) {
      console.log(`⚠️ AI分析跳过 ${i + 1}: 缺少正文或摘要`);
      continue;
@@ -395,6 +417,10 @@ async function enrichItemsWithAiAnalysis(items) {
          ...item,
          aiAnalysis: analysis
        };
+       if (AI_CACHE_ENABLED) {
+         setCachedAiAnalysis(cache, cacheKey, analysis, item);
+         saveAiAnalysisCache(cache);
+       }
        console.log(`✅ AI分析完成 ${i + 1}: ${item.title.slice(0, 20)}...`);
      }
    } catch (e) {
@@ -409,6 +435,52 @@ async function enrichItemsWithAiAnalysis(items) {
  }
 
  return nextItems;
+}
+
+function getAiAnalysisCacheKey(item) {
+ return cleanURL(item.link || item.title || '');
+}
+
+function loadAiAnalysisCache() {
+ const key = 'nysb_ai_analysis_cache';
+ let cache = {};
+ try {
+   cache = JSON.parse(readPrefs(key) || '{}');
+ } catch (e) {
+   cache = {};
+ }
+ return pruneAiAnalysisCache(cache);
+}
+
+function saveAiAnalysisCache(cache) {
+ if (typeof $prefs === 'undefined') return;
+ $prefs.setValueForKey(JSON.stringify(pruneAiAnalysisCache(cache)), 'nysb_ai_analysis_cache');
+}
+
+function getCachedAiAnalysis(cache, cacheKey) {
+ const entry = cache && cache[cacheKey];
+ if (!entry || !entry.analysis || !entry.time) return null;
+ const maxAge = AI_CACHE_TTL_DAYS * 86400000;
+ if (Date.now() - entry.time > maxAge) return null;
+ return entry.analysis;
+}
+
+function setCachedAiAnalysis(cache, cacheKey, analysis, item) {
+ if (!cacheKey || !analysis) return;
+ cache[cacheKey] = {
+   analysis,
+   title: item.title || '',
+   time: Date.now()
+ };
+}
+
+function pruneAiAnalysisCache(cache) {
+ const maxAge = AI_CACHE_TTL_DAYS * 86400000;
+ const entries = Object.entries(cache || {})
+   .filter(([, entry]) => entry && entry.analysis && entry.time && Date.now() - entry.time <= maxAge)
+   .sort((a, b) => b[1].time - a[1].time)
+   .slice(0, AI_CACHE_MAX_ITEMS);
+ return Object.fromEntries(entries);
 }
 
 async function generateAiAnalysis(item, sourceText) {

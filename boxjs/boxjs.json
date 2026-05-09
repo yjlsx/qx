@@ -784,6 +784,9 @@
         "nysb_ai_analysis_limit",
         "nysb_ai_timeout",
         "nysb_ai_input_length",
+        "nysb_ai_cache_enabled",
+        "nysb_ai_cache_max_items",
+        "nysb_ai_cache_ttl_days",
         "nysb_upload_images_to_telegraph",
         "nysb_use_image_proxy",
         "nysb_notify_title_count",
@@ -909,6 +912,27 @@
           "val": 2500,
           "type": "text",
           "desc": "发送给 AI 的每篇文章最大字数。越小越快，建议 1800-3000。"
+        },
+        {
+          "id": "nysb_ai_cache_enabled",
+          "name": "AI 分析缓存",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后同一篇文章只分析一次，后续直接复用缓存，减少 token 消耗。"
+        },
+        {
+          "id": "nysb_ai_cache_max_items",
+          "name": "AI 缓存条数",
+          "val": 80,
+          "type": "text",
+          "desc": "最多保留多少篇文章的 AI 分析缓存。"
+        },
+        {
+          "id": "nysb_ai_cache_ttl_days",
+          "name": "AI 缓存天数",
+          "val": 14,
+          "type": "text",
+          "desc": "AI 分析缓存保留天数。"
         },
         {
           "id": "nysb_upload_images_to_telegraph",
@@ -1060,6 +1084,24 @@
             "label": "AI 输入长度",
             "default": 2500,
             "desc": "发送给 AI 的每篇文章最大字数。越小越快，建议 1800-3000。"
+          },
+          "nysb_ai_cache_enabled": {
+            "type": "boolean",
+            "label": "AI 分析缓存",
+            "default": true,
+            "desc": "开启后同一篇文章只分析一次，后续直接复用缓存，减少 token 消耗。"
+          },
+          "nysb_ai_cache_max_items": {
+            "type": "text",
+            "label": "AI 缓存条数",
+            "default": 80,
+            "desc": "最多保留多少篇文章的 AI 分析缓存。"
+          },
+          "nysb_ai_cache_ttl_days": {
+            "type": "text",
+            "label": "AI 缓存天数",
+            "default": 14,
+            "desc": "AI 分析缓存保留天数。"
           },
           "nysb_upload_images_to_telegraph": {
             "type": "boolean",
