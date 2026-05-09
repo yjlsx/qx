@@ -15,6 +15,8 @@ const DEFAULT_CONFIG = {
  AI_API_KEY: '',
  AI_MODEL: 'gpt-4o-mini',
  AI_ANALYSIS_LIMIT: 5,
+ AI_TIMEOUT: 90000,
+ AI_INPUT_LENGTH: 2500,
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -38,6 +40,8 @@ const AI_BASE_URL = CONFIG.AI_BASE_URL;
 const AI_API_KEY = CONFIG.AI_API_KEY;
 const AI_MODEL = CONFIG.AI_MODEL;
 const AI_ANALYSIS_LIMIT = CONFIG.AI_ANALYSIS_LIMIT;
+const AI_TIMEOUT = CONFIG.AI_TIMEOUT;
+const AI_INPUT_LENGTH = CONFIG.AI_INPUT_LENGTH;
 const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
@@ -62,6 +66,8 @@ function loadConfig() {
    AI_API_KEY: readString('nysb_ai_api_key', DEFAULT_CONFIG.AI_API_KEY),
    AI_MODEL: readString('nysb_ai_model', DEFAULT_CONFIG.AI_MODEL),
    AI_ANALYSIS_LIMIT: readNumber('nysb_ai_analysis_limit', DEFAULT_CONFIG.AI_ANALYSIS_LIMIT, 0, 20),
+   AI_TIMEOUT: readNumber('nysb_ai_timeout', DEFAULT_CONFIG.AI_TIMEOUT, 10000, 180000),
+   AI_INPUT_LENGTH: readNumber('nysb_ai_input_length', DEFAULT_CONFIG.AI_INPUT_LENGTH, 800, 6000),
    UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
@@ -392,7 +398,12 @@ async function enrichItemsWithAiAnalysis(items) {
        console.log(`✅ AI分析完成 ${i + 1}: ${item.title.slice(0, 20)}...`);
      }
    } catch (e) {
-     console.log(`⚠️ AI分析失败 ${i + 1}: ${formatErrorMessage(e)}`);
+     const errorMessage = formatErrorMessage(e);
+     console.log(`⚠️ AI分析失败 ${i + 1}: ${errorMessage}`);
+     if (/timeout|timed out|超时/i.test(errorMessage)) {
+       console.log('⚠️ AI接口超时，停止后续 AI 分析，聚合页将使用原精读内容');
+       break;
+     }
    }
    if (i < count - 1) await sleep(1200);
  }
@@ -407,7 +418,7 @@ async function generateAiAnalysis(item, sourceText) {
    item.category ? `栏目：${item.category}` : '',
    item.author ? `作者：${item.author}` : '',
    '',
-   limitText(sourceText, 4500)
+   limitText(sourceText, AI_INPUT_LENGTH)
  ].filter(Boolean).join('\n');
 
  const body = JSON.stringify({
@@ -419,11 +430,11 @@ async function generateAiAnalysis(item, sourceText) {
      },
      {
        role: 'user',
-       content: `请分析下面这篇纽约时报中文网文章。输出要求：\n1. 先用2-3句话概括核心内容。\n2. 再用3个要点解释重要背景、影响或值得注意的细节。\n3. 语言克制、准确，不要太长，总长度约250-450字。\n\n${content}`
+       content: `请分析下面这篇纽约时报中文网文章。输出要求：\n1. 用2句话概括核心内容。\n2. 用3个短要点解释重要背景、影响或值得注意的细节。\n3. 语言克制、准确，不要太长，总长度约220-360字。\n\n${content}`
      }
    ],
    temperature: 0.3,
-   max_tokens: 700
+   max_tokens: 500
  });
 
  let resp;
@@ -431,7 +442,7 @@ async function generateAiAnalysis(item, sourceText) {
    resp = await $task.fetch({
      url: endpoint,
      method: 'POST',
-     timeout: 45000,
+     timeout: AI_TIMEOUT,
      headers: {
        'Content-Type': 'application/json',
        'Authorization': `Bearer ${AI_API_KEY}`

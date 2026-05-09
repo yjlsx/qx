@@ -782,6 +782,8 @@
         "nysb_ai_api_key",
         "nysb_ai_model",
         "nysb_ai_analysis_limit",
+        "nysb_ai_timeout",
+        "nysb_ai_input_length",
         "nysb_upload_images_to_telegraph",
         "nysb_use_image_proxy",
         "nysb_notify_title_count",
@@ -893,6 +895,20 @@
           "val": 5,
           "type": "text",
           "desc": "最多分析前几篇文章。数值越大运行越久、消耗越多。"
+        },
+        {
+          "id": "nysb_ai_timeout",
+          "name": "AI 超时毫秒",
+          "val": 90000,
+          "type": "text",
+          "desc": "AI 单篇请求超时时间。慢模型可填 90000-180000。"
+        },
+        {
+          "id": "nysb_ai_input_length",
+          "name": "AI 输入长度",
+          "val": 2500,
+          "type": "text",
+          "desc": "发送给 AI 的每篇文章最大字数。越小越快，建议 1800-3000。"
         },
         {
           "id": "nysb_upload_images_to_telegraph",
@@ -1032,6 +1048,18 @@
             "label": "AI 分析篇数",
             "default": 5,
             "desc": "最多分析前几篇文章。数值越大运行越久、消耗越多。"
+          },
+          "nysb_ai_timeout": {
+            "type": "text",
+            "label": "AI 超时毫秒",
+            "default": 90000,
+            "desc": "AI 单篇请求超时时间。慢模型可填 90000-180000。"
+          },
+          "nysb_ai_input_length": {
+            "type": "text",
+            "label": "AI 输入长度",
+            "default": 2500,
+            "desc": "发送给 AI 的每篇文章最大字数。越小越快，建议 1800-3000。"
           },
           "nysb_upload_images_to_telegraph": {
             "type": "boolean",
