@@ -15,7 +15,6 @@ const DEFAULT_CONFIG = {
  AI_API_KEY: '',
  AI_MODEL: 'gpt-4o-mini',
  AI_ANALYSIS_LIMIT: 5,
- AI_LIST_MODELS: false,
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -39,7 +38,6 @@ const AI_BASE_URL = CONFIG.AI_BASE_URL;
 const AI_API_KEY = CONFIG.AI_API_KEY;
 const AI_MODEL = CONFIG.AI_MODEL;
 const AI_ANALYSIS_LIMIT = CONFIG.AI_ANALYSIS_LIMIT;
-const AI_LIST_MODELS = CONFIG.AI_LIST_MODELS;
 const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
@@ -64,7 +62,6 @@ function loadConfig() {
    AI_API_KEY: readString('nysb_ai_api_key', DEFAULT_CONFIG.AI_API_KEY),
    AI_MODEL: readString('nysb_ai_model', DEFAULT_CONFIG.AI_MODEL),
    AI_ANALYSIS_LIMIT: readNumber('nysb_ai_analysis_limit', DEFAULT_CONFIG.AI_ANALYSIS_LIMIT, 0, 20),
-   AI_LIST_MODELS: readBoolean('nysb_ai_list_models', DEFAULT_CONFIG.AI_LIST_MODELS),
    UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
@@ -97,60 +94,11 @@ function readBoolean(key, fallback) {
  return ['true', '1', 'yes', 'on'].includes(String(value).toLowerCase());
 }
 
-async function notifyAiModels() {
- try {
-   if (!AI_BASE_URL || !AI_API_KEY) {
-     throw new Error('请先配置 AI Base URL 和 AI API Key');
-   }
-
-   const models = await fetchAiModels();
-   if (!models.length) {
-     throw new Error('接口未返回可用模型');
-   }
-
-   const content = models.slice(0, 20).join('\n');
-   console.log(`🤖 可用 AI 模型 (${models.length}):\n${models.join('\n')}`);
-   $notify('纽约时报 AI 模型列表', `共 ${models.length} 个，显示前 ${Math.min(20, models.length)} 个`, content);
- } catch (e) {
-   console.log(`⚠️ AI模型列表获取失败: ${e.message}`);
-   $notify('纽约时报 AI 模型列表', '获取失败', e.message.slice(0, 120));
- }
-}
-
-async function fetchAiModels() {
- const resp = await $task.fetch({
-   url: `${AI_BASE_URL}/models`,
-   method: 'GET',
-   timeout: 30000,
-   headers: {
-     'Authorization': `Bearer ${AI_API_KEY}`
-   }
- });
-
- const statusCode = resp.statusCode || resp.status;
- const body = decodeResponseBody(resp);
- if (statusCode < 200 || statusCode >= 300) {
-   throw new Error(`AI模型接口 HTTP ${statusCode}: ${body.slice(0, 160)}`);
- }
-
- const data = JSON.parse(body);
- const list = Array.isArray(data.data) ? data.data : [];
- return list
-   .map(model => typeof model === 'string' ? model : model && model.id)
-   .filter(Boolean)
-   .sort();
-}
-
 async function main() {
  try {
    // 环境检测
    if (typeof $task === 'undefined') {
      throw new Error('此脚本必须在Quantumult X中运行');
-   }
-
-   if (AI_LIST_MODELS) {
-     await notifyAiModels();
-     return;
    }
 
    console.log("ℹ️ 开始执行纽约时报推送任务");
