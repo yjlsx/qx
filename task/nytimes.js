@@ -9,7 +9,7 @@ const DEFAULT_CONFIG = {
  ARTICLE_FETCH_LIMIT: 5,         // 最多展开前几篇，避免定时任务运行过久
  ARTICLE_TEXT_LENGTH: 3000,      // 聚合页里每篇精读内容长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
- SHOW_ORIGINAL_LINK: false,      // 是否在每篇精读版末尾显示原文入口
+ SHOW_ORIGINAL_LINK: true,       // 是否在每篇精读版末尾显示原文入口
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题

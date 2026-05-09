@@ -850,7 +850,7 @@
         {
           "id": "nysb_show_original_link",
           "name": "显示原文入口",
-          "val": false,
+          "val": true,
           "type": "boolean",
           "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
         },
@@ -956,7 +956,7 @@
           "nysb_show_original_link": {
             "type": "boolean",
             "label": "显示原文入口",
-            "default": false,
+            "default": true,
             "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
           },
           "nysb_upload_images_to_telegraph": {
