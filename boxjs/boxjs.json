@@ -11,7 +11,7 @@
       "author": "@9527",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/box/youtube.png"
+        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/youtube.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/youtube.response.js",
       "keys": [
@@ -763,8 +763,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/nytimes.png",
-        "https://github.com/yjlsx/qx/blob/91be352e26b83f88111a371f70fadc2047b0993a/icon/box/nytimes.png"
+        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/nytimes.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/nytimes.js",
       "keys": [
