@@ -781,7 +781,6 @@
         "nysb_ai_base_url",
         "nysb_ai_api_key",
         "nysb_ai_model",
-        "nysb_ai_list_models",
         "nysb_ai_analysis_limit",
         "nysb_upload_images_to_telegraph",
         "nysb_use_image_proxy",
@@ -887,13 +886,6 @@
           "val": "gpt-4o-mini",
           "type": "text",
           "desc": "用于分析文章的模型名称。"
-        },
-        {
-          "id": "nysb_ai_list_models",
-          "name": "列出 AI 模型",
-          "val": false,
-          "type": "boolean",
-          "desc": "开启后运行一次脚本，会请求 /models 并通过通知列出可用模型；选好后请关闭此项。"
         },
         {
           "id": "nysb_ai_analysis_limit",
@@ -1034,12 +1026,6 @@
             "default": "gpt-4o-mini",
             "desc": "用于分析文章的模型名称。",
             "placeholder": "gpt-4o-mini"
-          },
-          "nysb_ai_list_models": {
-            "type": "boolean",
-            "label": "列出 AI 模型",
-            "default": false,
-            "desc": "开启后运行一次脚本，会请求 /models 并通过通知列出可用模型；选好后请关闭此项。"
           },
           "nysb_ai_analysis_limit": {
             "type": "text",
