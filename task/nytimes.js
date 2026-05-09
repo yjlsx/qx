@@ -10,6 +10,12 @@ const DEFAULT_CONFIG = {
  ARTICLE_TEXT_LENGTH: 3000,      // 聚合页里每篇精读内容长度
  CREATE_READING_PAGE: true,      // 生成可点击打开的图文聚合页
  SHOW_ORIGINAL_LINK: true,       // 是否在每篇精读版末尾显示原文入口
+ USE_AI_ANALYSIS: false,         // 使用 AI 生成每篇文章分析
+ AI_BASE_URL: 'https://api.openai.com/v1',
+ AI_API_KEY: '',
+ AI_MODEL: 'gpt-4o-mini',
+ AI_ANALYSIS_LIMIT: 5,
+ AI_LIST_MODELS: false,
  UPLOAD_IMAGES_TO_TELEGRAPH: false, // 先上传图片到 Telegraph；通常用图片代理即可
  USE_IMAGE_PROXY: true,          // NYT 图片走代理，避免 static01.nyt.com 无法直连
  NOTIFY_TITLE_COUNT: 3,          // 通知里显示前几个标题
@@ -28,6 +34,12 @@ const ARTICLE_FETCH_LIMIT = CONFIG.ARTICLE_FETCH_LIMIT;
 const ARTICLE_TEXT_LENGTH = CONFIG.ARTICLE_TEXT_LENGTH;
 const CREATE_READING_PAGE = CONFIG.CREATE_READING_PAGE;
 const SHOW_ORIGINAL_LINK = CONFIG.SHOW_ORIGINAL_LINK;
+const USE_AI_ANALYSIS = CONFIG.USE_AI_ANALYSIS;
+const AI_BASE_URL = CONFIG.AI_BASE_URL;
+const AI_API_KEY = CONFIG.AI_API_KEY;
+const AI_MODEL = CONFIG.AI_MODEL;
+const AI_ANALYSIS_LIMIT = CONFIG.AI_ANALYSIS_LIMIT;
+const AI_LIST_MODELS = CONFIG.AI_LIST_MODELS;
 const UPLOAD_IMAGES_TO_TELEGRAPH = CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH;
 const USE_IMAGE_PROXY = CONFIG.USE_IMAGE_PROXY;
 const NOTIFY_TITLE_COUNT = CONFIG.NOTIFY_TITLE_COUNT;
@@ -47,6 +59,12 @@ function loadConfig() {
    ARTICLE_TEXT_LENGTH: readNumber('nysb_article_text_length', DEFAULT_CONFIG.ARTICLE_TEXT_LENGTH, 100, 5000),
    CREATE_READING_PAGE: readBoolean('nysb_create_reading_page', DEFAULT_CONFIG.CREATE_READING_PAGE),
    SHOW_ORIGINAL_LINK: readBoolean('nysb_show_original_link', DEFAULT_CONFIG.SHOW_ORIGINAL_LINK),
+   USE_AI_ANALYSIS: readBoolean('nysb_use_ai_analysis', DEFAULT_CONFIG.USE_AI_ANALYSIS),
+   AI_BASE_URL: readString('nysb_ai_base_url', DEFAULT_CONFIG.AI_BASE_URL).replace(/\/+$/, ''),
+   AI_API_KEY: readString('nysb_ai_api_key', DEFAULT_CONFIG.AI_API_KEY),
+   AI_MODEL: readString('nysb_ai_model', DEFAULT_CONFIG.AI_MODEL),
+   AI_ANALYSIS_LIMIT: readNumber('nysb_ai_analysis_limit', DEFAULT_CONFIG.AI_ANALYSIS_LIMIT, 0, 20),
+   AI_LIST_MODELS: readBoolean('nysb_ai_list_models', DEFAULT_CONFIG.AI_LIST_MODELS),
    UPLOAD_IMAGES_TO_TELEGRAPH: readBoolean('nysb_upload_images_to_telegraph', DEFAULT_CONFIG.UPLOAD_IMAGES_TO_TELEGRAPH),
    USE_IMAGE_PROXY: readBoolean('nysb_use_image_proxy', DEFAULT_CONFIG.USE_IMAGE_PROXY),
    NOTIFY_TITLE_COUNT: readNumber('nysb_notify_title_count', DEFAULT_CONFIG.NOTIFY_TITLE_COUNT, 1, 10),
@@ -79,11 +97,60 @@ function readBoolean(key, fallback) {
  return ['true', '1', 'yes', 'on'].includes(String(value).toLowerCase());
 }
 
+async function notifyAiModels() {
+ try {
+   if (!AI_BASE_URL || !AI_API_KEY) {
+     throw new Error('请先配置 AI Base URL 和 AI API Key');
+   }
+
+   const models = await fetchAiModels();
+   if (!models.length) {
+     throw new Error('接口未返回可用模型');
+   }
+
+   const content = models.slice(0, 20).join('\n');
+   console.log(`🤖 可用 AI 模型 (${models.length}):\n${models.join('\n')}`);
+   $notify('纽约时报 AI 模型列表', `共 ${models.length} 个，显示前 ${Math.min(20, models.length)} 个`, content);
+ } catch (e) {
+   console.log(`⚠️ AI模型列表获取失败: ${e.message}`);
+   $notify('纽约时报 AI 模型列表', '获取失败', e.message.slice(0, 120));
+ }
+}
+
+async function fetchAiModels() {
+ const resp = await $task.fetch({
+   url: `${AI_BASE_URL}/models`,
+   method: 'GET',
+   timeout: 30000,
+   headers: {
+     'Authorization': `Bearer ${AI_API_KEY}`
+   }
+ });
+
+ const statusCode = resp.statusCode || resp.status;
+ const body = decodeResponseBody(resp);
+ if (statusCode < 200 || statusCode >= 300) {
+   throw new Error(`AI模型接口 HTTP ${statusCode}: ${body.slice(0, 160)}`);
+ }
+
+ const data = JSON.parse(body);
+ const list = Array.isArray(data.data) ? data.data : [];
+ return list
+   .map(model => typeof model === 'string' ? model : model && model.id)
+   .filter(Boolean)
+   .sort();
+}
+
 async function main() {
  try {
    // 环境检测
    if (typeof $task === 'undefined') {
      throw new Error('此脚本必须在Quantumult X中运行');
+   }
+
+   if (AI_LIST_MODELS) {
+     await notifyAiModels();
+     return;
    }
 
    console.log("ℹ️ 开始执行纽约时报推送任务");
@@ -95,6 +162,10 @@ async function main() {
 
    if (FETCH_ARTICLE_TEXT && items.length > 0) {
      items = await enrichItemsWithArticleText(items);
+   }
+
+   if (USE_AI_ANALYSIS && items.length > 0) {
+     items = await enrichItemsWithAiAnalysis(items);
    }
 
    if (items.length > 0) {
@@ -343,6 +414,93 @@ async function enrichItemsWithArticleText(items) {
  }
 
  return nextItems;
+}
+
+async function enrichItemsWithAiAnalysis(items) {
+ if (!AI_API_KEY || !AI_BASE_URL || !AI_MODEL) {
+   console.log('⚠️ AI分析已开启，但 Base URL / Key / Model 未配置完整，跳过');
+   return items;
+ }
+
+ const nextItems = items.slice();
+ const count = Math.min(nextItems.length, AI_ANALYSIS_LIMIT || nextItems.length);
+ console.log(`🤖 开始 AI 分析：前 ${count} 篇，模型 ${AI_MODEL}`);
+
+ for (let i = 0; i < count; i++) {
+   const item = nextItems[i];
+   const sourceText = (item.articleText || item.summary || '').trim();
+   if (!sourceText) {
+     console.log(`⚠️ AI分析跳过 ${i + 1}: 缺少正文或摘要`);
+     continue;
+   }
+
+   try {
+     const analysis = await generateAiAnalysis(item, sourceText);
+     if (analysis) {
+       nextItems[i] = {
+         ...item,
+         aiAnalysis: analysis
+       };
+       console.log(`✅ AI分析完成 ${i + 1}: ${item.title.slice(0, 20)}...`);
+     }
+   } catch (e) {
+     console.log(`⚠️ AI分析失败 ${i + 1}: ${e.message}`);
+   }
+ }
+
+ return nextItems;
+}
+
+async function generateAiAnalysis(item, sourceText) {
+ const endpoint = `${AI_BASE_URL}/chat/completions`;
+ const content = [
+   `标题：${item.title}`,
+   item.category ? `栏目：${item.category}` : '',
+   item.author ? `作者：${item.author}` : '',
+   '',
+   limitText(sourceText, 4500)
+ ].filter(Boolean).join('\n');
+
+ const body = JSON.stringify({
+   model: AI_MODEL,
+   messages: [
+     {
+       role: 'system',
+       content: '你是一个中文新闻精读助手。请基于给定文章内容生成适合手机阅读的中文分析，不要编造正文没有的信息。'
+     },
+     {
+       role: 'user',
+       content: `请分析下面这篇纽约时报中文网文章。输出要求：\n1. 先用2-3句话概括核心内容。\n2. 再用3个要点解释重要背景、影响或值得注意的细节。\n3. 语言克制、准确，不要太长，总长度约250-450字。\n\n${content}`
+     }
+   ],
+   temperature: 0.3,
+   max_tokens: 700
+ });
+
+ const resp = await $task.fetch({
+   url: endpoint,
+   method: 'POST',
+   timeout: 45000,
+   headers: {
+     'Content-Type': 'application/json',
+     'Authorization': `Bearer ${AI_API_KEY}`
+   },
+   body
+ });
+
+ const statusCode = resp.statusCode || resp.status;
+ const respBody = decodeResponseBody(resp);
+ if (statusCode < 200 || statusCode >= 300) {
+   throw new Error(`AI接口 HTTP ${statusCode}: ${respBody.slice(0, 160)}`);
+ }
+
+ const data = JSON.parse(respBody);
+ const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+ if (!text) {
+   throw new Error('AI接口未返回分析内容');
+ }
+
+ return text.trim();
 }
 
 function extractArticleText(html) {
@@ -612,7 +770,10 @@ function buildPlainTelegraphContent(items) {
    const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
    if (meta) nodes.push({ tag: 'p', children: [meta] });
 
-   const text = item.articleText || item.summary || '';
+   const text = item.aiAnalysis || item.articleText || item.summary || '';
+   if (item.aiAnalysis) {
+     nodes.push({ tag: 'p', children: ['AI 分析'] });
+   }
    splitParagraphs(text).forEach(paragraph => {
      nodes.push({ tag: 'p', children: [paragraph] });
    });
@@ -672,7 +833,10 @@ function buildTelegraphContent(items) {
      console.log(`🖼️ 文章 ${index + 1} 图片: ${image}`);
    }
 
-   const text = item.articleText || item.summary || '';
+   const text = item.aiAnalysis || item.articleText || item.summary || '';
+   if (item.aiAnalysis) {
+     nodes.push({ tag: 'p', children: ['AI 分析'] });
+   }
    splitParagraphs(text).forEach(paragraph => {
      nodes.push({ tag: 'p', children: [paragraph] });
    });

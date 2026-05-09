@@ -777,6 +777,12 @@
         "nysb_article_text_length",
         "nysb_create_reading_page",
         "nysb_show_original_link",
+        "nysb_use_ai_analysis",
+        "nysb_ai_base_url",
+        "nysb_ai_api_key",
+        "nysb_ai_model",
+        "nysb_ai_list_models",
+        "nysb_ai_analysis_limit",
         "nysb_upload_images_to_telegraph",
         "nysb_use_image_proxy",
         "nysb_notify_title_count",
@@ -853,6 +859,48 @@
           "val": true,
           "type": "boolean",
           "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
+        },
+        {
+          "id": "nysb_use_ai_analysis",
+          "name": "AI 分析",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后调用 OpenAI 兼容接口，为每篇文章生成精读分析。"
+        },
+        {
+          "id": "nysb_ai_base_url",
+          "name": "AI Base URL",
+          "val": "https://api.openai.com/v1",
+          "type": "text",
+          "desc": "OpenAI 兼容接口地址，例如 https://api.openai.com/v1。"
+        },
+        {
+          "id": "nysb_ai_api_key",
+          "name": "AI API Key",
+          "val": "",
+          "type": "text",
+          "desc": "用于调用 AI 接口的 API Key。"
+        },
+        {
+          "id": "nysb_ai_model",
+          "name": "AI Model",
+          "val": "gpt-4o-mini",
+          "type": "text",
+          "desc": "用于分析文章的模型名称。"
+        },
+        {
+          "id": "nysb_ai_list_models",
+          "name": "列出 AI 模型",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本，会请求 /models 并通过通知列出可用模型；选好后请关闭此项。"
+        },
+        {
+          "id": "nysb_ai_analysis_limit",
+          "name": "AI 分析篇数",
+          "val": 5,
+          "type": "text",
+          "desc": "最多分析前几篇文章。数值越大运行越久、消耗越多。"
         },
         {
           "id": "nysb_upload_images_to_telegraph",
@@ -958,6 +1006,46 @@
             "label": "显示原文入口",
             "default": true,
             "desc": "开启后在每篇精读版末尾显示原文入口；关闭后阅读停留在聚合页内。"
+          },
+          "nysb_use_ai_analysis": {
+            "type": "boolean",
+            "label": "AI 分析",
+            "default": false,
+            "desc": "开启后调用 OpenAI 兼容接口，为每篇文章生成精读分析。"
+          },
+          "nysb_ai_base_url": {
+            "type": "text",
+            "label": "AI Base URL",
+            "default": "https://api.openai.com/v1",
+            "desc": "OpenAI 兼容接口地址，例如 https://api.openai.com/v1。",
+            "placeholder": "https://api.openai.com/v1"
+          },
+          "nysb_ai_api_key": {
+            "type": "text",
+            "label": "AI API Key",
+            "default": "",
+            "desc": "用于调用 AI 接口的 API Key。",
+            "input": "password",
+            "placeholder": "sk-..."
+          },
+          "nysb_ai_model": {
+            "type": "text",
+            "label": "AI Model",
+            "default": "gpt-4o-mini",
+            "desc": "用于分析文章的模型名称。",
+            "placeholder": "gpt-4o-mini"
+          },
+          "nysb_ai_list_models": {
+            "type": "boolean",
+            "label": "列出 AI 模型",
+            "default": false,
+            "desc": "开启后运行一次脚本，会请求 /models 并通过通知列出可用模型；选好后请关闭此项。"
+          },
+          "nysb_ai_analysis_limit": {
+            "type": "text",
+            "label": "AI 分析篇数",
+            "default": 5,
+            "desc": "最多分析前几篇文章。数值越大运行越久、消耗越多。"
           },
           "nysb_upload_images_to_telegraph": {
             "type": "boolean",
