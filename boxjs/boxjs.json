@@ -11,7 +11,7 @@
       "author": "@9527",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/youtube.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/youtube.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/youtube.response.js",
       "keys": [
@@ -383,7 +383,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/kuaishou.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/kuaishou.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/kuaishou.js",
       "keys": [
@@ -521,7 +521,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/lixian.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/lixian.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js",
       "keys": [
@@ -574,7 +574,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/kuaishou.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/kuaishou.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/kuaishoujisu.js",
       "keys": [
@@ -698,7 +698,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/iqiyi.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/iqiyi.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/iQIYI.js",
       "keys": [
@@ -763,7 +763,7 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/box/nytimes.png"
+        "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/nytimes.png"
       ],
       "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/nytimes.js",
       "keys": [
