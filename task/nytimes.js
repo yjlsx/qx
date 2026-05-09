@@ -392,8 +392,9 @@ async function enrichItemsWithAiAnalysis(items) {
        console.log(`✅ AI分析完成 ${i + 1}: ${item.title.slice(0, 20)}...`);
      }
    } catch (e) {
-     console.log(`⚠️ AI分析失败 ${i + 1}: ${e.message}`);
+     console.log(`⚠️ AI分析失败 ${i + 1}: ${formatErrorMessage(e)}`);
    }
+   if (i < count - 1) await sleep(1200);
  }
 
  return nextItems;
@@ -449,6 +450,22 @@ async function generateAiAnalysis(item, sourceText) {
  }
 
  return text.trim();
+}
+
+function sleep(ms) {
+ return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function formatErrorMessage(error) {
+ if (!error) return '未知错误';
+ if (typeof error === 'string') return error;
+ if (error.message) return error.message;
+ if (error.error) return typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+ try {
+   return JSON.stringify(error);
+ } catch (e) {
+   return String(error);
+ }
 }
 
 function extractArticleText(html) {
