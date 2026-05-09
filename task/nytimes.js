@@ -426,24 +426,37 @@ async function generateAiAnalysis(item, sourceText) {
    max_tokens: 700
  });
 
- const resp = await $task.fetch({
-   url: endpoint,
-   method: 'POST',
-   timeout: 45000,
-   headers: {
-     'Content-Type': 'application/json',
-     'Authorization': `Bearer ${AI_API_KEY}`
-   },
-   body
- });
+ let resp;
+ try {
+   resp = await $task.fetch({
+     url: endpoint,
+     method: 'POST',
+     timeout: 45000,
+     headers: {
+       'Content-Type': 'application/json',
+       'Authorization': `Bearer ${AI_API_KEY}`
+     },
+     body
+   });
+ } catch (e) {
+   throw new Error(`AI接口请求失败: ${formatFetchError(e)}`);
+ }
 
  const statusCode = resp.statusCode || resp.status;
  const respBody = decodeResponseBody(resp);
+ if (!respBody) {
+   throw new Error(`AI接口响应为空，HTTP ${statusCode || '未知状态码'}`);
+ }
  if (statusCode < 200 || statusCode >= 300) {
    throw new Error(`AI接口 HTTP ${statusCode}: ${respBody.slice(0, 160)}`);
  }
 
- const data = JSON.parse(respBody);
+ let data;
+ try {
+   data = JSON.parse(respBody);
+ } catch (e) {
+   throw new Error(`AI接口返回非JSON: ${respBody.slice(0, 160)}`);
+ }
  const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
  if (!text) {
    throw new Error('AI接口未返回分析内容');
