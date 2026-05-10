@@ -903,15 +903,15 @@ function buildArticleTitleNode(item, index) {
 
 function appendAnalysisAndText(nodes, item) {
  if (item.aiAnalysis) {
-   nodes.push({ tag: 'p', children: ['AI 分析'] });
+   nodes.push({ tag: 'h4', children: ['AI 分析'] });
    splitParagraphs(item.aiAnalysis).forEach(paragraph => {
-     nodes.push({ tag: 'p', children: [paragraph] });
+     nodes.push({ tag: 'blockquote', children: [paragraph] });
    });
  }
 
  const text = item.articleText || item.summary || '';
  if (text) {
-   if (item.aiAnalysis) nodes.push({ tag: 'p', children: ['正文'] });
+   if (item.aiAnalysis) nodes.push({ tag: 'h4', children: ['正文'] });
    splitParagraphs(text).forEach(paragraph => {
      nodes.push({ tag: 'p', children: [paragraph] });
    });
