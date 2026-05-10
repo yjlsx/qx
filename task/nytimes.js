@@ -831,13 +831,7 @@ function buildPlainTelegraphContent(items) {
    const meta = [item.category, item.author, formatPubDate(item.pubDate)].filter(Boolean).join(' / ');
    if (meta) nodes.push({ tag: 'p', children: [meta] });
 
-   const text = item.aiAnalysis || item.articleText || item.summary || '';
-   if (item.aiAnalysis) {
-     nodes.push({ tag: 'p', children: ['AI 分析'] });
-   }
-   splitParagraphs(text).forEach(paragraph => {
-     nodes.push({ tag: 'p', children: [paragraph] });
-   });
+   appendAnalysisAndText(nodes, item);
 
    if (SHOW_ORIGINAL_LINK) nodes.push(buildOriginalLinkNode(item));
  });
@@ -894,13 +888,7 @@ function buildTelegraphContent(items) {
      console.log(`🖼️ 文章 ${index + 1} 图片: ${image}`);
    }
 
-   const text = item.aiAnalysis || item.articleText || item.summary || '';
-   if (item.aiAnalysis) {
-     nodes.push({ tag: 'p', children: ['AI 分析'] });
-   }
-   splitParagraphs(text).forEach(paragraph => {
-     nodes.push({ tag: 'p', children: [paragraph] });
-   });
+   appendAnalysisAndText(nodes, item);
 
    if (SHOW_ORIGINAL_LINK) nodes.push(buildOriginalLinkNode(item));
  });
@@ -911,6 +899,23 @@ function buildTelegraphContent(items) {
 function buildArticleTitleNode(item, index) {
  const title = `${index + 1}. ${item.title}`;
  return { tag: 'h3', children: [title] };
+}
+
+function appendAnalysisAndText(nodes, item) {
+ if (item.aiAnalysis) {
+   nodes.push({ tag: 'p', children: ['AI 分析'] });
+   splitParagraphs(item.aiAnalysis).forEach(paragraph => {
+     nodes.push({ tag: 'p', children: [paragraph] });
+   });
+ }
+
+ const text = item.articleText || item.summary || '';
+ if (text) {
+   if (item.aiAnalysis) nodes.push({ tag: 'p', children: ['正文'] });
+   splitParagraphs(text).forEach(paragraph => {
+     nodes.push({ tag: 'p', children: [paragraph] });
+   });
+ }
 }
 
 function buildOriginalLinkNode(item) {
