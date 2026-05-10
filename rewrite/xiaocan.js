@@ -341,7 +341,10 @@ if (!body) {
   try {
     let changed = false;
 
-    if (/native_order_config\.json/i.test(url)) {
+    if (/FusionGrabPromotionQuota/i.test(method)) {
+      console.log("[小蚕清理] 跳过抢单接口，保留服务端原始返回");
+      $done({});
+    } else if (/native_order_config\.json/i.test(url)) {
       obj.open_native = false;
       obj.open_ios_native = false;
       obj.open_android_native = false;
