@@ -1137,6 +1137,140 @@
           }
         }
       }
+    },
+    {
+      "id": "economist",
+      "name": "经济学人快讯",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://economistnew.buzzing.cc/icon.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/economist.js",
+      "keys": [
+        "econ_ai_api_key",
+        "econ_ai_base_url",
+        "econ_ai_model",
+        "econ_feed_url",
+        "econ_max_items",
+        "econ_preview_length",
+        "econ_article_text_length",
+        "econ_push_only_new"
+      ],
+      "settings": [
+        {
+          "id": "econ_ai_api_key",
+          "name": "AI API Key",
+          "val": "",
+          "type": "text",
+          "desc": "填写 OpenAI 或兼容接口的 API Key。未填写时只推送英文标题。",
+          "input": "password",
+          "placeholder": "sk-..."
+        },
+        {
+          "id": "econ_ai_base_url",
+          "name": "AI Base URL",
+          "val": "https://api.openai.com/v1",
+          "type": "text",
+          "desc": "OpenAI 兼容接口地址，例如 https://api.openai.com/v1。"
+        },
+        {
+          "id": "econ_ai_model",
+          "name": "AI 模型",
+          "val": "gpt-4o-mini",
+          "type": "text",
+          "desc": "用于翻译标题的模型名称。"
+        },
+        {
+          "id": "econ_feed_url",
+          "name": "订阅地址",
+          "val": "https://economistnew.buzzing.cc/feed.json",
+          "type": "text",
+          "desc": "默认使用 JSON Feed，比 feed.xml 更容易解析。"
+        },
+        {
+          "id": "econ_max_items",
+          "name": "推送篇数",
+          "val": 5,
+          "type": "text",
+          "desc": "每次推送最新几篇，范围 1-10。"
+        },
+        {
+          "id": "econ_preview_length",
+          "name": "预览长度",
+          "val": 220,
+          "type": "text",
+          "desc": "聚合页中每篇文章先显示多少个字符。"
+        },
+        {
+          "id": "econ_article_text_length",
+          "name": "正文最大长度",
+          "val": 12000,
+          "type": "text",
+          "desc": "每篇文章送给 AI 翻译的最大字符数。feed 只有多少就显示多少，不绕过付费墙。"
+        },
+        {
+          "id": "econ_push_only_new",
+          "name": "仅有新文章时推送",
+          "val": true,
+          "type": "boolean",
+          "desc": "开启后，如果最新文章没有变化，就不重复推送。"
+        }
+      ],
+      "boxjs": {
+        "settings": {
+          "econ_ai_api_key": {
+            "type": "text",
+            "label": "AI API Key",
+            "default": "",
+            "desc": "填写 OpenAI 或兼容接口的 API Key。未填写时只推送英文标题。",
+            "input": "password",
+            "placeholder": "sk-..."
+          },
+          "econ_ai_base_url": {
+            "type": "text",
+            "label": "AI Base URL",
+            "default": "https://api.openai.com/v1",
+            "desc": "OpenAI 兼容接口地址。"
+          },
+          "econ_ai_model": {
+            "type": "text",
+            "label": "AI 模型",
+            "default": "gpt-4o-mini",
+            "desc": "用于翻译标题的模型名称。"
+          },
+          "econ_feed_url": {
+            "type": "text",
+            "label": "订阅地址",
+            "default": "https://economistnew.buzzing.cc/feed.json",
+            "desc": "默认使用 JSON Feed，比 feed.xml 更容易解析。"
+          },
+          "econ_max_items": {
+            "type": "text",
+            "label": "推送篇数",
+            "default": 5,
+            "desc": "每次推送最新几篇，范围 1-10。"
+          },
+          "econ_preview_length": {
+            "type": "text",
+            "label": "预览长度",
+            "default": 220,
+            "desc": "聚合页中每篇文章先显示多少个字符。"
+          },
+          "econ_article_text_length": {
+            "type": "text",
+            "label": "正文最大长度",
+            "default": 12000,
+            "desc": "每篇文章送给 AI 翻译的最大字符数。feed 只有多少就显示多少，不绕过付费墙。"
+          },
+          "econ_push_only_new": {
+            "type": "boolean",
+            "label": "仅有新文章时推送",
+            "default": true,
+            "desc": "开启后，如果最新文章没有变化，就不重复推送。"
+          }
+        }
+      }
     }
   ]
 }
