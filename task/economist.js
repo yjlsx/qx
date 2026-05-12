@@ -52,24 +52,36 @@ main()
 async function main() {
   if (typeof $task === "undefined") throw new Error("请在 Quantumult X 定时任务中运行");
 
+  console.log("[经济学人] 任务开始");
+  console.log(`[经济学人] Feed: ${CONFIG.FEED_URL}`);
+  console.log(`[经济学人] 配置：篇数=${CONFIG.MAX_ITEMS}, 预览=${CONFIG.PREVIEW_LENGTH}, 仅新文章=${CONFIG.PUSH_ONLY_NEW}, AI=${CONFIG.AI_API_KEY ? CONFIG.AI_MODEL : "未配置"}`);
+
+  console.log("[经济学人] 正在拉取 feed...");
   const feed = await fetchJson(CONFIG.FEED_URL);
   let items = normalizeItems(feed.items || []).slice(0, CONFIG.MAX_ITEMS);
+  console.log(`[经济学人] 解析到 ${feed.items ? feed.items.length : 0} 条，准备处理 ${items.length} 条`);
   if (items.length === 0) {
+    console.log("[经济学人] 没有解析到文章");
     notify("经济学人快讯", "没有解析到文章", CONFIG.FEED_URL);
     return;
   }
 
   const topId = items[0].id || items[0].url || items[0].englishTitle;
   const lastId = readString(LAST_ID_KEY, "");
+  console.log(`[经济学人] 最新文章：${items[0].englishTitle}`);
   if (CONFIG.PUSH_ONLY_NEW && lastId && lastId === topId) {
     console.log("[经济学人] 没有新文章，跳过推送");
     return;
   }
 
+  console.log("[经济学人] 正在翻译文章...");
   items = await translateItems(items);
+  console.log("[经济学人] 正在生成 Telegraph 聚合页...");
   const pageUrl = await createReadingPage(items);
+  console.log("[经济学人] 正在发送通知...");
   sendNotification(items, pageUrl);
   writeString(LAST_ID_KEY, topId);
+  console.log("[经济学人] 任务完成");
 }
 
 function normalizeItems(rawItems) {
@@ -84,6 +96,7 @@ function normalizeItems(rawItems) {
         url: item.url || item.external_url || "",
         englishTitle,
         englishText: limitText(contentText || englishTitle, CONFIG.ARTICLE_TEXT_LENGTH),
+        hasFullText: hasMeaningfulArticleText(contentText, englishTitle),
         date: item._original_published || item.date_published || item.date_modified || "",
         image: item.image || extractFirstImage(item.content_html || ""),
       };
@@ -100,6 +113,15 @@ function extractFeedArticleText(item, title) {
     .replace(/\(\s*www\.economist\.com\s*\)$/i, "")
     .trim();
   return text || title;
+}
+
+function hasMeaningfulArticleText(text, title) {
+  const normalizedText = cleanText(text || "");
+  const normalizedTitle = cleanText(title || "");
+  if (!normalizedText) return false;
+  if (normalizedText === normalizedTitle) return false;
+  if (normalizedText.length < Math.max(260, normalizedTitle.length + 120)) return false;
+  return true;
 }
 
 async function translateItems(items) {
@@ -201,6 +223,7 @@ function buildTelegraphContent(items, useDetails) {
     const title = item.zhTitle || item.englishTitle;
     const text = item.zhText || item.englishText || item.englishTitle;
     const preview = makePreview(text);
+    const hasFullText = item.hasFullText && text && cleanText(text) !== cleanText(title);
 
     nodes.push({ tag: "h3", children: [`${index + 1}. ${title}`] });
     if (item.englishTitle && item.englishTitle !== title) {
@@ -214,9 +237,16 @@ function buildTelegraphContent(items, useDetails) {
       nodes.push({ tag: "img", attrs: { src: item.image } });
     }
 
-    nodes.push({ tag: "p", children: [preview] });
+    if (hasFullText) {
+      nodes.push({ tag: "p", children: [preview] });
+    } else {
+      nodes.push({
+        tag: "p",
+        children: ["订阅源目前只提供标题/快讯，不包含文章全文。需要阅读完整内容请打开原文链接。"],
+      });
+    }
 
-    if (useDetails) {
+    if (hasFullText && useDetails) {
       nodes.push({
         tag: "details",
         children: [
@@ -225,7 +255,7 @@ function buildTelegraphContent(items, useDetails) {
           { tag: "p", children: ["收缩：点击上方“展开全文”即可收起。"] },
         ],
       });
-    } else {
+    } else if (hasFullText) {
       nodes.push({ tag: "h4", children: ["全文"] });
       splitParagraphs(text).forEach((paragraph) => nodes.push({ tag: "p", children: [paragraph] }));
     }
