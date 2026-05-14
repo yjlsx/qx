@@ -2,7 +2,7 @@
 [rewrite_local]
 # 统一处理脚本
 
-^https:\/\/as\.mgtv\.com\/client\/store\/v4\/products\?api_version=\d+\.\d+&apple_prom=[^&]+&fe_version=[^&]+&invoker= url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtv4.js
+^https:\/\/as\.mgtv\.com\/client\/store\/v4\/products\?api_version=\d+\.\d+&apple_prom=[^&]+&fe_version=[^&]+&invoker= url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtv4.js
 
 
 

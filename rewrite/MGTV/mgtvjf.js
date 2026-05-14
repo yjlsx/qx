@@ -1,16 +1,16 @@
 /**************************************
 *
 [rewrite local]
-^https:\/\/as\.mgtv\.com\/client\/user\/user_vip_coin\?(fe_version|invoker) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/as\.mgtv\.com\/client\/user\/user_info\?(invoker|cxid) url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/nuc\.api\.mgtv\.com\/GetUserInfo\?_from=vip_growth url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/as\.mgtv\.com\/client\/order\/order_status url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/as\.mgtv\.com\/client\/order\/orderCreate url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/coin.js
-^https:\/\/oiiccdn\.yydsii\.com\/api\/v1\/client\/subscribe url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/messpro\.hnwzinfo\.com\/api\/heartbeat\/v1 url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/vipact3\.api\.mgtv\.com\/api\/v1\/act\/viptype url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/nuc\.api\.mgtv\.com\/GetUserInfo\?_from=mgtv_cashier url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
-^https:\/\/as\.mgtv\.com\/client\/store\/v4\/products url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/mgtvjf.js
+^https:\/\/as\.mgtv\.com\/client\/user\/user_vip_coin\?(fe_version|invoker) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/as\.mgtv\.com\/client\/user\/user_info\?(invoker|cxid) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/nuc\.api\.mgtv\.com\/GetUserInfo\?_from=vip_growth url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/as\.mgtv\.com\/client\/order\/order_status url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/as\.mgtv\.com\/client\/order\/orderCreate url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/coin.js
+^https:\/\/oiiccdn\.yydsii\.com\/api\/v1\/client\/subscribe url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/messpro\.hnwzinfo\.com\/api\/heartbeat\/v1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/vipact3\.api\.mgtv\.com\/api\/v1\/act\/viptype url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/nuc\.api\.mgtv\.com\/GetUserInfo\?_from=mgtv_cashier url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
+^https:\/\/as\.mgtv\.com\/client\/store\/v4\/products url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/mgtvjf.js
 
 [mitm]
 hostname = as.mgtv.com, vipact3.api.mgtv.com, oiiccdn.yydsii.com, messpro.hnwzinfo.com, nuc.api.mgtv.com

@@ -1,7 +1,7 @@
 /*
 [rewrite_local]
 # 修改URL中的参数值
-^https:\/\/mobile-stream\.api\.mgtv\.com\/v1\/video\/source?.* url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/MGTV5.js
+^https:\/\/mobile-stream\.api\.mgtv\.com\/v1\/video\/source?.* url script-request-header https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/MGTV5.js
 
 [mitm]
 hostname = mobile-stream.api.mgtv.com

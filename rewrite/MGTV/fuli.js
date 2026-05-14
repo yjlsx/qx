@@ -1,8 +1,8 @@
 /*
 [rewrite local]
-^https:\/\/mgecoupon\.api\.mgtv\.com\/coupon\/my\/list url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/fuli.js
-^https:\/\/mgecom\.api\.mgtv\.com\/user\/voucher\/nums url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/fuli.js
-^https:\/\/mobile-thor\.api\.mgtv\.com\/v1\/vod\/info url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/yjlsx/MGTV/fuli.js
+^https:\/\/mgecoupon\.api\.mgtv\.com\/coupon\/my\/list url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/fuli.js
+^https:\/\/mgecom\.api\.mgtv\.com\/user\/voucher\/nums url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/fuli.js
+^https:\/\/mobile-thor\.api\.mgtv\.com\/v1\/vod\/info url script-response-body https://raw.githubusercontent.com/yjlsx/qx/master/rewrite/MGTV/fuli.js
 
 
 *
