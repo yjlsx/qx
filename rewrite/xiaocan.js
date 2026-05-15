@@ -68,6 +68,10 @@ function clearGeoAbnormalStatus(obj) {
   return obj;
 }
 
+function shouldKeepOriginalRpc() {
+  return /FusionService\.ReportOrder/i.test(method);
+}
+
 function isObj(v) {
   return v && typeof v === "object" && !Array.isArray(v);
 }
@@ -361,6 +365,9 @@ if (!body) {
 
     if (/FusionGrabPromotionQuota/i.test(method)) {
       console.log("[小蚕清理] 跳过抢单接口，保留服务端原始返回");
+      $done({});
+    } else if (shouldKeepOriginalRpc()) {
+      console.log(`[小蚕清理] 跳过关键上报接口，保留服务端原始返回：${method}`);
       $done({});
     } else if (isGeoAbnormalResponse(obj)) {
       obj = clearGeoAbnormalStatus(obj);
