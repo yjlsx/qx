@@ -49,41 +49,22 @@ function emptyOk(extra) {
   );
 }
 
-function geoPass(extra) {
-  return Object.assign(
-    {
-      status: { code: 0 },
-      data: null,
-      result: null,
-      list: null,
-      pass: true,
-      allow: true,
-      valid: true,
-      enable: true,
-      is_valid: true,
-      is_pass: true,
-      need_verify: false,
-      need_retry: false,
-      need_correct: false,
-      show: false,
-      is_show: false,
-      show_popup: false,
-      popup: null,
-      dialog: null,
-      toast: "",
-      msg: "",
-      message: "",
-    },
-    extra || {}
-  );
-}
-
 function isGeoAbnormalResponse(obj) {
   if (!isObj(obj)) return false;
   const status = isObj(obj.status) ? obj.status : {};
   const code = Number(status.code);
   const msg = String(status.msg || status.message || obj.msg || obj.message || "");
   return code === 9 && /\u5730\u7406\u4f4d\u7f6\u5f02\u5e38|\u4f4d\u7f6\u5f02\u5e38|\u4fee\u6b63.*\u5c0f\u8695/i.test(msg);
+}
+
+function clearGeoAbnormalStatus(obj) {
+  if (!isObj(obj.status)) obj.status = {};
+  obj.status.code = 0;
+  if (Object.prototype.hasOwnProperty.call(obj.status, "msg")) obj.status.msg = "";
+  if (Object.prototype.hasOwnProperty.call(obj.status, "message")) obj.status.message = "";
+  if (Object.prototype.hasOwnProperty.call(obj, "msg")) obj.msg = "";
+  if (Object.prototype.hasOwnProperty.call(obj, "message")) obj.message = "";
+  return obj;
 }
 
 function isObj(v) {
@@ -380,9 +361,9 @@ if (!body) {
     if (/FusionGrabPromotionQuota/i.test(method)) {
       console.log("[小蚕清理] 跳过抢单接口，保留服务端原始返回");
       $done({});
-    } else if (/SilkwormRcs/i.test(server) || /SilkwormRcsService\./i.test(method) || isGeoAbnormalResponse(obj)) {
-      obj = geoPass();
-      console.log(`[小蚕清理] 已屏蔽地理/风控检测：${method || server || "geo abnormal response"}`);
+    } else if (isGeoAbnormalResponse(obj)) {
+      obj = clearGeoAbnormalStatus(obj);
+      console.log(`[小蚕清理] 已清除地理位置异常提示：${method || server || "geo abnormal response"}`);
       changed = true;
     } else if (/native_order_config\.json/i.test(url)) {
       obj.open_native = false;
