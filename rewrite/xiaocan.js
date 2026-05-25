@@ -1,5 +1,5 @@
 /*
-接口去广告 + 移除所有“按比例返利”店铺单
+接口去广告 + 保留订单/历史记录
 
 
 [rewrite_local]
@@ -24,6 +24,25 @@ function h(name) {
 
 const method = h("methodname");
 const server = h("servername");
+
+function isOrderDataMethod(name) {
+  return /GetPromotionOrderList|OrderLatestHistory|GetFreeOrderInfo|PointOrderInfos|OrderActivityProgress|OrderBadge|GetUserCardList|OrderListV2/i.test(name);
+}
+
+function isAdPlacementMethod(name, service) {
+  return /BatchMatchPlacement|MatchPlacement/i.test(name) || /Placement|SilkwormAd/i.test(service);
+}
+
+function isSearchOrStoreListMethod(name, service) {
+  if (isOrderDataMethod(name)) return false;
+  const targetMethods = /SearchPromotions|MeituanShangjinGetPoiList|GetStorePromotionList|ListSilkRecommendation|GetRecPromotionsByCategory/i;
+  const targetServices = /SilkwormRcs/i;
+  return targetMethods.test(name || "") || targetServices.test(service || "");
+}
+
+function isPopupOrMarketingMethod(name) {
+  return /Popup|PopUp|Ad|Advert|Marketing|Placement|Resource/i.test(name);
+}
 
 function done(obj) {
   $done({ body: JSON.stringify(obj) });
@@ -59,7 +78,7 @@ function lower(s) {
 }
 
 function keyLooksLikeRebate(key) {
-  return /(ratio|commission|cps|union|plan_activity|poi_event|shangjin|fanli|fan_li)/i.test(key);
+  return /(ratio|rebate|commission|reward|bounty|cps|union|plan_activity|poi_event|shangjin|fanli|fan_li)/i.test(key);
 }
 
 function hasStrongRatioRebateMarker(node) {
@@ -80,11 +99,18 @@ function hasStrongRatioRebateMarker(node) {
     "platform_ratio",
   ];
   const commissionKeys = [
+    "user_rebate",
+    "media_rebate",
+    "store_rebate",
+    "rebate",
+    "rebate_amount",
     "max_commission",
     "user_max_commission",
     "media_max_commission",
     "commission",
     "commission_amount",
+    "reward_amount",
+    "bounty_amount",
   ];
 
   for (const k of ratioKeys) {
@@ -343,7 +369,8 @@ if (!body) {
 
     if (/FusionGrabPromotionQuota/i.test(method)) {
       console.log("[小蚕清理] 跳过抢单接口，保留服务端原始返回");
-      $done({});
+    } else if (isOrderDataMethod(method)) {
+      console.log(`[小蚕清理] 跳过订单/历史接口，保留原始返回：${method}`);
     } else if (/native_order_config\.json/i.test(url)) {
       obj.open_native = false;
       obj.open_ios_native = false;
@@ -371,11 +398,16 @@ if (!body) {
       obj = emptyOk();
       console.log(`[清理] 已关闭订单异常/订单奖励弹窗：${method}`);
       changed = true;
-    } else {
-      changed = filterRatioRebateItems(obj) > 0 || changed;
-      changed = disableOrderAbnormalPopup(obj) || changed;
+    } else if (isAdPlacementMethod(method, server)) {
       changed = stripPlacementResources(obj) || changed;
       changed = disablePopupLike(obj) || changed;
+    } else if (isSearchOrStoreListMethod(method, server)) {
+      changed = filterRatioRebateItems(obj) > 0 || changed;
+    } else {
+      if (isPopupOrMarketingMethod(method)) {
+        changed = stripPlacementResources(obj) || changed;
+        changed = disablePopupLike(obj) || changed;
+      }
     }
 
     if (changed) done(obj);
