@@ -35,9 +35,7 @@ function isAdPlacementMethod(name, service) {
 
 function isSearchOrStoreListMethod(name, service) {
   if (isOrderDataMethod(name)) return false;
-  const targetMethods = /SearchPromotions|MeituanShangjinGetPoiList|GetStorePromotionList|ListSilkRecommendation|GetRecPromotionsByCategory/i;
-  const targetServices = /SilkwormRcs/i;
-  return targetMethods.test(name || "") || targetServices.test(service || "");
+  return /MeituanShangjinGetPoiList/i.test(name || "");
 }
 
 function isPopupOrMarketingMethod(name) {
