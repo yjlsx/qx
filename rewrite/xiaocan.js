@@ -396,6 +396,10 @@ if (!body) {
       obj = emptyOk();
       console.log(`[清理] 已关闭订单异常/订单奖励弹窗：${method}`);
       changed = true;
+    } else if (/GetUserMarketingInfoV2/i.test(method)) {
+      changed = disableOrderAbnormalPopup(obj) || changed;
+      changed = disablePopupLike(obj) || changed;
+      if (changed) console.log(`[清理] 已关闭强制异常订单弹窗：${method}`);
     } else if (isAdPlacementMethod(method, server)) {
       changed = stripPlacementResources(obj) || changed;
       changed = disablePopupLike(obj) || changed;
