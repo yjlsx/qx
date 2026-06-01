@@ -2,6 +2,8 @@
 【GLaDOS】
 
  - 2026 版
+ - 支持 railgun.info / glados.network / glados.vip / glados.one / glados.space
+ - 支持多账号、汇总通知、积分查询、积分满 500 自动兑换 plan500
 
 ⚠️【免责声明】
 ------------------------------------------
@@ -13,7 +15,7 @@
 6、如果任何单位或个人认为此脚本可能涉嫌侵犯其权利，应及时通知并提供身份证明，所有权证明，我们将在收到认证文件确认后删除此脚本。
 7、所有直接或间接使用、查看此脚本的人均应该仔细阅读此声明。本人保留随时更改或补充此声明的权利。一旦您使用或复制了此脚本，即视为您已接受此免责声明。
 
-登陆链接：https://railgun.info/，登陆即可获取Cookie。
+登陆链接：https://railgun.info/ 或其它 GLaDOS 域名，登陆即可获取Cookie。
 注册地址：https://github.com/glados-network/GLaDOS
 
 【Surge】
@@ -22,20 +24,20 @@
 GLaDOS签到 = type=cron,cronexp=5 0 * * *,wake-system=1,timeout=20,script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
-获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/railgun\.info\/api\/user\/checkin, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin), script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 【Loon】
 -----------------
 [Script]
 cron "5 0 * * *" tag=GLaDOS签到, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
-http-request https:\/\/railgun\.info\/api\/user\/checkin tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+http-request https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
 【Quantumult X】
 -----------------
 [rewrite_local]
-https:\/\/railgun\.info\/api\/user\/checkin url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
 
 
 [task_local]
@@ -43,192 +45,338 @@ https:\/\/railgun\.info\/api\/user\/checkin url script-request-header https://ra
 
 
 【All App MitM】
-hostname = railgun.info
+hostname = railgun.info, glados.network, glados.vip, glados.one, glados.space
 */
 
 
 
 
 const $ = new Env("GLaDOS");
-const BASE_URL = "https://railgun.info";
-const BASE_HOST = "railgun.info";
-const signcookie = "evil_gladoscookie";
-const signauthorization = "evil_gladosauthorization";
-
-var sicookie = $.getdata(signcookie);
-var siauthorization = $.getdata(signauthorization);
-var account;
-var expday;
-var remain;
-var remainday;
-var points;
-var change;
-var changeday;
-var msge;
-var message = "";
+const SCRIPT_VERSION = "2026.06.02";
+const DEFAULT_DOMAIN = "railgun.info";
+const SUPPORTED_DOMAINS = ["railgun.info", "glados.network", "glados.vip", "glados.one", "glados.space"];
+const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+const LEGACY_COOKIE_KEY = "evil_gladoscookie";
+const LEGACY_AUTH_KEY = "evil_gladosauthorization";
+const DOMAINS_KEY = "GLaDOS_Domains";
+const ACCOUNTS_KEY_PREFIX = "GLaDOS_Accounts:";
+const EXCHANGE_PLAN = "plan500";
+const AUTO_EXCHANGE = true;
 
 !(async () => {
- if (typeof $request != "undefined") {
-   getCookie();
-   return;
- }
- if (!sicookie) {
-   $.msg("GLaDOS", "【提示】", `❌ 未获取到数据，请先手动登录 ${BASE_HOST} 抓取`);
-   return;
- }
- await signin();
- await getPoints();
- await status();
+  if (typeof $request !== "undefined") {
+    captureAccount();
+    return;
+  }
+
+  migrateLegacyAccount();
+  const accounts = getAllAccounts();
+  if (!accounts.length) {
+    $.msg("GLaDOS", "未获取到账号", `请先访问 ${DEFAULT_DOMAIN} 或其它 GLaDOS 域名并抓取 Cookie`);
+    return;
+  }
+
+  await $.wait(Math.floor(Math.random() * 11) * 1000);
+  $.log(`🚀 GLaDOS 开始 | ${SCRIPT_VERSION} | 账号 ${accounts.length}`);
+  $.log("------------------------------------");
+
+  const results = [];
+  for (let i = 0; i < accounts.length; i++) {
+    const result = await runAccount(accounts[i], i + 1);
+    results.push(result);
+  }
+
+  notifySummary(results);
 })()
- .catch((e) => {
-   $.log("", `❌失败! 原因: ${e}!`, "");
- })
- .finally(() => {
-   $.done();
- });
+  .catch((e) => {
+    $.log("", `❌失败! 原因: ${e && e.stack ? e.stack : e}`, "");
+    $.msg("GLaDOS", "运行失败", String(e));
+  })
+  .finally(() => {
+    $.done();
+  });
 
-function signin() {
- return new Promise((resolve) => {
-   // 使用你提供的最新 railgun.info 参数
-   const header = {
-     'Sec-Fetch-Dest' : `empty`,
-     'Connection' : `keep-alive`,
-     'Content-Type' : `application/json;charset=utf-8`,
-     'Sec-Fetch-Site' : `same-origin`,
-     'Origin' : BASE_URL,
-     'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
-     'Sec-Fetch-Mode' : `cors`,
-     'Cookie' : sicookie,
-     'Host' : BASE_HOST,
-     'Authorization': siauthorization || "",
-     'Accept-Language' : `zh-CN,zh-Hans;q=0.9`,
-     'Accept' : `application/json, text/plain, */*`
-   };
-   const body = JSON.stringify({ "token": BASE_HOST });
-   const signinRequest = {
-     url: `${BASE_URL}/api/user/checkin`,
-     headers: header,
-     body: body,
-   };
-   $.post(signinRequest, (error, response, data) => {
-     try {
-       if (error) {
-         $.log("签到请求错误: " + error);
-       } else {
-         var obj = parseJsonBody(data, response);
-         if (obj.code === 0 || obj.code === 1) {
-           if (obj.message.includes("Please Try Tomorrow") || obj.code === 1) {
-             message += "今日已签到";
-           } else {
-             change = obj.points || (obj.list && obj.list[0] && obj.list[0].change);
-             message += change ? `今日签到获得${formatPoints(change)}积分` : obj.message;
-           }
-         } else {
-           message += obj.message;
-         }
-       }
-     } catch (e) {
-       $.log("签到解析异常: " + e);
-       $.log("签到原始响应: " + previewBody(data, response));
-     }
-     resolve(); // 确保 resolve 运行，防止转圈
-   });
- });
+function runAccount(account, index) {
+  let beforeStatus;
+  let checkinResult;
+  let pointsResult;
+  let exchangeResult = "跳过";
+  let afterStatus;
+
+  return getStatus(account)
+    .then((status) => {
+      beforeStatus = status;
+      logAccountHeader(index, account.domain, status.email);
+      return checkin(account);
+    })
+    .then((result) => {
+      checkinResult = result;
+      return getPoints(account);
+    })
+    .then((result) => {
+      pointsResult = result;
+      if (AUTO_EXCHANGE && pointsResult.pointsNum >= 500) {
+        return exchange(account, EXCHANGE_PLAN);
+      }
+      return pointsResult.pointsNum >= 500 ? "未开启自动兑换" : "积分不足";
+    })
+    .then((result) => {
+      exchangeResult = result;
+      return getStatus(account);
+    })
+    .then((status) => {
+      afterStatus = status;
+      const icon = checkinResult.code === 0 ? "✅" : checkinResult.code === 1 ? "🔁" : "❌";
+      $.log(`状态          : ${icon} ${checkinResult.status}`);
+      if (checkinResult.points !== "0") $.log(`本次积分      : +${checkinResult.points}`);
+      $.log(`剩余天数      : ${beforeStatus.leftDays} -> ${afterStatus.leftDays}`);
+      $.log(`当前积分      : ${pointsResult.points}`);
+      $.log(`兑换          : ${exchangeResult}`);
+      if (checkinResult.message) $.log(`消息          : ${checkinResult.message}`);
+      $.log("------------------------------------");
+      return {
+        index,
+        domain: account.domain,
+        email: beforeStatus.email || afterStatus.email || `Account #${index}`,
+        code: checkinResult.code,
+        status: checkinResult.status,
+        message: checkinResult.message,
+        earnedPoints: checkinResult.points,
+        totalPoints: pointsResult.points,
+        daysBefore: beforeStatus.leftDays,
+        daysAfter: afterStatus.leftDays,
+        exchange: exchangeResult
+      };
+    });
 }
 
-function status() {
- return new Promise((resolve) => {
-   const statusRequest = {
-     url: `${BASE_URL}/api/user/status`,
-     headers: {
-       'Cookie': sicookie,
-       'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
-     },
-   };
-   $.get(statusRequest, (error, response, data) => {
-     try {
-       if (error) {
-         $.log("状态请求错误");
-       } else {
-         var obj = parseJsonBody(data, response);
-         if (obj.code == 0) {
-           account = obj.data.email;
-           remainday = parseInt(obj.data.leftDays);
-           message += `\n账户：${account}`;
-           if (typeof points !== "undefined") {
-             message += `\n积分：${points}`;
-           }
-           message += `\n剩余：${remainday}天`;
-           $.msg("GLaDOS", "", message);
-         } else {
-           message += `\n状态查询失败：${obj.message || obj.code}`;
-           $.msg("GLaDOS", "", message);
-         }
-       }
-     } catch (e) {
-       $.log("状态解析异常");
-       $.log("状态原始响应: " + previewBody(data, response));
-     }
-     resolve();
-   });
- });
+function requestApi(account, path, method = "GET", body) {
+  const domain = account.domain || DEFAULT_DOMAIN;
+  const headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+    "Content-Type": "application/json;charset=utf-8",
+    "Origin": `https://${domain}`,
+    "Referer": `https://${domain}/console/current`,
+    "User-Agent": UA,
+    "Cookie": account.cookie || ""
+  };
+  if (account.authorization) headers.Authorization = account.authorization;
+  const options = {
+    url: `https://${domain}${path}`,
+    headers
+  };
+  if (body !== undefined) options.body = typeof body === "string" ? body : JSON.stringify(body);
+
+  return new Promise((resolve) => {
+    const callback = (error, response, data) => {
+      if (error) {
+        resolve({ error: String(error), statusCode: 0, data: null, raw: "" });
+        return;
+      }
+      const raw = data || (response && response.body) || "";
+      resolve({
+        error: "",
+        statusCode: (response && (response.statusCode || response.status)) || 0,
+        data: safeJsonParse(raw),
+        raw
+      });
+    };
+    if (method === "POST") $.post(options, callback);
+    else $.get(options, callback);
+  });
 }
 
-function getPoints() {
- return new Promise((resolve) => {
-   const pointsRequest = {
-     url: `${BASE_URL}/api/user/points`,
-     headers: {
-       'Cookie': sicookie,
-       'User-Agent' : `Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1`,
-       'Accept' : `application/json, text/plain, */*`
-     },
-   };
-   $.get(pointsRequest, (error, response, data) => {
-     try {
-       if (error) {
-         $.log("积分请求错误");
-       } else {
-         var obj = parseJsonBody(data, response);
-         if (obj.code == 0 && typeof obj.points !== "undefined") {
-           points = formatPoints(obj.points);
-         } else {
-           $.log("积分查询失败: " + (obj.message || obj.code));
-         }
-       }
-     } catch (e) {
-       $.log("积分解析异常: " + e);
-       $.log("积分原始响应: " + previewBody(data, response));
-     }
-     resolve();
-   });
- });
+function checkin(account) {
+  return requestApi(account, "/api/user/checkin", "POST", { token: account.domain }).then((resp) => {
+    if (resp.error) return { status: "签到失败", code: -2, message: resp.error, points: "0" };
+    if (!resp.data) return { status: "签到失败", code: -2, message: previewBody(resp.raw), points: "0" };
+    const data = resp.data;
+    const code = data.code !== undefined ? data.code : -2;
+    const msg = data.message || "";
+    const points = formatPoints(data.points || (data.list && data.list[0] && data.list[0].change) || 0);
+    if (code === 0) return { status: "签到成功", code, message: msg, points: String(points) };
+    if (code === 1 || /Please Try Tomorrow/i.test(msg)) return { status: "重复签到", code: 1, message: msg, points: "0" };
+    return { status: "签到失败", code, message: msg || `HTTP ${resp.statusCode}`, points: "0" };
+  });
 }
 
-function parseJsonBody(data, response) {
- const body = data || (response && response.body) || "";
- return typeof body === "string" ? JSON.parse(body) : body;
+function getStatus(account) {
+  return requestApi(account, "/api/user/status").then((resp) => {
+    const data = resp.data && resp.data.data ? resp.data.data : {};
+    const leftDays = data.leftDays;
+    return {
+      email: data.email || "unknown",
+      leftDays: leftDays !== undefined && leftDays !== null ? `${parseInt(parseFloat(leftDays), 10)}天` : "N/A"
+    };
+  });
 }
 
-function previewBody(data, response) {
- const body = data || (response && response.body) || "";
- return typeof body === "string" ? body.slice(0, 300) : JSON.stringify(body).slice(0, 300);
+function getPoints(account) {
+  return requestApi(account, "/api/user/points").then((resp) => {
+    const rawPoints = resp.data && resp.data.points;
+    const pointsNum = rawPoints !== undefined && rawPoints !== null ? parseInt(parseFloat(rawPoints), 10) : 0;
+    return {
+      points: rawPoints !== undefined && rawPoints !== null ? String(pointsNum) : "N/A",
+      pointsNum: Number.isFinite(pointsNum) ? pointsNum : 0
+    };
+  });
+}
+
+function exchange(account, plan) {
+  return requestApi(account, "/api/user/exchange", "POST", { planType: plan }).then((resp) => {
+    if (resp.error || !resp.data) return "兑换失败";
+    if (resp.data.code === 0) return `兑换成功(${plan})`;
+    return `兑换失败: ${resp.data.message || resp.data.code}`;
+  });
+}
+
+function captureAccount() {
+  const headers = $request.headers || {};
+  const cookie = headers.Cookie || headers.cookie || "";
+  const authorization = headers.Authorization || headers.authorization || "";
+  const domain = normalizeDomain(getHostFromRequest() || DEFAULT_DOMAIN);
+
+  if (!cookie || !domain) {
+    $.msg("GLaDOS", "抓取失败", "未获取到 Cookie 或 Host");
+    return;
+  }
+
+  const result = saveAccount(domain, { cookie, authorization });
+  $.log(`抓取到 ${domain} 账号 #${result.index + 1}`);
+  $.msg("GLaDOS", result.isNew ? "新账号已保存" : "账号已更新", `${domain} #${result.index + 1}`);
+}
+
+function getHostFromRequest() {
+  const headers = ($request && $request.headers) || {};
+  if (headers.Host || headers.host) return headers.Host || headers.host;
+  const url = ($request && $request.url) || "";
+  const match = url.match(/^https?:\/\/([^/]+)/);
+  return match ? match[1] : "";
+}
+
+function normalizeDomain(domain) {
+  return String(domain || "").replace(/^https?:\/\//, "").split("/")[0].trim().toLowerCase();
+}
+
+function accountKey(domain) {
+  return `${ACCOUNTS_KEY_PREFIX}${domain}`;
+}
+
+function getSavedDomains() {
+  const raw = $.getdata(DOMAINS_KEY);
+  const list = safeJsonParse(raw);
+  return Array.isArray(list) ? list.filter(Boolean) : [];
+}
+
+function setSavedDomains(list) {
+  $.setdata(JSON.stringify(Array.from(new Set(list.filter(Boolean)))), DOMAINS_KEY);
+}
+
+function addSavedDomain(domain) {
+  const list = getSavedDomains();
+  if (!list.includes(domain)) {
+    list.push(domain);
+    setSavedDomains(list);
+  }
+}
+
+function getAccountsForDomain(domain) {
+  const raw = $.getdata(accountKey(domain));
+  const list = safeJsonParse(raw);
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((item) => typeof item === "string" ? { cookie: item, authorization: "" } : item)
+    .filter((item) => item && item.cookie)
+    .map((item) => ({
+      domain,
+      cookie: item.cookie,
+      authorization: item.authorization || "",
+      createdAt: item.createdAt || "",
+      updatedAt: item.updatedAt || ""
+    }));
+}
+
+function saveAccount(domain, account) {
+  const list = getAccountsForDomain(domain);
+  const now = new Date().toISOString();
+  const index = list.findIndex((item) => item.cookie === account.cookie);
+  const saved = {
+    domain,
+    cookie: account.cookie,
+    authorization: account.authorization || "",
+    createdAt: index >= 0 ? list[index].createdAt : now,
+    updatedAt: now
+  };
+  if (index >= 0) list[index] = saved;
+  else list.push(saved);
+  $.setdata(JSON.stringify(list.map((item) => ({
+    cookie: item.cookie,
+    authorization: item.authorization || "",
+    createdAt: item.createdAt || "",
+    updatedAt: item.updatedAt || ""
+  }))), accountKey(domain));
+  addSavedDomain(domain);
+  return { isNew: index < 0, index: index >= 0 ? index : list.length - 1 };
+}
+
+function getAllAccounts() {
+  const domains = Array.from(new Set([...SUPPORTED_DOMAINS, ...getSavedDomains()]));
+  const accounts = [];
+  domains.forEach((domain) => {
+    getAccountsForDomain(domain).forEach((account) => accounts.push(account));
+  });
+  return accounts;
+}
+
+function migrateLegacyAccount() {
+  const cookie = $.getdata(LEGACY_COOKIE_KEY);
+  if (!cookie) return;
+  const authorization = $.getdata(LEGACY_AUTH_KEY) || "";
+  saveAccount(DEFAULT_DOMAIN, { cookie, authorization });
+}
+
+function notifySummary(results) {
+  const ok = results.filter((item) => item.code === 0).length;
+  const duplicate = results.filter((item) => item.code === 1).length;
+  const failed = results.length - ok - duplicate;
+  $.log("📊 Summary");
+  $.log(`Total      : ${results.length}`);
+  $.log(`Success    : ${ok}`);
+  $.log(`Duplicate  : ${duplicate}`);
+  $.log(`Failed     : ${failed}`);
+
+  $.msg("GLaDOS", "签到完成", `账号 ${results.length} | ✅${ok} 🔁${duplicate} ❌${failed}`);
+  results.forEach((item) => {
+    const icon = item.code === 0 ? "✅" : item.code === 1 ? "🔁" : "❌";
+    const pointsText = item.earnedPoints !== "0" ? ` | +${item.earnedPoints}积分` : "";
+    $.msg(`${icon} ${item.email}`, `${item.status}${pointsText}`, `${item.domain} | 剩余 ${item.daysAfter} | 积分 ${item.totalPoints} | ${item.exchange}`);
+  });
+}
+
+function logAccountHeader(index, domain, email) {
+  $.log(`👤 Account #${index} | ${domain}`);
+  $.log(`Email         : ${email || "unknown"}`);
+}
+
+function safeJsonParse(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return null;
+  }
+}
+
+function previewBody(body) {
+  if (!body) return "";
+  return typeof body === "string" ? body.slice(0, 300) : JSON.stringify(body).slice(0, 300);
 }
 
 function formatPoints(value) {
- const number = Number(value);
- return Number.isFinite(number) ? Math.floor(number) : value;
-}
-
-function getCookie() {
- if ($request && $request.method != "OPTIONS" && $request.url.match(/checkin/)) {
-   const sicookie_val = $request.headers["Cookie"] || $request.headers["cookie"];
-   $.setdata(sicookie_val, signcookie);
-   const siauthorization_val = $request.headers["Authorization"] || $request.headers["authorization"];
-   $.setdata(siauthorization_val, signauthorization);
-   $.log("抓取到 Cookie: " + sicookie_val);
-   $.msg("GLaDOS", "", `获取 ${BASE_HOST} 数据成功🎉`);
- }
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.floor(number) : value;
 }
 
 // --- 此处开始是你原始脚本中完整的 Env.js 库 ---
