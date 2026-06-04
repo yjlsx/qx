@@ -3,6 +3,7 @@
 # --- 下载接口 ---
 ^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/music-api\.gdstudio\.xyz\/api\.php\?.*kg_otter=1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 
 # --- 核心权限分流---
@@ -32,13 +33,57 @@
 ^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
 
 [mitm]
-hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com
+hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com, music-api.gdstudio.xyz
 */
 
 const timestamp = Math.floor(Date.now() / 1000);
 const url = $request.url;
 const body = $response.body;
 let obj = JSON.parse(body);
+
+function getQueryParam(name) {
+    const match = url.match(new RegExp("[?&]" + name + "=([^&]*)"));
+    return match ? decodeURIComponent(match[1].replace(/\+/g, "%20")) : "";
+}
+
+if (url.includes('music-api.gdstudio.xyz/api.php') && url.includes('kg_otter=1')) {
+    const audioUrl = obj && (obj.url || (obj.data && obj.data.url));
+    const source = getQueryParam("kg_source") || "otter";
+    const hash = getQueryParam("kg_hash");
+    const name = getQueryParam("kg_name");
+    const artist = getQueryParam("kg_artist");
+
+    if (audioUrl) {
+        obj = {
+            status: 1,
+            error: "",
+            errcode: 0,
+            data: {
+                url: [audioUrl],
+                status: 1,
+                fmt: "mp3",
+                hash: hash,
+                timelength: 0,
+                bitRate: 320,
+                fileHead: 100,
+                audio_name: name,
+                author_name: artist,
+                kg_otter_source: source
+            }
+        };
+    } else {
+        obj = {
+            status: 0,
+            error: "Otter music source url is empty",
+            data: {
+                url: [],
+                status: 0,
+                hash: hash,
+                kg_otter_source: source
+            }
+        };
+    }
+}
 
 if (url.includes('v5/login_by_token')) {
     obj.data.user_type = 29;
