@@ -1,7 +1,7 @@
 /**
 
 [rewrite_local]
-^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 
 
 [mitm]
@@ -12,6 +12,7 @@ hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, qgw.ku
 
 const url = $request.url;
 const headers = $request.headers;
+const responseBody = typeof $response !== "undefined" && $response ? $response.body : "";
 const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
 const OTTER_SOURCES = ["joox", "netease", "kuwo"];
 const OTTER_BR = 320;
@@ -76,6 +77,27 @@ function fetchJson(requestUrl) {
     }).then(resp => JSON.parse(resp.body || "{}"));
 }
 
+async function fetchOtterPlayInfo(match) {
+    if (!match || !match.source || !match.id) return null;
+
+    const playUrl = buildUrl(OTTER_API, {
+        types: "url",
+        id: match.id,
+        br: OTTER_BR,
+        source: match.source
+    });
+    const playInfo = await fetchJson(playUrl);
+    const audioUrl = playInfo && (playInfo.url || (playInfo.data && playInfo.data.url));
+    if (!audioUrl) return null;
+    const normalizedAudioUrl = String(Array.isArray(audioUrl) ? audioUrl[0] : audioUrl).replace(/&amp;/g, "&");
+
+    return Object.assign({}, match, {
+        url: normalizedAudioUrl,
+        br: playInfo.br || playInfo.bitrate || OTTER_BR,
+        size: playInfo.size || playInfo.filesize || playInfo.file_size || 0
+    });
+}
+
 function readCachedTrackInfo(hash) {
     if (typeof $prefs === "undefined" || !$prefs.valueForKey) return null;
 
@@ -117,7 +139,7 @@ function saveCachedMatch(hash, match) {
 async function resolveOtterMusicUrl(hash) {
     const target = readCachedTrackInfo(hash);
 
-    if (!target.name || target.artists.length === 0) {
+    if (!target || !target.name || target.artists.length === 0) {
         console.log("⚠️ 未找到 get_res_privilege/lite 缓存，无法自动换源。");
         return null;
     }
@@ -128,7 +150,9 @@ async function resolveOtterMusicUrl(hash) {
     const cachedMatch = readCachedMatch(hash);
     if (cachedMatch && cachedMatch.source && cachedMatch.id) {
         console.log(`♻️ 使用已缓存音源：${cachedMatch.source}`);
-        return cachedMatch;
+        const hydratedMatch = await fetchOtterPlayInfo(cachedMatch);
+        if (hydratedMatch) return hydratedMatch;
+        console.log("⚠️ 缓存音源 URL 失效，重新搜索。");
     }
 
     for (const source of OTTER_SOURCES) {
@@ -151,23 +175,17 @@ async function resolveOtterMusicUrl(hash) {
             if (!match) continue;
             const trackId = match.item.id || match.item.url_id;
 
-            const playUrl = buildUrl(OTTER_API, {
-                types: "url",
+            const matchInfo = {
+                source,
                 id: trackId,
-                br: OTTER_BR,
-                source
-            });
-            const playInfo = await fetchJson(playUrl);
-            if (playInfo && playInfo.url) {
+                name: match.item.name,
+                artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
+            };
+            const hydratedMatch = await fetchOtterPlayInfo(matchInfo);
+            if (hydratedMatch && hydratedMatch.url) {
                 console.log(`✅ 已切换到 ${source} 音源：${match.item.name}`);
-                const matchInfo = {
-                    source,
-                    id: trackId,
-                    name: match.item.name,
-                    artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
-                };
                 saveCachedMatch(hash, matchInfo);
-                return matchInfo;
+                return hydratedMatch;
             }
         } catch (e) {
             console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
@@ -175,6 +193,63 @@ async function resolveOtterMusicUrl(hash) {
     }
 
     return null;
+}
+
+function inferAudioFormat(audioUrl) {
+    const pathname = String(audioUrl || "").split("?")[0].toLowerCase();
+    if (pathname.endsWith(".flac")) return "flac";
+    if (pathname.endsWith(".m4a")) return "m4a";
+    if (pathname.endsWith(".ogg")) return "ogg";
+    return "mp3";
+}
+
+function normalizeFileSize(size) {
+    const value = Number(size) || 0;
+    if (!value) return 0;
+    return value < 1024 * 1024 ? Math.round(value * 1024) : Math.round(value);
+}
+
+function buildTrackerResponse(hash, match) {
+    const audioUrl = Array.isArray(match.url) ? match.url[0] : match.url;
+    const bitRate = Number(match.br) || OTTER_BR;
+    const fileSize = normalizeFileSize(match.size);
+    const fmt = inferAudioFormat(audioUrl);
+
+    return {
+        status: 1,
+        error: "",
+        error_code: 0,
+        errcode: 0,
+        hash: hash,
+        url: [audioUrl],
+        data: {
+            url: [audioUrl],
+            backup_url: [audioUrl],
+            status: 1,
+            hash: hash,
+            fmt: fmt,
+            bitrate: bitRate,
+            bitRate: bitRate,
+            file_size: fileSize,
+            filesize: fileSize,
+            size: fileSize,
+            audio_name: match.name || "",
+            author_name: match.artist || "",
+            kg_otter_source: match.source || ""
+        }
+    };
+}
+
+function buildJsonHeaders() {
+    const jsonHeaders = Object.assign({}, $response && $response.headers || {});
+    Object.keys(jsonHeaders).forEach(key => {
+        const lower = key.toLowerCase();
+        if (lower === "content-encoding" || lower === "content-length" || lower === "transfer-encoding") {
+            delete jsonHeaders[key];
+        }
+    });
+    jsonHeaders["Content-Type"] = "application/json; charset=utf-8";
+    return jsonHeaders;
 }
 
 // 原酷狗回退逻辑，当前注释保留：
@@ -187,7 +262,7 @@ async function resolveOtterMusicUrl(hash) {
 //     });
 // }
 
-// 处理 /v5/url、/tracker/v5/url 和 /tracker/v5 请求重写
+// 处理 /v5/url、/tracker/v5/url 和 /tracker/v5 响应替换
 if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes("/tracker/v5?")) {
     const hashMatch = url.match(/hash=([0-9a-fA-F]{32})/);
     const hash = hashMatch ? hashMatch[1] : '';
@@ -196,42 +271,28 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
 
     if (hash) {
         resolveOtterMusicUrl(hash).then(match => {
-            if (!match) {
-                console.log("⚠️ Otter 未找到可用音源，跳过重写。");
-                $done({});
+            if (!match || !match.url) {
+                console.log("⚠️ Otter 未找到可用音源，保留原响应。");
+                $done({ body: responseBody });
                 return;
             }
 
-            const newUrl = buildUrl(OTTER_API, {
-                kg_otter: 1,
-                kg_hash: hash,
-                kg_source: match.source,
-                kg_name: match.name,
-                kg_artist: match.artist,
-                types: "url",
-                id: match.id,
-                br: OTTER_BR,
-                source: match.source
-            });
-
-            delete headers["x-router"];
-            delete headers["X-Router"];
-            delete headers["Host"];
-            delete headers["host"];
-            console.log("✅ 请求重写到 Otter 聚合音源。");
-            console.log("🎯 新 URL：" + newUrl);
+            const newBody = JSON.stringify(buildTrackerResponse(hash, match));
+            console.log("✅ Tracker 响应已替换为 Otter/GD 音源。");
+            console.log("🎯 音频 URL：" + match.url);
 
             $done({
-                url: newUrl,
-                headers: headers
+                status: 200,
+                headers: buildJsonHeaders(),
+                body: newBody
             });
         }).catch(e => {
             console.log("⚠️ Otter 自动换源异常：" + (e.message || e));
-            $done({});
+            $done({ body: responseBody });
         });
     } else {
         console.log("❌ 未检测到合法 hash，跳过重写。");
-        $done({});
+        $done({ body: responseBody });
     }
     return;
 }
