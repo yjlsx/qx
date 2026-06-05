@@ -1,11 +1,11 @@
 /**
 
 [rewrite_local]
-^https?:\/\/gateway(?:retry|\d+)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 
 
 [mitm]
-hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
+hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, qgw.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
 
 
  **/
@@ -187,8 +187,8 @@ async function resolveOtterMusicUrl(hash) {
 //     });
 // }
 
-// 处理 /v5/url 和 /tracker/v5/url 请求重写
-if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?")) {
+// 处理 /v5/url、/tracker/v5/url 和 /tracker/v5 请求重写
+if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes("/tracker/v5?")) {
     const hashMatch = url.match(/hash=([0-9a-fA-F]{32})/);
     const hash = hashMatch ? hashMatch[1] : '';
 
