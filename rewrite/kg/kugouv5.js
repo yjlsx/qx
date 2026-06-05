@@ -1,11 +1,11 @@
 /**
 
 [rewrite_local]
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/gateway(?:retry)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 
 
 [mitm]
-hostname = gateway.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
+hostname = gateway.kugou.com, gatewayretry.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
 
 
  **/
@@ -15,6 +15,8 @@ const headers = $request.headers;
 const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
 const OTTER_SOURCES = ["joox", "netease", "kuwo"];
 const OTTER_BR = 320;
+const META_PREFIX = "kg_otter_meta_";
+const MATCH_PREFIX = "kg_otter_match_";
 // 原酷狗播放信息接口，已切换到 Otter/GD Studio 音源后保留备用：
 // const KUGOU_PLAY_INFO_API = "https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=";
 
@@ -74,27 +76,60 @@ function fetchJson(requestUrl) {
     }).then(resp => JSON.parse(resp.body || "{}"));
 }
 
-function readKugouSongInfo(info) {
-    const songName = info.songName || info.song_name || info.audio_name || info.filename || info.fileName || "";
-    const artistName = info.singerName || info.singer_name || info.author_name || info.singer || "";
-    return {
-        name: String(songName).replace(/\s*-\s*.*$/, "").trim(),
-        artists: splitArtists(artistName)
-    };
+function readCachedTrackInfo(hash) {
+    if (typeof $prefs === "undefined" || !$prefs.valueForKey) return null;
+
+    try {
+        const value = $prefs.valueForKey(META_PREFIX + String(hash).toLowerCase());
+        if (!value) return null;
+        const info = JSON.parse(value);
+        return {
+            name: info.songName || info.name || "",
+            artists: splitArtists(info.singername || info.artist || ""),
+            album: info.albumname || "",
+            quality: info.quality || ""
+        };
+    } catch (e) {
+        console.log("⚠️ 读取酷狗歌曲缓存失败：" + (e.message || e));
+        return null;
+    }
+}
+
+function readCachedMatch(hash) {
+    if (typeof $prefs === "undefined" || !$prefs.valueForKey) return null;
+
+    try {
+        const value = $prefs.valueForKey(MATCH_PREFIX + String(hash).toLowerCase());
+        return value ? JSON.parse(value) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function saveCachedMatch(hash, match) {
+    if (typeof $prefs === "undefined" || !$prefs.setValueForKey || !match) return;
+
+    try {
+        $prefs.setValueForKey(JSON.stringify(match), MATCH_PREFIX + String(hash).toLowerCase());
+    } catch (_) {}
 }
 
 async function resolveOtterMusicUrl(hash) {
-    const infoUrl = `https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=${hash}`;
-    const songInfo = await fetchJson(infoUrl);
-    const target = readKugouSongInfo(songInfo);
+    const target = readCachedTrackInfo(hash);
 
     if (!target.name || target.artists.length === 0) {
-        console.log("⚠️ 酷狗歌曲信息不足，无法自动换源。");
+        console.log("⚠️ 未找到 get_res_privilege/lite 缓存，无法自动换源。");
         return null;
     }
 
     const keyword = `${target.name} ${target.artists[0]}`;
     console.log(`🔎 Otter 自动匹配：${keyword}`);
+
+    const cachedMatch = readCachedMatch(hash);
+    if (cachedMatch && cachedMatch.source && cachedMatch.id) {
+        console.log(`♻️ 使用已缓存音源：${cachedMatch.source}`);
+        return cachedMatch;
+    }
 
     for (const source of OTTER_SOURCES) {
         try {
@@ -110,26 +145,29 @@ async function resolveOtterMusicUrl(hash) {
 
             const match = list
                 .map((item, index) => ({ item, score: scoreCandidate(target.name, target.artists, item, index) }))
-                .filter(pair => pair.score >= 120 && pair.item && pair.item.url_id)
+                .filter(pair => pair.score >= 120 && pair.item && (pair.item.id || pair.item.url_id))
                 .sort((a, b) => b.score - a.score)[0];
 
             if (!match) continue;
+            const trackId = match.item.id || match.item.url_id;
 
             const playUrl = buildUrl(OTTER_API, {
                 types: "url",
-                id: match.item.url_id,
+                id: trackId,
                 br: OTTER_BR,
                 source
             });
             const playInfo = await fetchJson(playUrl);
             if (playInfo && playInfo.url) {
                 console.log(`✅ 已切换到 ${source} 音源：${match.item.name}`);
-                return {
+                const matchInfo = {
                     source,
-                    id: match.item.url_id,
+                    id: trackId,
                     name: match.item.name,
                     artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
                 };
+                saveCachedMatch(hash, matchInfo);
+                return matchInfo;
             }
         } catch (e) {
             console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);

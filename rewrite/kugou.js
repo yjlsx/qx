@@ -1,7 +1,7 @@
 /**
 [rewrite_local]
 # --- 下载接口 ---
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/gateway(?:retry)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/music-api\.gdstudio\.xyz\/api\.php\?.*kg_otter=1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
@@ -40,11 +40,109 @@ const timestamp = Math.floor(Date.now() / 1000);
 const url = $request.url;
 const body = $response.body;
 let obj = JSON.parse(body);
+const META_PREFIX = "kg_otter_meta_";
 
 function getQueryParam(name) {
     const match = url.match(new RegExp("[?&]" + name + "=([^&]*)"));
     return match ? decodeURIComponent(match[1].replace(/\+/g, "%20")) : "";
 }
+
+function safeDecode(value) {
+    try {
+        return decodeURIComponent(String(value || ""));
+    } catch (_) {
+        return String(value || "");
+    }
+}
+
+function cleanSongText(value) {
+    return safeDecode(value)
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function stripSingerFromName(name, singer) {
+    let songName = cleanSongText(name);
+    const artistName = cleanSongText(singer);
+    if (artistName && songName.indexOf(artistName + " - ") === 0) {
+        songName = songName.slice(artistName.length + 3).trim();
+    }
+    return songName;
+}
+
+function collectKugouHashes(item) {
+    if (!item) return [];
+    const transParam = item.trans_param || {};
+    const hashOffset = transParam.hash_offset || {};
+    return [
+        item.hash,
+        item.FileHash,
+        item.filehash,
+        transParam.ogg_128_hash,
+        transParam.ogg_320_hash,
+        transParam.hash_multitrack,
+        hashOffset.offset_hash,
+        hashOffset.clip_hash
+    ].filter(Boolean);
+}
+
+function saveKugouTrackMeta(item, fallback) {
+    if (typeof $prefs === "undefined" || !$prefs.setValueForKey || !item) return;
+
+    const artistName = cleanSongText(item.singername || item.SingerName || fallback && fallback.singername || "");
+    const rawName = item.name || item.FileName || fallback && fallback.name || "";
+    const songName = stripSingerFromName(rawName, artistName);
+    if (!songName || !artistName) return;
+
+    const hashes = collectKugouHashes(item);
+    if (hashes.length === 0) return;
+
+    const baseMeta = {
+        songName,
+        singername: artistName,
+        albumname: cleanSongText(item.albumname || item.AlbumName || fallback && fallback.albumname || ""),
+        quality: item.quality || fallback && fallback.quality || "",
+        album_audio_id: item.album_audio_id || fallback && fallback.album_audio_id || ""
+    };
+
+    hashes.forEach(hash => {
+        const meta = Object.assign({ hash: String(hash).toLowerCase() }, baseMeta);
+        try {
+            $prefs.setValueForKey(JSON.stringify(meta), META_PREFIX + meta.hash);
+        } catch (e) {
+            console.log("⚠️ 写入酷狗歌曲缓存失败：" + (e.message || e));
+        }
+    });
+}
+
+function cacheKugouPrivilegeMeta() {
+    if (!url.includes('/v1/get_res_privilege/lite')) return;
+
+    let fallback = {};
+    try {
+        const req = JSON.parse(($request && $request.body) || "{}");
+        if (req.resource && req.resource[0]) {
+            fallback = {
+                hash: req.resource[0].hash,
+                name: req.resource[0].name,
+                quality: req.quality,
+                album_audio_id: req.resource[0].album_audio_id
+            };
+        }
+    } catch (_) {}
+
+    if (obj.data && Array.isArray(obj.data)) {
+        obj.data.forEach(item => {
+            saveKugouTrackMeta(item, fallback);
+            if (item.relate_goods && Array.isArray(item.relate_goods)) {
+                item.relate_goods.forEach(goods => saveKugouTrackMeta(goods, item));
+            }
+        });
+    }
+}
+
+cacheKugouPrivilegeMeta();
 
 if (url.includes('music-api.gdstudio.xyz/api.php') && url.includes('kg_otter=1')) {
     const audioUrl = obj && (obj.url || (obj.data && obj.data.url));
