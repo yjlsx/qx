@@ -1,11 +1,11 @@
 /**
 
 [rewrite_local]
-^https?:\/\/gateway(?:retry)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/gateway(?:retry|\d+)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 
 
 [mitm]
-hostname = gateway.kugou.com, gatewayretry.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
+hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz
 
 
  **/

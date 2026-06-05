@@ -1,7 +1,7 @@
 /**
 [rewrite_local]
 # --- 下载接口 ---
-^https?:\/\/gateway(?:retry)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
+^https?:\/\/gateway(?:retry|\d+)?\.kugou\.com\/tracker\/v5\/url(\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
 ^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/music-api\.gdstudio\.xyz\/api\.php\?.*kg_otter=1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
 ^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
@@ -33,7 +33,7 @@
 ^https?:\/\/.*\.kugou\.com\/.*(report_unexpose|report_simple|aterouter) url reject
 
 [mitm]
-hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com, music-api.gdstudio.xyz
+hostname = gateway.kugou.com, vip.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, sentry.kugou.com, vipdress.kugou.com, welfare.kugou.com, m.kugou.com, nbcollect.kugou.com, mediastoreretry.kugou.com, h5.kugou.com, kg.zzxu.de, openapicdn.kugou.com, music-api.gdstudio.xyz
 */
 
 const timestamp = Math.floor(Date.now() / 1000);
