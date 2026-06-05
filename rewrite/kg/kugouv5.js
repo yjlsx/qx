@@ -12,10 +12,11 @@ hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, qgw.ku
 
 const url = $request.url;
 const headers = $request.headers;
-const responseBody = typeof $response !== "undefined" && $response ? $response.body : "";
+const isResponseScript = typeof $response !== "undefined" && $response;
+const responseBody = isResponseScript ? $response.body : "";
 const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
 const OTTER_SOURCES = ["netease", "kuwo", "joox"];
-const OTTER_BR = 192;
+const DEFAULT_OTTER_BR = 192;
 const META_PREFIX = "kg_otter_meta_";
 const MATCH_PREFIX = "kg_otter_match_";
 // 原酷狗播放信息接口，已切换到 Otter/GD Studio 音源后保留备用：
@@ -28,6 +29,21 @@ function buildUrl(base, params) {
         .filter(key => params[key] !== undefined && params[key] !== null && params[key] !== "")
         .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(String(params[key])))
         .join("&");
+}
+
+function getQueryParam(requestUrl, name) {
+    const match = String(requestUrl || "").match(new RegExp("[?&]" + name + "=([^&]*)"));
+    return match ? decodeURIComponent(match[1].replace(/\+/g, "%20")) : "";
+}
+
+function getOtterBrForQuality(quality) {
+    const value = String(quality || "").toLowerCase();
+    if (value === "128" || value === "standard" || value === "normal") return 128;
+    if (value === "192" || value === "high" || value === "hq") return 192;
+    if (value === "320" || value === "exhigh") return 320;
+    if (value === "740" || value === "flac" || value === "sq" || value === "lossless") return 740;
+    if (value === "999" || value === "viper" || value === "viper_clear" || value === "hires" || value === "super") return 999;
+    return DEFAULT_OTTER_BR;
 }
 
 function normalizeText(value) {
@@ -77,13 +93,13 @@ function fetchJson(requestUrl) {
     }).then(resp => JSON.parse(resp.body || "{}"));
 }
 
-async function fetchOtterPlayInfo(match) {
+async function fetchOtterPlayInfo(match, targetBr) {
     if (!match || !match.source || !match.id) return null;
 
     const playUrl = buildUrl(OTTER_API, {
         types: "url",
         id: match.id,
-        br: OTTER_BR,
+        br: targetBr,
         source: match.source
     });
     const playInfo = await fetchJson(playUrl);
@@ -93,7 +109,8 @@ async function fetchOtterPlayInfo(match) {
 
     return Object.assign({}, match, {
         url: normalizedAudioUrl,
-        br: playInfo.br || playInfo.bitrate || OTTER_BR,
+        br: playInfo.br || playInfo.bitrate || targetBr,
+        requested_br: targetBr,
         size: playInfo.size || playInfo.filesize || playInfo.file_size || 0
     });
 }
@@ -117,27 +134,27 @@ function readCachedTrackInfo(hash) {
     }
 }
 
-function readCachedMatch(hash) {
+function readCachedMatch(hash, targetBr) {
     if (typeof $prefs === "undefined" || !$prefs.valueForKey) return null;
 
     try {
-        const value = $prefs.valueForKey(MATCH_PREFIX + OTTER_BR + "_" + String(hash).toLowerCase());
+        const value = $prefs.valueForKey(MATCH_PREFIX + targetBr + "_" + String(hash).toLowerCase());
         const match = value ? JSON.parse(value) : null;
-        return match && match.br === OTTER_BR ? match : null;
+        return match && match.br === targetBr ? match : null;
     } catch (_) {
         return null;
     }
 }
 
-function saveCachedMatch(hash, match) {
+function saveCachedMatch(hash, targetBr, match) {
     if (typeof $prefs === "undefined" || !$prefs.setValueForKey || !match) return;
 
     try {
-        $prefs.setValueForKey(JSON.stringify(match), MATCH_PREFIX + OTTER_BR + "_" + String(hash).toLowerCase());
+        $prefs.setValueForKey(JSON.stringify(match), MATCH_PREFIX + targetBr + "_" + String(hash).toLowerCase());
     } catch (_) {}
 }
 
-async function resolveOtterMusicUrl(hash) {
+async function resolveOtterMusicUrl(hash, targetBr) {
     const target = readCachedTrackInfo(hash);
 
     if (!target || !target.name || target.artists.length === 0) {
@@ -148,10 +165,10 @@ async function resolveOtterMusicUrl(hash) {
     const keyword = `${target.name} ${target.artists[0]}`;
     console.log(`🔎 Otter 自动匹配：${keyword}`);
 
-    const cachedMatch = readCachedMatch(hash);
+    const cachedMatch = readCachedMatch(hash, targetBr);
     if (cachedMatch && cachedMatch.source && cachedMatch.id) {
-        console.log(`♻️ 使用已缓存音源：${cachedMatch.source}`);
-        const hydratedMatch = await fetchOtterPlayInfo(cachedMatch);
+        console.log(`♻️ 使用已缓存音源：${cachedMatch.source} ${targetBr}k`);
+        const hydratedMatch = await fetchOtterPlayInfo(cachedMatch, targetBr);
         if (hydratedMatch) return hydratedMatch;
         console.log("⚠️ 缓存音源 URL 失效，重新搜索。");
     }
@@ -179,14 +196,14 @@ async function resolveOtterMusicUrl(hash) {
             const matchInfo = {
                 source,
                 id: trackId,
-                br: OTTER_BR,
+                br: targetBr,
                 name: match.item.name,
                 artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
             };
-            const hydratedMatch = await fetchOtterPlayInfo(matchInfo);
+            const hydratedMatch = await fetchOtterPlayInfo(matchInfo, targetBr);
             if (hydratedMatch && hydratedMatch.url) {
-                console.log(`✅ 已切换到 ${source} 音源：${match.item.name}`);
-                saveCachedMatch(hash, matchInfo);
+                console.log(`✅ 已切换到 ${source} ${targetBr}k 音源：${match.item.name}`);
+                saveCachedMatch(hash, targetBr, matchInfo);
                 return hydratedMatch;
             }
         } catch (e) {
@@ -205,6 +222,12 @@ function inferAudioFormat(audioUrl) {
     return "mp3";
 }
 
+function extractAudioHash(audioUrl, fallbackHash) {
+    const pathname = String(audioUrl || "").split("?")[0].toLowerCase();
+    const match = pathname.match(/\/([0-9a-f]{32})\.(?:mp3|m4a|flac|ogg)$/);
+    return String(match ? match[1] : fallbackHash).toUpperCase();
+}
+
 function normalizeFileSize(size) {
     const value = Number(size) || 0;
     if (!value) return 0;
@@ -213,22 +236,29 @@ function normalizeFileSize(size) {
 
 function buildTrackerResponse(hash, match) {
     const audioUrl = Array.isArray(match.url) ? match.url[0] : match.url;
-    const bitRate = Number(match.br) || OTTER_BR;
+    const bitRate = Number(match.br) || DEFAULT_OTTER_BR;
     const fileSize = normalizeFileSize(match.size);
     const fmt = inferAudioFormat(audioUrl);
+    const audioHash = extractAudioHash(audioUrl, hash);
 
     return {
         status: 1,
         error: "",
         error_code: 0,
         errcode: 0,
-        hash: hash,
+        hash: audioHash,
+        kg_hash: hash,
         url: [audioUrl],
+        play_url: [audioUrl],
         backup_url: [audioUrl],
+        primaryUrl: audioUrl,
+        urls: [audioUrl],
         status_code: 1,
         fmt: fmt,
+        extName: fmt,
         bitrate: bitRate,
         bitRate: bitRate,
+        fileSize: fileSize,
         file_size: fileSize,
         filesize: fileSize,
         size: fileSize,
@@ -236,13 +266,18 @@ function buildTrackerResponse(hash, match) {
             url: [audioUrl],
             backup_url: [audioUrl],
             status: 1,
-            hash: hash,
+            hash: audioHash,
+            kg_hash: hash,
             fmt: fmt,
+            extName: fmt,
             bitrate: bitRate,
             bitRate: bitRate,
+            fileSize: fileSize,
             file_size: fileSize,
             filesize: fileSize,
             size: fileSize,
+            primaryUrl: audioUrl,
+            urls: [audioUrl],
             audio_name: match.name || "",
             author_name: match.artist || "",
             kg_otter_source: match.source || ""
@@ -251,7 +286,7 @@ function buildTrackerResponse(hash, match) {
 }
 
 function buildJsonHeaders() {
-    const jsonHeaders = Object.assign({}, $response && $response.headers || {});
+    const jsonHeaders = Object.assign({}, isResponseScript && $response.headers || {});
     Object.keys(jsonHeaders).forEach(key => {
         const lower = key.toLowerCase();
         if (lower === "content-encoding" || lower === "content-length" || lower === "transfer-encoding") {
@@ -274,13 +309,22 @@ function buildJsonHeaders() {
 
 // 处理 /v5/url、/tracker/v5/url 和 /tracker/v5 响应替换
 if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes("/tracker/v5?")) {
+    if (!isResponseScript) {
+        console.log("⚠️ 当前规则仍是 request-header，无法注入下载响应，请改为 script-response-body。");
+        $done({});
+        return;
+    }
+
     const hashMatch = url.match(/hash=([0-9a-fA-F]{32})/);
     const hash = hashMatch ? hashMatch[1] : '';
+    const quality = getQueryParam(url, "quality");
+    const targetBr = getOtterBrForQuality(quality);
 
     console.log("🔍 检测 hash 参数：" + (hash || "未找到"));
+    console.log("🎚️ 请求音质：" + (quality || "默认") + " -> GD br=" + targetBr);
 
     if (hash) {
-        resolveOtterMusicUrl(hash).then(match => {
+        resolveOtterMusicUrl(hash, targetBr).then(match => {
             if (!match || !match.url) {
                 console.log("⚠️ Otter 未找到可用音源，保留原响应。");
                 $done({ body: responseBody });
@@ -292,7 +336,7 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
             console.log("🎯 音频 URL：" + match.url);
 
             $done({
-                status: 200,
+                status: "HTTP/1.1 200 OK",
                 headers: buildJsonHeaders(),
                 body: newBody
             });
