@@ -14,8 +14,8 @@ const url = $request.url;
 const headers = $request.headers;
 const responseBody = typeof $response !== "undefined" && $response ? $response.body : "";
 const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
-const OTTER_SOURCES = ["joox", "netease", "kuwo"];
-const OTTER_BR = 320;
+const OTTER_SOURCES = ["netease", "kuwo", "joox"];
+const OTTER_BR = 192;
 const META_PREFIX = "kg_otter_meta_";
 const MATCH_PREFIX = "kg_otter_match_";
 // 原酷狗播放信息接口，已切换到 Otter/GD Studio 音源后保留备用：
@@ -121,8 +121,9 @@ function readCachedMatch(hash) {
     if (typeof $prefs === "undefined" || !$prefs.valueForKey) return null;
 
     try {
-        const value = $prefs.valueForKey(MATCH_PREFIX + String(hash).toLowerCase());
-        return value ? JSON.parse(value) : null;
+        const value = $prefs.valueForKey(MATCH_PREFIX + OTTER_BR + "_" + String(hash).toLowerCase());
+        const match = value ? JSON.parse(value) : null;
+        return match && match.br === OTTER_BR ? match : null;
     } catch (_) {
         return null;
     }
@@ -132,7 +133,7 @@ function saveCachedMatch(hash, match) {
     if (typeof $prefs === "undefined" || !$prefs.setValueForKey || !match) return;
 
     try {
-        $prefs.setValueForKey(JSON.stringify(match), MATCH_PREFIX + String(hash).toLowerCase());
+        $prefs.setValueForKey(JSON.stringify(match), MATCH_PREFIX + OTTER_BR + "_" + String(hash).toLowerCase());
     } catch (_) {}
 }
 
@@ -178,6 +179,7 @@ async function resolveOtterMusicUrl(hash) {
             const matchInfo = {
                 source,
                 id: trackId,
+                br: OTTER_BR,
                 name: match.item.name,
                 artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
             };
@@ -222,6 +224,14 @@ function buildTrackerResponse(hash, match) {
         errcode: 0,
         hash: hash,
         url: [audioUrl],
+        backup_url: [audioUrl],
+        status_code: 1,
+        fmt: fmt,
+        bitrate: bitRate,
+        bitRate: bitRate,
+        file_size: fileSize,
+        filesize: fileSize,
+        size: fileSize,
         data: {
             url: [audioUrl],
             backup_url: [audioUrl],
