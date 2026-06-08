@@ -8,7 +8,7 @@ It only runs on:
 Quantumult X example:
 
 [rewrite_local]
-^https:\/\/hongyanyanbaihuo\.online\/pay\/zzaaw\/\d+\/?.* url script-response-body hongyan_epay_ctf_qx.js
+^https:\/\/hongyanyanbaihuo\.online\/pay\/zzaaw\/\d+\/?.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/hongyan.js
 
 [mitm]
 hostname = hongyanyanbaihuo.online
