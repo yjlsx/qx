@@ -18,7 +18,6 @@ const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
 const JOOX_DIRECT_SOURCE = "joox_direct";
 const QQ_DIRECT_SOURCE = "qq_direct";
 const OTTER_SOURCES = ["netease", "kuwo", QQ_DIRECT_SOURCE, JOOX_DIRECT_SOURCE, "joox"];
-const PREFERRED_SOURCE = ""; // 可填 netease / kuwo / qq_direct / joox_direct / joox，留空则自动评分
 const DEFAULT_OTTER_BR = 192;
 const OTTER_BR_LEVELS = [999, 740, 320, 192, 128];
 const META_PREFIX = "kg_otter_meta_";
@@ -181,37 +180,13 @@ function isArtistMatch(left, right) {
         && leftSet.every((artist, index) => artist === rightSet.sort()[index]);
 }
 
-function isAlbumMatch(left, right) {
-    const a = normalizeText(left);
-    const b = normalizeText(right);
-    return a && b && a === b;
-}
-
-function scoreCandidate(songName, artists, item, index, targetAlbum) {
+function scoreCandidate(songName, artists, item, index) {
     if (!isStrictCandidateMatch(songName, artists, item)) return -1;
     let score = Math.max(0, 20 - index);
     if (normalizeText(songName) === normalizeText(item.name)) score += 100;
     else if (isNameMatch(songName, item.name)) score += 50;
     if (isArtistMatch(artists, item.artist)) score += 100;
-
-    if (targetAlbum && item && item.album) {
-        if (isAlbumMatch(targetAlbum, item.album)) score += 80;
-        else score -= 30;
-    }
     return score;
-}
-
-function compareCandidatePair(a, b) {
-    return b.score - a.score || OTTER_SOURCES.indexOf(a.source) - OTTER_SOURCES.indexOf(b.source) || a.index - b.index;
-}
-
-function logCandidateList(candidates) {
-    if (!candidates || candidates.length === 0) return;
-    candidates.slice(0, 8).forEach((candidate, index) => {
-        const album = candidate.item && candidate.item.album ? `｜专辑：${candidate.item.album}` : "";
-        const id = candidate.item && (candidate.item.id || candidate.item.url_id) || "";
-        console.log(`🎼 候选${index + 1}：${candidate.source}｜${formatMatchTitle(candidate.item)}${album}｜score=${candidate.score}｜id=${id}`);
-    });
 }
 
 function fetchJson(requestUrl) {
@@ -516,18 +491,24 @@ async function resolveOtterMusicUrl(hash, targetBr) {
     }
 
     const keyword = `${target.name} ${target.artists[0]}`;
-    const fallbackBrList = getFallbackBrList(targetBr);
-    const preferredSource = String(PREFERRED_SOURCE || "").trim();
-    const sourceList = preferredSource
-        ? OTTER_SOURCES.filter(source => source === preferredSource).concat(OTTER_SOURCES.filter(source => source !== preferredSource))
-        : OTTER_SOURCES;
-    const candidates = [];
-
     console.log(`🔎 Otter 自动匹配：${keyword}`);
-    if (target.album) console.log(`💿 酷狗原专辑：${target.album}`);
-    if (preferredSource) console.log(`📌 当前优先音源：${preferredSource}`);
 
-    for (const source of sourceList) {
+    const fallbackBrList = getFallbackBrList(targetBr);
+    const cachedMatch = readCachedMatch(hash, targetBr);
+    if (cachedMatch && cachedMatch.source && cachedMatch.id) {
+        console.log(`♻️ 使用已缓存音源：${cachedMatch.source}，匹配歌曲：${formatMatchTitle(cachedMatch)}，优先请求 ${targetBr}k`);
+        for (const br of fallbackBrList) {
+            const cachedTryMatch = Object.assign({}, cachedMatch, { br: br });
+            const hydratedMatch = await fetchSourcePlayInfo(cachedTryMatch, br);
+            if (isUsablePlayInfo(hydratedMatch)) {
+                if (br !== targetBr) console.log(`↘️ 缓存音源 ${targetBr}k 不可用，自动切换到 ${hydratedMatch.br || br}k`);
+                return hydratedMatch;
+            }
+        }
+        console.log("⚠️ 缓存音源 URL 失效或所需音质不可用，重新搜索。");
+    }
+
+    for (const source of OTTER_SOURCES) {
         try {
             let list;
             if (source === JOOX_DIRECT_SOURCE) {
@@ -544,69 +525,46 @@ async function resolveOtterMusicUrl(hash, targetBr) {
                 });
                 list = await fetchJson(searchUrl);
             }
-            if (!Array.isArray(list) || list.length === 0) {
-                console.log(`ℹ️ ${source} 未搜索到候选。`);
-                continue;
-            }
+            if (!Array.isArray(list) || list.length === 0) continue;
 
-            list.forEach((item, index) => {
-                const score = scoreCandidate(target.name, target.artists, item, index, target.album);
-                if (score >= 200 && item && (item.id || item.url_id)) {
-                    candidates.push({ source, item, score, index });
-                }
-            });
-        } catch (e) {
-            console.log(`⚠️ ${source} 音源搜索失败：${e.message || e}`);
-        }
-    }
+            const match = list
+                .map((item, index) => ({ item, score: scoreCandidate(target.name, target.artists, item, index) }))
+                .filter(pair => pair.score >= 200 && pair.item && (pair.item.id || pair.item.url_id))
+                .sort((a, b) => b.score - a.score)[0];
 
-    if (candidates.length === 0) {
-        console.log("⚠️ 所有音源都没有严格匹配的候选。");
-        return null;
-    }
+            if (!match) continue;
+            const trackId = match.item.id || match.item.url_id;
 
-    candidates.sort(compareCandidatePair);
-    logCandidateList(candidates);
-
-    for (const candidate of candidates) {
-        const trackId = candidate.item.id || candidate.item.url_id;
-        const matchInfo = {
-            source: candidate.source,
-            id: trackId,
-            br: targetBr,
-            name: candidate.item.name,
-            artist: Array.isArray(candidate.item.artist) ? candidate.item.artist.join("/") : candidate.item.artist,
-            album: candidate.item.album || ""
-        };
-
-        for (const br of fallbackBrList) {
-            const tryMatchInfo = Object.assign({}, matchInfo, { br: br });
-            try {
+            const matchInfo = {
+                source,
+                id: trackId,
+                br: targetBr,
+                name: match.item.name,
+                artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
+            };
+            for (const br of fallbackBrList) {
+                const tryMatchInfo = Object.assign({}, matchInfo, { br: br });
                 const hydratedMatch = await fetchSourcePlayInfo(tryMatchInfo, br);
                 if (isUsablePlayInfo(hydratedMatch)) {
                     const actualBr = Number(hydratedMatch.br) > 0 ? Number(hydratedMatch.br) : br;
-                    console.log(`✅ 选中音源：${candidate.source}｜${formatMatchTitle(candidate.item)}${candidate.item.album ? `｜专辑：${candidate.item.album}` : ""}｜score=${candidate.score}`);
-                    if (br !== targetBr || actualBr !== targetBr) {
-                        console.log(`↘️ 请求 ${targetBr}k，实际使用 ${actualBr}k`);
+                    if (br === targetBr && actualBr === targetBr) {
+                        console.log(`✅ 已切换到 ${source} ${targetBr}k 音源，匹配歌曲：${formatMatchTitle(match.item)}`);
+                    } else {
+                        console.log(`✅ 已切换到 ${source} 音源，匹配歌曲：${formatMatchTitle(match.item)}，请求 ${targetBr}k，实际 ${actualBr}k`);
                     }
                     saveCachedMatch(hash, targetBr, matchInfo);
-                    return Object.assign({}, hydratedMatch, {
-                        name: hydratedMatch.name || matchInfo.name,
-                        artist: hydratedMatch.artist || matchInfo.artist,
-                        album: hydratedMatch.album || matchInfo.album,
-                        source: hydratedMatch.source || candidate.source
-                    });
+                    return hydratedMatch;
                 }
-                console.log(`ℹ️ ${candidate.source} ${br}k 无可用 URL：${formatMatchTitle(candidate.item)}`);
-            } catch (e) {
-                console.log(`⚠️ ${candidate.source} ${br}k 取 URL 失败：${e.message || e}`);
+                console.log(`ℹ️ ${source} ${br}k 无可用 URL，继续尝试其它音质。`);
             }
+        } catch (e) {
+            console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
         }
     }
 
-    console.log("⚠️ 候选都有匹配信息，但没有任何可用下载 URL。");
     return null;
 }
+
 function inferAudioFormat(audioUrl) {
     const pathname = String(audioUrl || "").split("?")[0].toLowerCase();
     if (pathname.endsWith(".flac")) return "flac";
@@ -771,8 +729,6 @@ if (url.includes("/vipcenter/ios")) {
 // 未命中重写逻辑
 console.log("ℹ️ 非目标请求，无需处理");
 $done({});
-
-
 
 
 
