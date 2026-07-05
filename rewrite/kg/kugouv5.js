@@ -5,7 +5,7 @@
 
 
 [mitm]
-hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, qgw.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz, cache.api.joox.com, api.joox.com
+hostname = gateway.kugou.com, gatewayretry.kugou.com, gateway3.kugou.com, qgw.kugou.com, kg.zzxu.de, m.kugou.com, music-api.gdstudio.xyz, cache.api.joox.com, api.joox.com, u.y.qq.com
 
 
  **/
@@ -16,11 +16,28 @@ const isResponseScript = typeof $response !== "undefined" && $response;
 const responseBody = isResponseScript ? $response.body : "";
 const OTTER_API = "https://music-api.gdstudio.xyz/api.php";
 const JOOX_DIRECT_SOURCE = "joox_direct";
-const OTTER_SOURCES = ["netease", "kuwo", JOOX_DIRECT_SOURCE, "joox"];
+const QQ_DIRECT_SOURCE = "qq_direct";
+const OTTER_SOURCES = ["netease", "kuwo", QQ_DIRECT_SOURCE, JOOX_DIRECT_SOURCE, "joox"];
 const DEFAULT_OTTER_BR = 192;
 const OTTER_BR_LEVELS = [999, 740, 320, 192, 128];
 const META_PREFIX = "kg_otter_meta_";
 const MATCH_PREFIX = "kg_otter_match_";
+const QQ_API_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg";
+const QQ_REFERER = "https://y.qq.com/";
+const QQ_HEADERS = {
+    "Content-Type": "application/json",
+    "Referer": QQ_REFERER,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
+    "Cookie": "uin="
+};
+const QQ_AUDIO_HEADERS = {
+    "User-Agent": "IPhone-20709-KGTweLisRecHome-Range-ActD-wifi"
+};
+const QQ_FILE_CONFIG = [
+    { key: "320k", br: 320, prefix: "M800", ext: ".mp3" },
+    { key: "128k", br: 128, prefix: "M500", ext: ".mp3" },
+    { key: "m4a", br: 128, prefix: "C400", ext: ".m4a" }
+];
 const JOOX_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     "Cookie": "wmid=142420656; user_type=1; country=id; session_key=2a5d97d05dc8fe238150184eaf3519ad;",
@@ -210,11 +227,173 @@ function fetchPostJson(requestUrl, requestBody, requestHeaders) {
     });
 }
 
+function getHeaderValue(headers, name) {
+    const target = String(name || "").toLowerCase();
+    const source = headers || {};
+    for (const key of Object.keys(source)) {
+        if (String(key).toLowerCase() === target) return source[key];
+    }
+    return "";
+}
+
+function parseAudioMetadata(headers) {
+    const md5 = String(getHeaderValue(headers, "server-md5") || getHeaderValue(headers, "x-cos-meta-md5") || "").toLowerCase();
+    const contentRange = String(getHeaderValue(headers, "content-range") || "");
+    const rangeMatch = contentRange.match(/\/(\d+)$/);
+    const size = Number(rangeMatch ? rangeMatch[1] : getHeaderValue(headers, "content-length")) || 0;
+
+    if (!/^[0-9a-f]{32}$/.test(md5) || size <= 0) return null;
+    return {
+        hash: md5,
+        size,
+        contentType: getHeaderValue(headers, "content-type") || ""
+    };
+}
+
+async function fetchAudioMetadata(audioUrl) {
+    const attempts = [
+        { method: "HEAD", headers: QQ_AUDIO_HEADERS },
+        { method: "GET", headers: Object.assign({ Range: "bytes=0-0" }, QQ_AUDIO_HEADERS) }
+    ];
+
+    for (const attempt of attempts) {
+        try {
+            const resp = await $task.fetch({
+                url: audioUrl,
+                method: attempt.method,
+                headers: attempt.headers
+            });
+            const statusCode = Number(resp.statusCode || resp.status || 200);
+            if (statusCode >= 400) continue;
+            const metadata = parseAudioMetadata(resp.headers || {});
+            if (metadata) return metadata;
+        } catch (_) {}
+    }
+
+    return null;
+}
+
 function parseJsonp(text, callbackName) {
     let value = String(text || "").trim();
     const prefix = callbackName + "(";
     if (value.indexOf(prefix) === 0) value = value.slice(prefix.length, -1);
     return JSON.parse(value || "{}");
+}
+
+function normalizeQqSearchItem(song) {
+    if (!song) return null;
+    const songmid = song.mid || song.songmid || "";
+    if (!songmid) return null;
+    const album = song.album || {};
+    const artists = (song.singer || [])
+        .map(artist => artist && artist.name)
+        .filter(Boolean);
+
+    return {
+        id: songmid,
+        url_id: songmid,
+        lyric_id: songmid,
+        name: song.title || song.songname || "",
+        artist: artists,
+        album: album.title || song.albumname || "",
+        source: QQ_DIRECT_SOURCE
+    };
+}
+
+async function searchDirectQq(keyword) {
+    const searchBody = {
+        req_1: {
+            method: "DoSearchForQQMusicDesktop",
+            module: "music.search.SearchCgiService",
+            param: {
+                num_per_page: 5,
+                page_num: 1,
+                query: keyword,
+                search_type: 0
+            }
+        }
+    };
+    const searchResult = await fetchPostJson(QQ_API_URL, searchBody, QQ_HEADERS);
+    const list = searchResult && searchResult.req_1 && searchResult.req_1.data && searchResult.req_1.data.body && searchResult.req_1.data.body.song && searchResult.req_1.data.body.song.list || [];
+    return list.map(normalizeQqSearchItem).filter(Boolean);
+}
+
+function getQqQualityKeys(targetBr) {
+    const br = Number(targetBr) || DEFAULT_OTTER_BR;
+    if (br >= 320) return ["320k"];
+    if (br >= 128) return ["128k", "m4a"];
+    return ["m4a"];
+}
+
+function buildQqVkeyRequestBody(songmid, qualityKeys) {
+    const filenames = qualityKeys.map(key => {
+        const cfg = QQ_FILE_CONFIG.filter(item => item.key === key)[0];
+        return cfg ? cfg.prefix + songmid + songmid + cfg.ext : "";
+    }).filter(Boolean);
+
+    return {
+        req_1: {
+            module: "vkey.GetVkeyServer",
+            method: "CgiGetVkey",
+            param: {
+                filename: filenames,
+                guid: "10000",
+                songmid: qualityKeys.map(() => songmid),
+                songtype: qualityKeys.map(() => 0),
+                uin: "0",
+                loginflag: 1,
+                platform: "20"
+            }
+        },
+        loginUin: "0",
+        comm: {
+            uin: "0",
+            format: "json",
+            ct: 24,
+            cv: 0
+        }
+    };
+}
+
+function extractQqVkeyUrl(data) {
+    const result = data && data.req_1 && data.req_1.data || {};
+    const sip = result.sip || [];
+    const midurlinfo = result.midurlinfo || [];
+    if (!sip.length || !midurlinfo.length) return null;
+
+    for (const info of midurlinfo) {
+        if (info && info.purl) return sip[0] + info.purl;
+    }
+    return null;
+}
+
+async function fetchDirectQqPlayInfo(match, targetBr) {
+    if (!match || !match.id) return null;
+    const songmid = String(match.id).replace(/^qq_/, "");
+    const qualityKeys = getQqQualityKeys(targetBr);
+    const playInfo = await fetchPostJson(QQ_API_URL, buildQqVkeyRequestBody(songmid, qualityKeys), QQ_HEADERS);
+    const audioUrl = extractQqVkeyUrl(playInfo);
+    if (!audioUrl) return null;
+
+    const metadata = await fetchAudioMetadata(audioUrl);
+    if (!metadata) {
+        console.log("⚠️ QQ 音源缺少真实 MD5 或文件大小，跳过。");
+        return null;
+    }
+
+    const usedKey = qualityKeys[0];
+    const cfg = QQ_FILE_CONFIG.filter(item => item.key === usedKey)[0];
+
+    return Object.assign({}, match, {
+        id: songmid,
+        url: String(audioUrl).replace(/&amp;/g, "&"),
+        br: cfg && cfg.br || targetBr,
+        requested_br: targetBr,
+        size: metadata.size,
+        fileHash: metadata.hash,
+        contentType: metadata.contentType,
+        source: QQ_DIRECT_SOURCE
+    });
 }
 
 function normalizeJooxSearchItem(rawItem) {
@@ -342,7 +521,6 @@ function readCachedMatch(hash, targetBr) {
     try {
         const value = $prefs.valueForKey(MATCH_PREFIX + targetBr + "_" + String(hash).toLowerCase());
         const match = value ? JSON.parse(value) : null;
-        if (match && match.source === "qq_direct") return null;
         return match && match.br === targetBr ? match : null;
     } catch (_) {
         return null;
@@ -360,7 +538,7 @@ function saveCachedMatch(hash, targetBr, match) {
 async function fetchSourcePlayInfo(match, targetBr) {
     if (!match || !match.source) return null;
     if (match.source === JOOX_DIRECT_SOURCE) return fetchDirectJooxPlayInfo(match, targetBr);
-    if (match.source === "qq_direct") return null;
+    if (match.source === QQ_DIRECT_SOURCE) return fetchDirectQqPlayInfo(match, targetBr);
     return fetchOtterPlayInfo(match, targetBr);
 }
 async function resolveOtterMusicUrl(hash, targetBr) {
@@ -394,6 +572,8 @@ async function resolveOtterMusicUrl(hash, targetBr) {
             let list;
             if (source === JOOX_DIRECT_SOURCE) {
                 list = await searchDirectJoox(keyword);
+            } else if (source === QQ_DIRECT_SOURCE) {
+                list = await searchDirectQq(keyword);
             } else {
                 const searchUrl = buildUrl(OTTER_API, {
                     types: "search",
@@ -458,6 +638,11 @@ function extractAudioHash(audioUrl, fallbackHash) {
     return String(match ? match[1] : fallbackHash).toUpperCase();
 }
 
+function normalizeAudioHash(value, fallbackHash) {
+    const hash = String(value || "").toUpperCase();
+    return /^[0-9A-F]{32}$/.test(hash) ? hash : String(fallbackHash || "").toUpperCase();
+}
+
 function normalizeFileSize(size) {
     const value = Number(size) || 0;
     if (!value) return 0;
@@ -469,7 +654,7 @@ function buildTrackerResponse(hash, match) {
     const bitRate = Number(match.br) || DEFAULT_OTTER_BR;
     const fileSize = normalizeFileSize(match.size);
     const fmt = inferAudioFormat(audioUrl);
-    const audioHash = extractAudioHash(audioUrl, hash);
+    const audioHash = normalizeAudioHash(match.fileHash, extractAudioHash(audioUrl, hash));
 
     return {
         status: 1,
