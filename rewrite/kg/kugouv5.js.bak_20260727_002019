@@ -1,4 +1,4 @@
-/**
+﻿/**
 
 [rewrite_local]
 ^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
@@ -21,14 +21,7 @@ const OTTER_SOURCES = ["netease", "kuwo", QQ_DIRECT_SOURCE, JOOX_DIRECT_SOURCE, 
 const DEFAULT_OTTER_BR = 192;
 const OTTER_BR_LEVELS = [999, 740, 320, 192, 128];
 const META_PREFIX = "kg_otter_meta_";
-const MATCH_PREFIX = "kg_otter_match_v6_";
-const PREFER_ORIGINAL_WHEN_GOOD_ENOUGH = true;
-const STRICT_SCORE_BASE = 200;
-const LOOSE_SCORE_BASE = 100;
-// 宽松匹配默认关闭，宁可不换源也不匹错
-const ENABLE_LOOSE_MATCH = false;
-// QX script_timeout 默认 5 秒，留 1 秒余量主动收工
-const TIME_BUDGET_MS = 4000;
+const MATCH_PREFIX = "kg_otter_match_";
 const QQ_API_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg";
 const QQ_REFERER = "https://y.qq.com/";
 const QQ_HEADERS = {
@@ -39,9 +32,6 @@ const QQ_HEADERS = {
 };
 const QQ_AUDIO_HEADERS = {
     "User-Agent": "IPhone-20709-KGTweLisRecHome-Range-ActD-wifi"
-};
-const GENERIC_AUDIO_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 };
 const QQ_FILE_CONFIG = [
     { key: "320k", br: 320, prefix: "M800", ext: ".mp3" },
@@ -70,9 +60,8 @@ const JOOX_FUZZY_MUSIC_QUALITIES = [
     "r24Url", "r24url", "r24_url", "24Url", "24URL", "24_url", "url24", "lowUrl", "low_url", "previewUrl", "preview_url", "refrainUrl", "refrainURL", "refrain_url",
     "chorusUrl", "chorus_url", "clipUrl", "clip_url", "snippetUrl", "snippet_url", "trialUrl", "trial_url"
 ];
-// 试听/副歌片段，不是整首歌
-const JOOX_SNIPPET_PATTERN = /preview|refrain|chorus|clip|snippet|trial/i;
-const JOOX_MUSIC_QUALITIES = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => !JOOX_SNIPPET_PATTERN.test(key));
+// 原酷狗播放信息接口，已切换到 Otter/GD Studio 音源后保留备用：
+// const KUGOU_PLAY_INFO_API = "https://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=";
 
 console.log("🧭 当前请求 URL：" + url);
 
@@ -88,10 +77,6 @@ function getQueryParam(requestUrl, name) {
     return match ? decodeURIComponent(match[1].replace(/\+/g, "%20")) : "";
 }
 
-function isDeadlineExceeded(deadline) {
-    return !!deadline && Date.now() >= deadline;
-}
-
 function getOtterBrForQuality(quality) {
     const value = String(quality || "").toLowerCase();
     if (value === "128" || value === "standard" || value === "normal") return 128;
@@ -99,17 +84,14 @@ function getOtterBrForQuality(quality) {
     if (value === "320" || value === "exhigh") return 320;
     if (value === "740" || value === "flac" || value === "sq" || value === "lossless") return 740;
     if (value === "999" || value === "viper" || value === "viper_clear" || value === "hires" || value === "super") return 999;
-    return 0;
+    return DEFAULT_OTTER_BR;
 }
 
-// 只降不升；targetBr=0（quality 无法识别）时保留全档位
 function getFallbackBrList(targetBr) {
-    const requestedBr = Number(targetBr) || 0;
-    if (requestedBr <= 0) return OTTER_BR_LEVELS.slice();
-
+    const requestedBr = Number(targetBr) || DEFAULT_OTTER_BR;
     const list = [requestedBr];
     OTTER_BR_LEVELS.forEach(br => {
-        if (br < requestedBr) list.push(br);
+        if (br !== requestedBr) list.push(br);
     });
     return list;
 }
@@ -132,7 +114,7 @@ function normalizeText(value) {
         .toLowerCase()
         .normalize("NFKC")
         .replace(/[([{【（].*?[)\]}】）]/g, " ")
-        .replace(/[^\w一-龥]/g, "")
+        .replace(/[^\w\u4e00-\u9fa5]/g, "")
         .trim();
 }
 
@@ -140,7 +122,7 @@ function normalizeStrictText(value) {
     return String(value || "")
         .toLowerCase()
         .normalize("NFKC")
-        .replace(/[^\w一-龥]/g, "")
+        .replace(/[^\w\u4e00-\u9fa5]/g, "")
         .trim();
 }
 
@@ -193,45 +175,20 @@ function isNameMatch(left, right) {
     return a && b && a === b;
 }
 
-function normalizedArtistSet(value) {
-    return Array.from(new Set(splitArtists(value).map(normalizeText).filter(Boolean))).sort();
-}
-
 function isArtistMatch(left, right) {
-    const leftSet = normalizedArtistSet(left);
-    const rightSet = normalizedArtistSet(right);
+    const leftSet = splitArtists(left).map(normalizeText).filter(Boolean);
+    const rightSet = splitArtists(right).map(normalizeText).filter(Boolean);
     return leftSet.length > 0
         && leftSet.length === rightSet.length
-        && leftSet.every((artist, index) => artist === rightSet[index]);
+        && leftSet.every((artist, index) => artist === rightSet.sort()[index]);
 }
 
-// 宽松轮：歌手有交集即可。子串包含要求 3 字以上，避免两字艺名互撞
-function hasArtistOverlap(left, right) {
-    const leftSet = uniqueNormalizedArtists(left);
-    const rightSet = uniqueNormalizedArtists(right);
-    if (!leftSet.length || !rightSet.length) return false;
-    return leftSet.some(artist => rightSet.some(other =>
-        artist === other
-        || (artist.length >= 3 && other.indexOf(artist) >= 0)
-        || (other.length >= 3 && artist.indexOf(other) >= 0)
-    ));
-}
-
-// 通过严格判定即保底 STRICT_SCORE_BASE 分，附加分仅用于排序
 function scoreCandidate(songName, artists, item, index) {
     if (!isStrictCandidateMatch(songName, artists, item)) return -1;
-    let score = STRICT_SCORE_BASE + Math.max(0, 20 - index);
-    if (normalizeText(songName) === normalizeText(item.name)) score += 50;
-    if (isArtistMatch(artists, item.artist)) score += 50;
-    return score;
-}
-
-function scoreLooseCandidate(songName, artists, item, index) {
-    if (!item || hasCoverMarker(item)) return -1;
-    if (!isStrictNameMatch(songName, item.name) && !isNameMatch(songName, item.name)) return -1;
-    if (!hasArtistOverlap(artists, item.artist)) return -1;
-    let score = LOOSE_SCORE_BASE + Math.max(0, 20 - index);
-    if (isStrictNameMatch(songName, item.name)) score += 30;
+    let score = Math.max(0, 20 - index);
+    if (normalizeText(songName) === normalizeText(item.name)) score += 100;
+    else if (isNameMatch(songName, item.name)) score += 50;
+    if (isArtistMatch(artists, item.artist)) score += 100;
     return score;
 }
 
@@ -239,7 +196,9 @@ function fetchJson(requestUrl) {
     return $task.fetch({
         url: requestUrl,
         method: "GET",
-        headers: GENERIC_AUDIO_HEADERS
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
     }).then(resp => JSON.parse(resp.body || "{}"));
 }
 
@@ -277,31 +236,24 @@ function getHeaderValue(headers, name) {
     return "";
 }
 
-// 只有 server-md5 / x-cos-meta-md5 可信；etag 未必等于内容 MD5，单独放 weakHash
 function parseAudioMetadata(headers) {
-    const strongMd5 = String(
-        getHeaderValue(headers, "server-md5")
-        || getHeaderValue(headers, "x-cos-meta-md5")
-        || ""
-    ).toLowerCase().replace(/["']/g, "");
-    const etag = String(getHeaderValue(headers, "etag") || "").toLowerCase().replace(/["']/g, "");
+    const md5 = String(getHeaderValue(headers, "server-md5") || getHeaderValue(headers, "x-cos-meta-md5") || "").toLowerCase();
     const contentRange = String(getHeaderValue(headers, "content-range") || "");
     const rangeMatch = contentRange.match(/\/(\d+)$/);
     const size = Number(rangeMatch ? rangeMatch[1] : getHeaderValue(headers, "content-length")) || 0;
 
+    if (!/^[0-9a-f]{32}$/.test(md5) || size <= 0) return null;
     return {
-        hash: /^[0-9a-f]{32}$/.test(strongMd5) ? strongMd5 : "",
-        weakHash: /^[0-9a-f]{32}$/.test(etag) ? etag : "",
-        size: size > 0 ? size : 0,
+        hash: md5,
+        size,
         contentType: getHeaderValue(headers, "content-type") || ""
     };
 }
 
-async function fetchAudioMetadata(audioUrl, baseHeaders) {
-    const base = baseHeaders || GENERIC_AUDIO_HEADERS;
+async function fetchAudioMetadata(audioUrl) {
     const attempts = [
-        { method: "HEAD", headers: base },
-        { method: "GET", headers: Object.assign({ Range: "bytes=0-0" }, base) }
+        { method: "HEAD", headers: QQ_AUDIO_HEADERS },
+        { method: "GET", headers: Object.assign({ Range: "bytes=0-0" }, QQ_AUDIO_HEADERS) }
     ];
 
     for (const attempt of attempts) {
@@ -314,7 +266,7 @@ async function fetchAudioMetadata(audioUrl, baseHeaders) {
             const statusCode = Number(resp.statusCode || resp.status || 200);
             if (statusCode >= 400) continue;
             const metadata = parseAudioMetadata(resp.headers || {});
-            if (metadata.hash || metadata.weakHash || metadata.size > 0) return metadata;
+            if (metadata) return metadata;
         } catch (_) {}
     }
 
@@ -333,15 +285,12 @@ function normalizeQqSearchItem(song) {
     const songmid = song.mid || song.songmid || "";
     if (!songmid) return null;
     const album = song.album || {};
-    const file = song.file || {};
     const artists = (song.singer || [])
         .map(artist => artist && artist.name)
         .filter(Boolean);
 
     return {
         id: songmid,
-        // filename 要 media_mid，与 songmid 不总相同
-        media_mid: file.media_mid || file.media_id || songmid,
         url_id: songmid,
         lyric_id: songmid,
         name: song.title || song.songname || "",
@@ -376,11 +325,10 @@ function getQqQualityKeys(targetBr) {
     return ["m4a"];
 }
 
-function buildQqVkeyRequestBody(songmid, mediaMid, qualityKeys) {
-    const resolvedMediaMid = mediaMid || songmid;
+function buildQqVkeyRequestBody(songmid, qualityKeys) {
     const filenames = qualityKeys.map(key => {
         const cfg = QQ_FILE_CONFIG.filter(item => item.key === key)[0];
-        return cfg ? cfg.prefix + songmid + resolvedMediaMid + cfg.ext : "";
+        return cfg ? cfg.prefix + songmid + songmid + cfg.ext : "";
     }).filter(Boolean);
 
     return {
@@ -413,9 +361,8 @@ function extractQqVkeyUrl(data) {
     const midurlinfo = result.midurlinfo || [];
     if (!sip.length || !midurlinfo.length) return null;
 
-    for (let index = 0; index < midurlinfo.length; index++) {
-        const info = midurlinfo[index];
-        if (info && info.purl) return { url: sip[0] + info.purl, index: index };
+    for (const info of midurlinfo) {
+        if (info && info.purl) return sip[0] + info.purl;
     }
     return null;
 }
@@ -423,21 +370,18 @@ function extractQqVkeyUrl(data) {
 async function fetchDirectQqPlayInfo(match, targetBr) {
     if (!match || !match.id) return null;
     const songmid = String(match.id).replace(/^qq_/, "");
-    const mediaMid = String(match.media_mid || songmid).replace(/^qq_/, "");
     const qualityKeys = getQqQualityKeys(targetBr);
-    const playInfo = await fetchPostJson(QQ_API_URL, buildQqVkeyRequestBody(songmid, mediaMid, qualityKeys), QQ_HEADERS);
-    const vkey = extractQqVkeyUrl(playInfo);
-    if (!vkey) return null;
-    const audioUrl = vkey.url;
+    const playInfo = await fetchPostJson(QQ_API_URL, buildQqVkeyRequestBody(songmid, qualityKeys), QQ_HEADERS);
+    const audioUrl = extractQqVkeyUrl(playInfo);
+    if (!audioUrl) return null;
 
-    // QQ 播放地址不含 md5，必须从响应头取
-    const metadata = await fetchAudioMetadata(audioUrl, QQ_AUDIO_HEADERS);
-    if (!metadata || !metadata.hash || !metadata.size) {
+    const metadata = await fetchAudioMetadata(audioUrl);
+    if (!metadata) {
         console.log("⚠️ QQ 音源缺少真实 MD5 或文件大小，跳过。");
         return null;
     }
 
-    const usedKey = qualityKeys[vkey.index] || qualityKeys[0];
+    const usedKey = qualityKeys[0];
     const cfg = QQ_FILE_CONFIG.filter(item => item.key === usedKey)[0];
 
     return Object.assign({}, match, {
@@ -481,10 +425,10 @@ async function searchDirectJoox(keyword) {
 }
 
 function getJooxCandidateKeys(targetBr) {
-    const highResKeys = JOOX_MUSIC_QUALITIES.filter(key => /master|hires|flac|ape|atmos|dolby/i.test(key));
-    const br320Keys = JOOX_MUSIC_QUALITIES.filter(key => /320|high/i.test(key));
-    const br192Keys = JOOX_MUSIC_QUALITIES.filter(key => /192/i.test(key));
-    const lowKeys = JOOX_MUSIC_QUALITIES.filter(key => !highResKeys.includes(key) && !br320Keys.includes(key) && !br192Keys.includes(key));
+    const highResKeys = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => /master|hires|flac|ape|atmos|dolby/i.test(key));
+    const br320Keys = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => /320|high/i.test(key));
+    const br192Keys = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => /192/i.test(key));
+    const lowKeys = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => !highResKeys.includes(key) && !br320Keys.includes(key) && !br192Keys.includes(key));
 
     if (Number(targetBr) >= 740) return highResKeys;
     if (Number(targetBr) >= 320) return br320Keys;
@@ -516,10 +460,6 @@ async function fetchDirectJooxPlayInfo(match, targetBr) {
     for (const key of candidateKeys) {
         const audioUrl = songInfo[key];
         if (!audioUrl || String(audioUrl).indexOf("http") !== 0) continue;
-        if (JOOX_SNIPPET_PATTERN.test(String(audioUrl))) {
-            console.log(`ℹ️ Joox ${key} 指向试听片段，跳过。`);
-            continue;
-        }
 
         return Object.assign({}, match, {
             url: String(audioUrl).replace(/&amp;/g, "&"),
@@ -553,22 +493,6 @@ async function fetchOtterPlayInfo(match, targetBr) {
         br: playInfo.br || playInfo.bitrate || targetBr,
         requested_br: targetBr,
         size: playInfo.size || playInfo.filesize || playInfo.file_size || 0
-    });
-}
-
-// 补探真实 size；md5 只认 server-md5，探不到就回退酷狗原 hash
-async function enrichWithRealMetadata(match) {
-    if (!match || !match.url) return match;
-    if (match.fileHash && match.size) return match;
-
-    const audioUrl = Array.isArray(match.url) ? match.url[0] : match.url;
-    const metadata = await fetchAudioMetadata(audioUrl, GENERIC_AUDIO_HEADERS);
-    if (!metadata) return match;
-
-    return Object.assign({}, match, {
-        size: metadata.size || match.size || 0,
-        fileHash: match.fileHash || metadata.hash || "",
-        contentType: match.contentType || metadata.contentType || ""
     });
 }
 
@@ -617,49 +541,7 @@ async function fetchSourcePlayInfo(match, targetBr) {
     if (match.source === QQ_DIRECT_SOURCE) return fetchDirectQqPlayInfo(match, targetBr);
     return fetchOtterPlayInfo(match, targetBr);
 }
-
-async function searchSource(source, keyword) {
-    if (source === JOOX_DIRECT_SOURCE) return searchDirectJoox(keyword);
-    if (source === QQ_DIRECT_SOURCE) return searchDirectQq(keyword);
-    const searchUrl = buildUrl(OTTER_API, {
-        types: "search",
-        name: keyword,
-        count: 5,
-        pages: 1,
-        source: source
-    });
-    return fetchJson(searchUrl);
-}
-
-function pickCandidate(target, list, strict) {
-    const threshold = strict ? STRICT_SCORE_BASE : LOOSE_SCORE_BASE;
-    return list
-        .map((item, index) => ({
-            item: item,
-            score: strict
-                ? scoreCandidate(target.name, target.artists, item, index)
-                : scoreLooseCandidate(target.name, target.artists, item, index)
-        }))
-        .filter(pair => pair.score >= threshold && pair.item && (pair.item.id || pair.item.url_id))
-        .sort((a, b) => b.score - a.score)[0] || null;
-}
-
-async function hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline) {
-    for (const br of fallbackBrList) {
-        if (isDeadlineExceeded(deadline)) {
-            console.log("⏱️ 时间预算用尽，停止尝试更低音质。");
-            return null;
-        }
-        const tryMatchInfo = Object.assign({}, matchInfo, { br: br });
-        const hydratedMatch = await fetchSourcePlayInfo(tryMatchInfo, br);
-        if (isUsablePlayInfo(hydratedMatch)) return { match: hydratedMatch, br: br };
-        console.log(`ℹ️ ${matchInfo.source} ${br}k 无可用 URL，继续尝试更低音质。`);
-    }
-    return null;
-}
-
 async function resolveOtterMusicUrl(hash, targetBr) {
-    const deadline = Date.now() + TIME_BUDGET_MS;
     const target = readCachedTrackInfo(hash);
 
     if (!target || !target.name || target.artists.length === 0) {
@@ -671,99 +553,74 @@ async function resolveOtterMusicUrl(hash, targetBr) {
     console.log(`🔎 Otter 自动匹配：${keyword}`);
 
     const fallbackBrList = getFallbackBrList(targetBr);
-    // 已失败的候选宽松轮不再重试
-    const triedCandidates = new Set();
     const cachedMatch = readCachedMatch(hash, targetBr);
     if (cachedMatch && cachedMatch.source && cachedMatch.id) {
         console.log(`♻️ 使用已缓存音源：${cachedMatch.source}，匹配歌曲：${formatMatchTitle(cachedMatch)}，优先请求 ${targetBr}k`);
-        const cachedResult = await hydrateMatch(cachedMatch, fallbackBrList, targetBr, deadline);
-        if (cachedResult) {
-            if (cachedResult.br !== targetBr) {
-                console.log(`↘️ 缓存音源 ${targetBr}k 不可用，自动降到 ${cachedResult.match.br || cachedResult.br}k`);
+        for (const br of fallbackBrList) {
+            const cachedTryMatch = Object.assign({}, cachedMatch, { br: br });
+            const hydratedMatch = await fetchSourcePlayInfo(cachedTryMatch, br);
+            if (isUsablePlayInfo(hydratedMatch)) {
+                if (br !== targetBr) console.log(`↘️ 缓存音源 ${targetBr}k 不可用，自动切换到 ${hydratedMatch.br || br}k`);
+                return hydratedMatch;
             }
-            return enrichWithRealMetadata(cachedResult.match);
         }
-        triedCandidates.add(cachedMatch.source + "|" + cachedMatch.id);
         console.log("⚠️ 缓存音源 URL 失效或所需音质不可用，重新搜索。");
     }
 
-    // 搜索结果两轮间复用
-    const searchResults = {};
-    const matchRounds = ENABLE_LOOSE_MATCH ? [true, false] : [true];
-
-    for (const strict of matchRounds) {
-        if (isDeadlineExceeded(deadline)) {
-            console.log("⏱️ 时间预算用尽，放弃换源。");
-            return null;
-        }
-        if (!strict) console.log("🪶 严格匹配全部落空，改用宽松匹配（歌名相同 + 歌手有交集）。");
-
-        for (const source of OTTER_SOURCES) {
-            if (isDeadlineExceeded(deadline)) {
-                console.log("⏱️ 时间预算用尽，放弃剩余音源。");
-                return null;
+    for (const source of OTTER_SOURCES) {
+        try {
+            let list;
+            if (source === JOOX_DIRECT_SOURCE) {
+                list = await searchDirectJoox(keyword);
+            } else if (source === QQ_DIRECT_SOURCE) {
+                list = await searchDirectQq(keyword);
+            } else {
+                const searchUrl = buildUrl(OTTER_API, {
+                    types: "search",
+                    name: keyword,
+                    count: 5,
+                    pages: 1,
+                    source
+                });
+                list = await fetchJson(searchUrl);
             }
-
-            if (!Object.prototype.hasOwnProperty.call(searchResults, source)) {
-                try {
-                    searchResults[source] = await searchSource(source, keyword);
-                } catch (e) {
-                    searchResults[source] = [];
-                    console.log(`⚠️ ${source} 搜索失败：${e.message || e}`);
-                }
-            }
-
-            const list = searchResults[source];
             if (!Array.isArray(list) || list.length === 0) continue;
 
-            const match = pickCandidate(target, list, strict);
+            const match = list
+                .map((item, index) => ({ item, score: scoreCandidate(target.name, target.artists, item, index) }))
+                .filter(pair => pair.score >= 200 && pair.item && (pair.item.id || pair.item.url_id))
+                .sort((a, b) => b.score - a.score)[0];
+
             if (!match) continue;
+            const trackId = match.item.id || match.item.url_id;
 
-            const candidateId = match.item.id || match.item.url_id;
-            const candidateKey = source + "|" + candidateId;
-            if (triedCandidates.has(candidateKey)) continue;
-
-            try {
-                const matchInfo = {
-                    source: source,
-                    id: candidateId,
-                    media_mid: match.item.media_mid || "",
-                    br: targetBr,
-                    name: match.item.name,
-                    artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
-                };
-
-                const result = await hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline);
-                if (!result) {
-                    triedCandidates.add(candidateKey);
-                    continue;
-                }
-
-                const actualBr = Number(result.match.br) > 0 ? Number(result.match.br) : result.br;
-                const modeLabel = strict ? "" : "（宽松匹配）";
-                if (actualBr === targetBr) {
-                    console.log(`✅ 已切换到 ${source} ${targetBr}k 音源${modeLabel}，匹配歌曲：${formatMatchTitle(match.item)}`);
-                } else {
-                    console.log(`✅ 已切换到 ${source} 音源${modeLabel}，匹配歌曲：${formatMatchTitle(match.item)}，请求 ${targetBr}k，实际 ${actualBr}k`);
-                }
-
-                // 只有严格命中才写缓存
-                if (strict) {
+            const matchInfo = {
+                source,
+                id: trackId,
+                br: targetBr,
+                name: match.item.name,
+                artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
+            };
+            for (const br of fallbackBrList) {
+                const tryMatchInfo = Object.assign({}, matchInfo, { br: br });
+                const hydratedMatch = await fetchSourcePlayInfo(tryMatchInfo, br);
+                if (isUsablePlayInfo(hydratedMatch)) {
+                    const actualBr = Number(hydratedMatch.br) > 0 ? Number(hydratedMatch.br) : br;
+                    if (br === targetBr && actualBr === targetBr) {
+                        console.log(`✅ 已切换到 ${source} ${targetBr}k 音源，匹配歌曲：${formatMatchTitle(match.item)}`);
+                    } else {
+                        console.log(`✅ 已切换到 ${source} 音源，匹配歌曲：${formatMatchTitle(match.item)}，请求 ${targetBr}k，实际 ${actualBr}k`);
+                    }
                     saveCachedMatch(hash, targetBr, matchInfo);
-                } else {
-                    console.log("ℹ️ 宽松匹配结果不写入缓存，下次仍会重新确认。");
+                    return hydratedMatch;
                 }
-                return enrichWithRealMetadata(result.match);
-            } catch (e) {
-                triedCandidates.add(candidateKey);
-                console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
+                console.log(`ℹ️ ${source} ${br}k 无可用 URL，继续尝试其它音质。`);
             }
+        } catch (e) {
+            console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
         }
     }
 
-    if (!ENABLE_LOOSE_MATCH) {
-        console.log("🔒 严格匹配未找到同名同歌手的音源，保留原响应（宽松匹配已关闭）。");
-    }
     return null;
 }
 
@@ -787,62 +644,9 @@ function normalizeAudioHash(value, fallbackHash) {
 }
 
 function normalizeFileSize(size) {
-    const value = Number(size);
-    return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
-}
-
-// 有些接口给 bps 而非 kbps
-function normalizeBitrate(value) {
-    const bitRate = Number(value) || 0;
-    if (bitRate <= 0) return 0;
-    return bitRate > 10000 ? Math.round(bitRate / 1000) : Math.round(bitRate);
-}
-
-// 受限标记写法多样，值可能是数字或字符串
-const KUGOU_RESTRICTED_PATTERNS = [
-    /"is_free_part"\s*:\s*"?1"?/i,
-    /"is_trial"\s*:\s*"?(1|true)"?/i,
-    /"pay_block_tpl"\s*:\s*"?1"?/i,
-    /"privilege"\s*:\s*"?(8|10)"?/i,
-    /"fail_process"\s*:\s*"?[1-9]/i,
-    /"pay_type"\s*:\s*"?[1-9]/i
-];
-const MIN_FULL_TRACK_BYTES = 1024 * 1024;
-
-function inspectOriginalResponse(rawBody) {
-    if (!rawBody) return null;
-
-    let payload;
-    try {
-        payload = JSON.parse(rawBody);
-    } catch (_) {
-        return null;
-    }
-    if (!payload || typeof payload !== "object") return null;
-
-    const rawText = String(rawBody);
-    for (const pattern of KUGOU_RESTRICTED_PATTERNS) {
-        if (pattern.test(rawText)) return null;
-    }
-
-    const buckets = [payload, payload.data].filter(bucket => bucket && typeof bucket === "object");
-    for (const bucket of buckets) {
-        const candidates = [bucket.url, bucket.play_url, bucket.backup_url, bucket.primaryUrl, bucket.urls];
-        for (const candidate of candidates) {
-            const value = Array.isArray(candidate) ? candidate.filter(Boolean)[0] : candidate;
-            if (!value || String(value).indexOf("http") !== 0) continue;
-
-            const size = Number(bucket.fileSize || bucket.file_size || bucket.filesize || bucket.size
-                || payload.fileSize || payload.file_size || payload.filesize || payload.size) || 0;
-            // 小于完整歌曲 → 多半是试听片段
-            if (size > 0 && size < MIN_FULL_TRACK_BYTES) return null;
-
-            const br = normalizeBitrate(bucket.bitRate || bucket.bitrate || payload.bitRate || payload.bitrate);
-            return { url: String(value), br: br, size: size };
-        }
-    }
-
-    return null;
+    const value = Number(size) || 0;
+    if (!value) return 0;
+    return value < 1024 * 1024 ? Math.round(value * 1024) : Math.round(value);
 }
 
 function buildTrackerResponse(hash, match) {
@@ -908,10 +712,15 @@ function buildJsonHeaders() {
     return jsonHeaders;
 }
 
-// 不回写 body：原响应头的 content-encoding 与已解码明文对不上
-function passThroughOriginal() {
-    $done({});
-}
+// 原酷狗回退逻辑，当前注释保留：
+// function rewriteToKugou(hash) {
+//     const newUrl = KUGOU_PLAY_INFO_API + hash;
+//     headers["x-router"] = "m.kugou.com";
+//     $done({
+//         url: newUrl,
+//         headers: headers
+//     });
+// }
 
 // 处理 /v5/url、/tracker/v5/url 和 /tracker/v5 响应替换
 if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes("/tracker/v5?")) {
@@ -929,48 +738,36 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
     console.log("🔍 检测 hash 参数：" + (hash || "未找到"));
     console.log("🎚️ 请求音质：" + (quality || "默认") + " -> GD br=" + targetBr);
 
-    if (!hash) {
-        console.log("❌ 未检测到合法 hash，跳过重写。");
-        passThroughOriginal();
-        return;
-    }
+    if (hash) {
+        resolveOtterMusicUrl(hash, targetBr).then(match => {
+            if (!match || !match.url) {
+                console.log("⚠️ Otter 未找到可用音源，保留原响应。");
+                $done({ body: responseBody });
+                return;
+            }
 
-    const original = PREFER_ORIGINAL_WHEN_GOOD_ENOUGH ? inspectOriginalResponse(responseBody) : null;
-    if (original && original.br >= targetBr) {
-        console.log(`👌 原响应已可播且音质足够（${original.br}k ≥ ${targetBr}k），直接放行，不换源。`);
-        passThroughOriginal();
-        return;
-    }
-    if (original) {
-        console.log(`↗️ 原响应可播但音质偏低（${original.br || "未知"}k < ${targetBr}k），继续尝试换源。`);
-    }
+            const newBody = JSON.stringify(buildTrackerResponse(hash, match));
+            console.log("✅ Tracker 响应已替换为 Otter/GD 音源。");
+            console.log("🎵 下载音源歌曲：" + formatMatchTitle(match));
+            console.log("🎯 音频 URL：" + match.url);
 
-    resolveOtterMusicUrl(hash, targetBr).then(match => {
-        if (!match || !match.url) {
-            console.log("⚠️ Otter 未找到可用音源，保留原响应。");
-            passThroughOriginal();
-            return;
-        }
-
-        const newBody = JSON.stringify(buildTrackerResponse(hash, match));
-        console.log("✅ Tracker 响应已替换为 Otter/GD 音源。");
-        console.log("🎵 下载音源歌曲：" + formatMatchTitle(match));
-        console.log("🎯 音频 URL：" + match.url);
-
-        $done({
-            status: "HTTP/1.1 200 OK",
-            headers: buildJsonHeaders(),
-            body: newBody
+            $done({
+                status: "HTTP/1.1 200 OK",
+                headers: buildJsonHeaders(),
+                body: newBody
+            });
+        }).catch(e => {
+            console.log("⚠️ Otter 自动换源异常：" + (e.message || e));
+            $done({ body: responseBody });
         });
-    }).catch(e => {
-        console.log("⚠️ Otter 自动换源异常：" + (e.message || e));
-        passThroughOriginal();
-    });
+    } else {
+        console.log("❌ 未检测到合法 hash，跳过重写。");
+        $done({ body: responseBody });
+    }
     return;
 }
 
 // 处理 /vipcenter/ios 请求头修改
-// 需另注册 request-header 规则才会执行
 if (url.includes("/vipcenter/ios")) {
   const 截取长度 = 112; // 你给的浏览器抓包的 user_label 长度
   let match = url.match(/user_label=([^&]*)/);
@@ -979,10 +776,10 @@ if (url.includes("/vipcenter/ios")) {
     if (userLabelEncoded.length > 截取长度) {
       let newUserLabelEncoded = userLabelEncoded.substring(0, 截取长度);
       let newUrl = url.replace(/user_label=[^&]*/, `user_label=${newUserLabelEncoded}`);
-
+      
       console.log("重写后 user_label 长度: " + newUserLabelEncoded.length);
       console.log("重写新 URL: " + newUrl);
-
+      
       $done({
         url: newUrl,
         headers: headers,
@@ -996,3 +793,20 @@ if (url.includes("/vipcenter/ios")) {
 // 未命中重写逻辑
 console.log("ℹ️ 非目标请求，无需处理");
 $done({});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
