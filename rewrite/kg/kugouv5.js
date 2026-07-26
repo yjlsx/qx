@@ -659,7 +659,10 @@ async function hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline) {
 }
 
 async function resolveOtterMusicUrl(hash, targetBr) {
-    const deadline = Date.now() + TIME_BUDGET_MS;
+    const startedAt = Date.now();
+    const deadline = startedAt + TIME_BUDGET_MS;
+    // 记录每个源的结局，失败时汇总成一行方便判断根因
+    const diag = { sources: [], timedOut: false };
     const target = readCachedTrackInfo(hash);
 
     if (!target || !target.name || target.artists.length === 0) {
@@ -684,24 +687,28 @@ async function resolveOtterMusicUrl(hash, targetBr) {
             return enrichWithRealMetadata(cachedResult.match);
         }
         triedCandidates.add(cachedMatch.source + "|" + cachedMatch.id);
+        diag.sources.push("缓存(" + cachedMatch.source + "):URL失效");
         console.log("⚠️ 缓存音源 URL 失效或所需音质不可用，重新搜索。");
     }
 
     // 搜索结果两轮间复用
     const searchResults = {};
+    const searchFailed = {};
     const matchRounds = ENABLE_LOOSE_MATCH ? [true, false] : [true];
 
     for (const strict of matchRounds) {
         if (isDeadlineExceeded(deadline)) {
+            diag.timedOut = true;
             console.log("⏱️ 时间预算用尽，放弃换源。");
-            return null;
+            break;
         }
         if (!strict) console.log("🪶 严格匹配全部落空，改用宽松匹配（歌名相同 + 歌手有交集）。");
 
         for (const source of OTTER_SOURCES) {
             if (isDeadlineExceeded(deadline)) {
+                diag.timedOut = true;
                 console.log("⏱️ 时间预算用尽，放弃剩余音源。");
-                return null;
+                break;
             }
 
             if (!Object.prototype.hasOwnProperty.call(searchResults, source)) {
@@ -709,15 +716,23 @@ async function resolveOtterMusicUrl(hash, targetBr) {
                     searchResults[source] = await searchSource(source, keyword);
                 } catch (e) {
                     searchResults[source] = [];
+                    searchFailed[source] = true;
+                    diag.sources.push(source + ":搜索报错");
                     console.log(`⚠️ ${source} 搜索失败：${e.message || e}`);
                 }
             }
 
             const list = searchResults[source];
-            if (!Array.isArray(list) || list.length === 0) continue;
+            if (!Array.isArray(list) || list.length === 0) {
+                if (strict && !searchFailed[source]) diag.sources.push(source + ":搜索无结果");
+                continue;
+            }
 
             const match = pickCandidate(target, list, strict);
-            if (!match) continue;
+            if (!match) {
+                if (strict) diag.sources.push(source + ":" + list.length + "条均不匹配");
+                continue;
+            }
 
             const candidateId = match.item.id || match.item.url_id;
             const candidateKey = source + "|" + candidateId;
@@ -736,6 +751,7 @@ async function resolveOtterMusicUrl(hash, targetBr) {
                 const result = await hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline);
                 if (!result) {
                     triedCandidates.add(candidateKey);
+                    diag.sources.push(source + ":匹配到但无可用URL");
                     continue;
                 }
 
@@ -746,6 +762,7 @@ async function resolveOtterMusicUrl(hash, targetBr) {
                 } else {
                     console.log(`✅ 已切换到 ${source} 音源${modeLabel}，匹配歌曲：${formatMatchTitle(match.item)}，请求 ${targetBr}k，实际 ${actualBr}k`);
                 }
+                console.log(`⏱️ 耗时 ${Date.now() - startedAt}ms`);
 
                 // 只有严格命中才写缓存
                 if (strict) {
@@ -756,12 +773,18 @@ async function resolveOtterMusicUrl(hash, targetBr) {
                 return enrichWithRealMetadata(result.match);
             } catch (e) {
                 triedCandidates.add(candidateKey);
+                diag.sources.push(source + ":异常");
                 console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
             }
         }
+        if (diag.timedOut) break;
     }
 
-    if (!ENABLE_LOOSE_MATCH) {
+    const elapsed = Date.now() - startedAt;
+    console.log(`📋 换源失败诊断｜耗时 ${elapsed}/${TIME_BUDGET_MS}ms｜${diag.sources.join("，") || "无源可试"}`);
+    if (diag.timedOut) {
+        console.log(`⏱️ 本次是【超时中断】，不是真的没找到。网络慢或源响应慢，重试可能就成功——想减少这种情况就把 TIME_BUDGET_MS 调大（需同时调大 QX 的 script_timeout）。`);
+    } else if (!ENABLE_LOOSE_MATCH) {
         console.log("🔒 严格匹配未找到同名同歌手的音源，保留原响应（宽松匹配已关闭）。");
     }
     return null;
