@@ -8,11 +8,13 @@
  *       购买仍按服务端真实余额/真实接口扣费。
  *
  * Quantumult X 配置：
-  [rewrite_local]
- ^https?:\/\/api\.get-sms-code\.com\/v1\/(account|account\/balance) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
+ * 请导入同目录 smscode.conf，或把下面两段合并进主配置：
  *
-  [mitm]
-  hostname = api.get-sms-code.com
+ * [Script]
+ * GetSmsCode_balance = type=http-response, pattern=^https?://api\.get-sms-code\.com/v1/(account|account/balance), requires-body=1, max-size=2097152, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
+ *
+ * [mitm]
+ * hostname = api.get-sms-code.com
  */
 
 var config = {
@@ -20,16 +22,16 @@ var config = {
   fake_unpause: true,           // 同时隐藏 NO_FUNDS 暂停状态
 
   // 是否在首次 /v1/account 返回后触发一次购买请求
-  // 现在默认关闭：抓包里还没有真实“购买号码”接口/参数，填完下面 buy 后再改为 true
-  auto_buy_once: false,
+  // true = 开启，false = 关闭；触发后记在 $prefs 里避免重复购买
+  auto_buy_once: true,
 
-  // 购买请求参数（需要按真实抓包填写）
+  // 购买请求参数（来自 2026-08-08-013317 抓包）
   buy: {
-    endpoint: '/v1/activations',       // 占位：请填实际购买接口
-    auth: 'OAuth v_your_token_here',   // 占位：请填实际 OAuth token
-    service: 'fb',                     // 服务 id，例如 fb / whatsapp / telegram
-    country: 94,                       // 国家 id，来自国家列表接口
-    duration_days: 7                   // 租赁才需要，普通购买可能不需要
+    endpoint: '/v1/activations/buy_number',
+    auth: 'OAuth v_a53go_Z8aRIl3ANnOU-M3N',
+    service: 'wa',                    // service_id=wa（WhatsApp）
+    country: 41,                      // country_id=41，国家 id
+    duration_days: 7                  // 留作没用到，普通号码不传
   }
 };
 
@@ -67,11 +69,6 @@ function buildRequestBody() {
   }
 
   var isRent = /\/rent(\/|$)/.test(b.endpoint);
-  var body = {
-    service: b.service,
-    country: b.country
-  };
-
   if (isRent) {
     return JSON.stringify({
       service: b.service,
@@ -80,7 +77,7 @@ function buildRequestBody() {
     });
   }
 
-  return JSON.stringify(body);
+  return 'country_id=' + encodeURIComponent(b.country) + '&service_id=' + encodeURIComponent(b.service);
 }
 
 function buyUrl() {
@@ -98,7 +95,7 @@ function maybeBuyOnce() {
 
   var already = false;
   if (typeof $prefs !== 'undefined') {
-    already = $prefs.valueForKey('gms_buy_once_triggered') === '1';
+    already = $prefs.valueForKey('gms_buy_v2_triggered') === '1';
   }
 
   if (already) {
@@ -116,7 +113,7 @@ function maybeBuyOnce() {
       url: buyUrl(),
       headers: {
         Authorization: config.buy.auth,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
         'User-Agent': 'Activator/1.9.2 (app.getsmscode; build:1; iOS 17.0.0) Alamofire/5.10.2'
       },
       body: body
@@ -130,7 +127,7 @@ function maybeBuyOnce() {
   }
 
   try {
-    $prefs.setValueForKey('1', 'gms_buy_once_triggered');
+    $prefs.setValueForKey('1', 'gms_buy_v2_triggered');
   } catch (e) {}
 }
 
@@ -143,6 +140,7 @@ if (typeof $response !== 'undefined') {
     bodyObj = JSON.parse($response.body || 'null') || {};
   } catch (e) {
     $done({ body: $response.body });
+    return;
   }
 
   var changed = rewriteBalance(path, bodyObj);
