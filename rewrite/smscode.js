@@ -8,13 +8,13 @@
  *       购买仍按服务端真实余额/真实接口扣费。
  *
  * Quantumult X 配置：
- * 请导入同目录 smscode.conf，或把下面两段合并进主配置：
+ * 请使用同目录 smscode.conf，或把下面两段合并进主配置：
  *
- * [Script]
- * GetSmsCode_balance = type=http-response, pattern=^https?://api\.get-sms-code\.com/v1/(account|account/balance), requires-body=1, max-size=2097152, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
+ [rewrite_local]
+ ^https?:\/\/api\.get-sms-code\.com\/v1\/(account|account\/balance) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
  *
- * [mitm]
- * hostname = api.get-sms-code.com
+ [MITM]
+ hostname = api.get-sms-code.com
  */
 
 var config = {
