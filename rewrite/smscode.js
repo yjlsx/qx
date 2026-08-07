@@ -18,7 +18,7 @@
  */
 
 var config = {
-  fake_balance: 100,            // 本地显示的余额
+  fake_balance: 99999,            // 本地显示的余额
   fake_unpause: true,           // 同时隐藏 NO_FUNDS 暂停状态
 
   // 是否在首次 /v1/account 返回后触发一次购买请求
