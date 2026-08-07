@@ -8,11 +8,11 @@
  *       购买仍按服务端真实余额/真实接口扣费。
  *
  * Quantumult X 配置：
- * [rewrite_local]
+  [rewrite_local]
  ^https?:\/\/api\.get-sms-code\.com\/v1\/(account|account\/balance) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
  *
- * [mitm]
- * hostname = api.get-sms-code.com
+  [mitm]
+  hostname = api.get-sms-code.com
  */
 
 var config = {
