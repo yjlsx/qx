@@ -9,7 +9,7 @@
  *
  * Quantumult X 配置：
  * [rewrite_local]
- * ^https?:\/\/api\.get-sms-code\.com\/v1\/(account|account\/balance) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
+ ^https?:\/\/api\.get-sms-code\.com\/v1\/(account|account\/balance) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
  *
  * [mitm]
  * hostname = api.get-sms-code.com
