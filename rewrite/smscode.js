@@ -26,7 +26,7 @@ var config = {
   fake_balance: 99999,
   fake_unpause: true,
   fake_buy_success: false,
-  automate_buy_once: true,
+  auto_buy_on_new_params: true,
   buy: {
     endpoint: '/v1/activations/buy_number',
     auth: 'OAuth v_a53go_Z8aRIl3ANnOU-M3N'
@@ -146,6 +146,7 @@ function captureBuyRequest() {
 
   if (changed) {
     notify('GetSmsCode', '已记录本次购买参数', 'service=' + record.service + ' country=' + record.country);
+    writePrefs('gms_buy_v2_triggered', '0');
   }
 }
 
@@ -174,7 +175,7 @@ function buildBuyEndpoint(rec) {
 }
 
 function maybeBuyFromLastCapture() {
-  if (!config.automate_buy_once) {
+  if (!config.auto_buy_on_new_params) {
     return;
   }
 
@@ -226,6 +227,12 @@ function buyFailureBody(path, body) {
       });
     }
     notify('GetSmsCode Buy', '服务端余额不足', text);
+    var lastNotice = parseInt(readPrefs('gms_buy_low_notice_time') || '0', 10) || 0;
+    var now = Math.floor(Date.now() / 1000);
+    if (now - lastNotice < 10) {
+      return null;
+    }
+    writePrefs('gms_buy_low_notice_time', String(now));
   }
   return null;
 }

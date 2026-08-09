@@ -277,21 +277,29 @@ function getHeaderValue(headers, name) {
     return "";
 }
 
-// 只有 server-md5 / x-cos-meta-md5 可信；etag 未必等于内容 MD5，单独放 weakHash
+// server-md5 / x-cos-meta-md5 最可信；腾讯 COS 单段对象的 ETag 就是内容 MD5，可当强 hash 用
 function parseAudioMetadata(headers) {
     const strongMd5 = String(
         getHeaderValue(headers, "server-md5")
         || getHeaderValue(headers, "x-cos-meta-md5")
         || ""
     ).toLowerCase().replace(/["']/g, "");
-    const etag = String(getHeaderValue(headers, "etag") || "").toLowerCase().replace(/["']/g, "");
+    const rawEtag = String(getHeaderValue(headers, "etag") || "").toLowerCase().replace(/["']/g, "");
+    // 分段上传的 ETag 形如 "<md5>-2"，不是内容 MD5，排除掉
+    const etag = /^[0-9a-f]{32}$/.test(rawEtag) ? rawEtag : "";
+    const server = String(getHeaderValue(headers, "server") || "").toLowerCase();
+    const isCos = server.indexOf("cos") >= 0
+        || !!getHeaderValue(headers, "x-cos-request-id")
+        || !!getHeaderValue(headers, "x-cos-hash-crc64ecma");
+    // COS 单段对象：ETag == 文件 MD5，可信；否则仅作弱 hash 备用
+    const cosEtagHash = etag && isCos ? etag : "";
     const contentRange = String(getHeaderValue(headers, "content-range") || "");
     const rangeMatch = contentRange.match(/\/(\d+)$/);
     const size = Number(rangeMatch ? rangeMatch[1] : getHeaderValue(headers, "content-length")) || 0;
 
     return {
-        hash: /^[0-9a-f]{32}$/.test(strongMd5) ? strongMd5 : "",
-        weakHash: /^[0-9a-f]{32}$/.test(etag) ? etag : "",
+        hash: /^[0-9a-f]{32}$/.test(strongMd5) ? strongMd5 : (cosEtagHash || ""),
+        weakHash: etag,
         size: size > 0 ? size : 0,
         contentType: getHeaderValue(headers, "content-type") || ""
     };
@@ -556,18 +564,24 @@ async function fetchOtterPlayInfo(match, targetBr) {
     });
 }
 
-// 补探真实 size；md5 只认 server-md5，探不到就回退酷狗原 hash
+// 补探真实 size 与 MD5：download 校验文件 MD5，用错就整首失败。
+// 强 MD5（server-md5 / 腾讯 COS 单段 ETag）优先，探不到才回退酷狗原 hash。
 async function enrichWithRealMetadata(match) {
     if (!match || !match.url) return match;
-    if (match.fileHash && match.size) return match;
+    // 只有已经拿到合法 32 位 MD5 时才跳过补探
+    const existingHash = String(match.fileHash || "").toLowerCase();
+    const hasStrongHash = /^[0-9a-f]{32}$/.test(existingHash);
+    if (hasStrongHash && match.size) return match;
 
     const audioUrl = Array.isArray(match.url) ? match.url[0] : match.url;
     const metadata = await fetchAudioMetadata(audioUrl, GENERIC_AUDIO_HEADERS);
     if (!metadata) return match;
 
+    // 探到的强 hash 比来路不明的 fileHash 更可信，优先采用
+    const resolvedHash = metadata.hash || (hasStrongHash ? existingHash : "");
     return Object.assign({}, match, {
         size: metadata.size || match.size || 0,
-        fileHash: match.fileHash || metadata.hash || "",
+        fileHash: resolvedHash,
         contentType: match.contentType || metadata.contentType || ""
     });
 }
