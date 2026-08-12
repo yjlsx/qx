@@ -14,21 +14,23 @@
 hostname = api.m.jd.com
 */
 
-// Quantumult X Script: jd_detail_time_id_only.js
-// JD 订单详情页 (orderDetail) 仅修改时间和订单号
+// Quantumult X Script: jd_detail_shopname.js
+// JD 订单详情页 (order_detail_m) 仅修改门店名称
 
 // ===================================
 // ⚙️ 用户可配置项 (订单详情页)
 // ===================================
 
-const DETAIL_NEW_ORDER_ID = "3338766548673581"; // 详情页显示的新订单号
+// const DETAIL_NEW_ORDER_ID = "3338766548673581"; // 详情页显示的新订单号（已注释）
 
-const DETAIL_NEW_DATE_BASE = "2026-01-26";  // 新的日期
-const DETAIL_NEW_TIME_BASE = "00:18:42";   // 新的基本时间 (用于下单时间)
-const DETAIL_NEW_PAY_TIME = "2026-01-26 00:19:29"; // 新的支付时间
-const DETAIL_NEW_COMPLETE_TIME = "2026-01-26 00:54:18"; // 新的订单完成/送达时间
-const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2026-01-26 00:50-01:05"; // 新的期望配送时间
-const DETAIL_NEW_CURRENT_TIME = "2026-01-26 00:19:46"; // 模拟服务器返回的当前时间
+// const DETAIL_NEW_DATE_BASE = "2026-01-26";  // 新的日期（已注释）
+// const DETAIL_NEW_TIME_BASE = "00:18:42";   // 新的基本时间（已注释）
+// const DETAIL_NEW_PAY_TIME = "2026-01-26 00:19:29"; // 新的支付时间（已注释）
+// const DETAIL_NEW_COMPLETE_TIME = "2026-01-26 00:54:18"; // 新的订单完成/送达时间（已注释）
+// const DETAIL_NEW_EXPECTED_DELIVERY_TIME = "2026-01-26 00:50-01:05"; // 新的期望配送时间（已注释）
+// const DETAIL_NEW_CURRENT_TIME = "2026-01-26 00:19:46"; // 模拟服务器返回的当前时间（已注释）
+
+const DETAIL_NEW_SHOP_NAME = "重庆砂锅麻辣烫（新塘店）"; // 新的门店名称
 
 // ===================================
 // 🛠️ 脚本主体
@@ -36,11 +38,11 @@ const DETAIL_NEW_CURRENT_TIME = "2026-01-26 00:19:46"; // 模拟服务器返回�
 
 let obj;
 try {
-    obj = JSON.parse($response.body);
+    obj = JSON.parse($response.body);
 } catch (e) {
-    console.log("JSON parsing error: " + e);
-    $done({});
-    return;
+    console.log("JSON parsing error: " + e);
+    $done({});
+    return;
 }
 
 // 检查是否为订单详情接口
@@ -54,46 +56,63 @@ if (!isOrderDetail) {
     return;
 }
 
-console.log(`✅ [JD Detail Only] START: Modifying Order ID to ${DETAIL_NEW_ORDER_ID} and Date to ${DETAIL_NEW_DATE_BASE}.`);
+console.log(`✅ [JD Detail Only] START: Modifying Shop Name to ${DETAIL_NEW_SHOP_NAME}.`);
 
 
-// --- 1. 订单号和时间修改 ---
-
-// A. 进度列表 ProgressList (物流/地址)
-if (data.progressList && data.progressList.length > 0) {
-    if (data.progressList[0] && data.progressList[0].tip) {
-        data.progressList[0].tip = DETAIL_NEW_COMPLETE_TIME; // 修改第一个进度时间
-    }
-}
-
-// B. 订单通用信息 orderCommonVo
-if (data.orderCommonVo) {
-    data.orderCommonVo.dateSubmit = `${DETAIL_NEW_DATE_BASE} ${DETAIL_NEW_TIME_BASE}`;
-    data.orderCommonVo.orderCompleteTime = DETAIL_NEW_COMPLETE_TIME;
-    console.log("-> orderCommonVo dateSubmit/orderCompleteTime modified.");
-}
+// --- 以下为已注释的旧修改 ---
+// // A. 进度列表 ProgressList (物流/地址)
+// if (data.progressList && data.progressList.length > 0) {
+//     if (data.progressList[0] && data.progressList[0].tip) {
+//         data.progressList[0].tip = DETAIL_NEW_COMPLETE_TIME;
+//     }
+// }
+//
+// // B. 订单通用信息 orderCommonVo
+// if (data.orderCommonVo) {
+//     data.orderCommonVo.dateSubmit = ${DETAIL_NEW_DATE_BASE} ;
+//     data.orderCommonVo.orderCompleteTime = DETAIL_NEW_COMPLETE_TIME;
+//     console.log("-> orderCommonVo dateSubmit/orderCompleteTime modified.");
+// }
 
 // C. 汇总信息 SummaryList (用户可见的订单信息汇总)
 if (data.summaryList) {
-    data.summaryList.forEach(item => {
-        if (item.title === "订单编号：") {
-            item.content = DETAIL_NEW_ORDER_ID;
-        } else if (item.title === "下单时间：") {
-            item.content = `${DETAIL_NEW_DATE_BASE} ${DETAIL_NEW_TIME_BASE}`;
-        } else if (item.title === "支付时间：") {
-            item.content = DETAIL_NEW_PAY_TIME;
-        } else if (item.title === "期望配送时间：") {
-            item.content = DETAIL_NEW_EXPECTED_DELIVERY_TIME;
-        }
-        // 保持门店名称不变，除非用户配置中需要修改
-    });
-    console.log("-> SummaryList Order ID and Times modified.");
+    data.summaryList.forEach(item => {
+        // if (item.title === "订单编号：") {
+        //     item.content = DETAIL_NEW_ORDER_ID;
+        // } else if (item.title === "下单时间：") {
+        //     item.content = ${DETAIL_NEW_DATE_BASE} ;
+        // } else if (item.title === "支付时间：") {
+        //     item.content = DETAIL_NEW_PAY_TIME;
+        // } else if (item.title === "期望配送时间：") {
+        //     item.content = DETAIL_NEW_EXPECTED_DELIVERY_TIME;
+        // }
+        if (item.title === "门店名称：") {
+            item.content = DETAIL_NEW_SHOP_NAME;
+        }
+    });
+    console.log("-> SummaryList Shop Name modified.");
 }
 
-// D. 基础信息 baseInfo (服务器当前时间)
-if (data.baseInfo) {
-    data.baseInfo.currentTime = DETAIL_NEW_CURRENT_TIME; 
-    console.log("-> baseInfo currentTime modified.");
+// D. 基础信息 baseInfo (服务器当前时间)（已注释）
+// if (data.baseInfo) {
+//     data.baseInfo.currentTime = DETAIL_NEW_CURRENT_TIME;
+//     console.log("-> baseInfo currentTime modified.");
+// }
+
+// E. 店铺列表 shopList 中的 shopName
+if (data.shopList && data.shopList.length > 0) {
+    data.shopList.forEach(shop => {
+        shop.shopName = DETAIL_NEW_SHOP_NAME;
+    });
+    console.log("-> shopList shopName modified.");
+}
+
+// F. 运费信息中的 shopName
+if (data.orderPriceInfo && data.orderPriceInfo.freightFeeInfoVoList) {
+    data.orderPriceInfo.freightFeeInfoVoList.forEach(fee => {
+        fee.shopName = DETAIL_NEW_SHOP_NAME;
+    });
+    console.log("-> freightFeeInfoVoList shopName modified.");
 }
 
 console.log("✨ [JD Detail Only] SCRIPT COMPLETED.");
