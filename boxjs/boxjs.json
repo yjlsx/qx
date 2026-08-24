@@ -1271,6 +1271,156 @@
           }
         }
       }
+    },
+    {
+      "id": "agentrouter",
+      "name": "AgentRouter签到",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/qwe.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/agentrouter.js",
+      "keys": [
+        "ar_enabled_1",
+        "ar_name_1",
+        "ar_username_1",
+        "ar_password_1",
+        "ar_enabled_2",
+        "ar_name_2",
+        "ar_username_2",
+        "ar_password_2",
+        "ar_hosts"
+      ],
+      "settings": [
+        {
+          "id": "ar_enabled_1",
+          "name": "启用账号1",
+          "val": true,
+          "type": "boolean",
+          "desc": "控制是否执行 AgentRouter 账号1签到。"
+        },
+        {
+          "id": "ar_name_1",
+          "name": "账号1备注",
+          "val": "账号1",
+          "type": "text",
+          "desc": "仅用于通知展示。"
+        },
+        {
+          "id": "ar_username_1",
+          "name": "账号1用户名",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AgentRouter 用户名或邮箱。"
+        },
+        {
+          "id": "ar_password_1",
+          "name": "账号1密码",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AgentRouter 密码；仅 LinuxDO 登录的账号需先在官网设置密码。"
+        },
+        {
+          "id": "ar_enabled_2",
+          "name": "启用账号2",
+          "val": true,
+          "type": "boolean",
+          "desc": "控制是否执行 AgentRouter 账号2签到。"
+        },
+        {
+          "id": "ar_name_2",
+          "name": "账号2备注",
+          "val": "账号2",
+          "type": "text",
+          "desc": "仅用于通知展示。"
+        },
+        {
+          "id": "ar_username_2",
+          "name": "账号2用户名",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AgentRouter 用户名或邮箱。"
+        },
+        {
+          "id": "ar_password_2",
+          "name": "账号2密码",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AgentRouter 密码；仅 LinuxDO 登录的账号需先在官网设置密码。"
+        },
+        {
+          "id": "ar_hosts",
+          "name": "站点域名列表",
+          "val": "https://agentrouter.org,https://ps.air-outer.com",
+          "type": "text",
+          "desc": "英文逗号分隔，按顺序尝试；留空使用默认域名。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "agentrouter.org",
+          "ps.air-outer.com"
+        ],
+        "schema": {
+          "ar_enabled_1": {
+            "type": "boolean",
+            "label": "启用账号1",
+            "default": true,
+            "desc": "控制是否执行 AgentRouter 账号1签到。"
+          },
+          "ar_name_1": {
+            "type": "text",
+            "label": "账号1备注",
+            "default": "账号1",
+            "desc": "仅用于通知展示。"
+          },
+          "ar_username_1": {
+            "type": "text",
+            "label": "账号1用户名",
+            "default": "",
+            "desc": "填写 AgentRouter 用户名或邮箱。"
+          },
+          "ar_password_1": {
+            "type": "text",
+            "label": "账号1密码",
+            "default": "",
+            "desc": "填写 AgentRouter 密码；仅 LinuxDO 登录的账号需先在官网设置密码。",
+            "input": "password"
+          },
+          "ar_enabled_2": {
+            "type": "boolean",
+            "label": "启用账号2",
+            "default": true,
+            "desc": "控制是否执行 AgentRouter 账号2签到。"
+          },
+          "ar_name_2": {
+            "type": "text",
+            "label": "账号2备注",
+            "default": "账号2",
+            "desc": "仅用于通知展示。"
+          },
+          "ar_username_2": {
+            "type": "text",
+            "label": "账号2用户名",
+            "default": "",
+            "desc": "填写 AgentRouter 用户名或邮箱。"
+          },
+          "ar_password_2": {
+            "type": "text",
+            "label": "账号2密码",
+            "default": "",
+            "desc": "填写 AgentRouter 密码；仅 LinuxDO 登录的账号需先在官网设置密码。",
+            "input": "password"
+          },
+          "ar_hosts": {
+            "type": "text",
+            "label": "站点域名列表",
+            "default": "https://agentrouter.org,https://ps.air-outer.com",
+            "desc": "英文逗号分隔，按顺序尝试；留空使用默认域名。"
+          }
+        }
+      }
     }
   ]
 }
