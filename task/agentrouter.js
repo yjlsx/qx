@@ -110,6 +110,53 @@ function parseBody(response) {
   }
 }
 
+function getHeaderValue(response, wantedName) {
+  const headers = (response && response.headers) || {};
+  const names = Object.keys(headers);
+  for (let i = 0; i < names.length; i++) {
+    if (names[i].toLowerCase() === wantedName.toLowerCase()) {
+      return headers[names[i]];
+    }
+  }
+  return "";
+}
+
+function extractSessionCookie(response) {
+  const value = getHeaderValue(response, "set-cookie");
+  const items = Array.isArray(value) ? value : String(value || "").split("\n");
+  const cookies = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const pair = String(items[i]).split(";", 1)[0].trim();
+    if (pair && pair.indexOf("=") > 0) cookies.push(pair);
+  }
+
+  return cookies.join("; ");
+}
+
+function fetchSelfBalance(result, user) {
+  const cookie = extractSessionCookie(result.response);
+  if (!user.id || !cookie) return Promise.resolve("");
+
+  return request({
+    url: result.host + "/api/user/self",
+    method: "GET",
+    headers: {
+      "Accept": "application/json, text/plain, */*",
+      "Cookie": cookie,
+      "New-API-User": String(user.id),
+      "Referer": result.host + "/console/personal",
+      "User-Agent": USER_AGENT,
+    },
+  }).then(function (response) {
+    const parsed = parseBody(response);
+    if (!parsed.ok || !parsed.data || !parsed.data.success) return "";
+    return formatQuota((parsed.data.data || {}).quota);
+  }).catch(function () {
+    return "";
+  });
+}
+
 function loginOnHost(host, account) {
   return request({
     url: host + "/api/user/login?turnstile=",
@@ -190,7 +237,16 @@ function checkAccount(account, hosts) {
       const balance = formatQuota(user.quota);
       if (balance) {
         account.result += "，余额约 " + balance;
+        return;
       }
+
+      return fetchSelfBalance(result, user).then(function (fallbackBalance) {
+        if (fallbackBalance) {
+          account.result += "，余额约 " + fallbackBalance;
+        } else {
+          account.result += "，余额未知";
+        }
+      });
     },
     function (error) {
       throw new Error(describeError(error));
