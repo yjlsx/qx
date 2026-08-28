@@ -114,12 +114,36 @@ function modifyOrderDetail(obj) {
         }
     }
 
-    // 3. 顶部导航时间线改为已送达
+    // 3. 补全"送至 xxx"地址信息（和完整已送达订单一致）
+    const receiving = data.order_detail_base_info?.receiving_info;
+    if (data.order_detail_function_area && receiving) {
+        const firstText = receiving.address || "";
+        const secondText = `${receiving.consignee || ""} ${receiving.phone || ""}`.trim();
+        data.order_detail_function_area.sub_title = {
+            firstText,
+            secondText,
+            text: `${firstText} ${secondText}`.trim(),
+            type: 2
+        };
+    }
+
+    // 4. 右侧列表去掉"食品安全问题理赔"等退款/理赔入口
+    if (data.order_detail_right_list?.orderDetailRightList) {
+        data.order_detail_right_list.orderDetailRightList = data.order_detail_right_list.orderDetailRightList.filter(
+            (item) =>
+                item &&
+                item.code !== "CLAIM_CARD" &&
+                !String(item.title || "").includes("理赔") &&
+                !String(item.title || "").includes("退款")
+        );
+    }
+
+    // 5. 顶部导航时间线改为已送达
     if (data.order_detail_navigation?.timeline) {
         setDeliveredTimeline(data.order_detail_navigation.timeline);
     }
 
-    // 4. 地图时间线改为已送达并删除退款节点
+    // 6. 地图时间线改为已送达并删除退款节点
     if (data.order_detail_map?.timeline) {
         const timeline = data.order_detail_map.timeline;
         setDeliveredTimeline(timeline);
