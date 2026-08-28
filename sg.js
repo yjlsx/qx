@@ -135,14 +135,10 @@ function modifyOrderDetail(obj) {
         };
     }
 
-    // 4. 右侧列表去掉"食品安全问题理赔"等退款/理赔入口
+    // 4. 右侧列表只去掉"退款"类入口，保留"食品安全问题理赔"等理赔服务
     if (data.order_detail_right_list?.orderDetailRightList) {
         data.order_detail_right_list.orderDetailRightList = data.order_detail_right_list.orderDetailRightList.filter(
-            (item) =>
-                item &&
-                item.code !== "CLAIM_CARD" &&
-                !String(item.title || "").includes("理赔") &&
-                !String(item.title || "").includes("退款")
+            (item) => item && !String(item.title || "").includes("退款")
         );
     }
 
