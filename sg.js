@@ -111,6 +111,14 @@ function modifyOrderDetail(obj) {
             data.order_detail_function_area.operations = data.order_detail_function_area.operations.filter(
                 (op) => op && op.action !== "refund" && op.action !== "refundProcess"
             );
+            // 和完整已送达订单一致：在"开发票"前补上"打赏骑士"
+            if (!data.order_detail_function_area.operations.some((op) => op && op.action === "reward")) {
+                const ops = data.order_detail_function_area.operations;
+                const invoiceIdx = ops.findIndex((op) => op && op.action === "invoice");
+                const reward = buildRewardOperation();
+                if (invoiceIdx >= 0) ops.splice(invoiceIdx, 0, reward);
+                else ops.push(reward);
+            }
         }
     }
 
@@ -161,6 +169,40 @@ function modifyOrderDetail(obj) {
     }
 
     console.log("[淘宝闪购详情] 已去掉退款信息并改为订单已送达");
+}
+
+/**
+ * 构造"打赏骑士"操作项（骑士 ID 无法从当前订单拿到，仅填充订单号）
+ */
+function buildRewardOperation() {
+    const orderId = TARGET_ORDER_ID;
+    return {
+        action: "reward",
+        actionType: "scheme",
+        color: "#11192D",
+        foldingIcon: "https://gw.alicdn.com/imgextra/i4/O1CN01k3IchJ1ccvccLgCzw_!!6000000003622-2-tps-48-48.png",
+        icon: "https://gw.alicdn.com/imgextra/i4/O1CN01aUc7A21xdwS4Vv8k3_!!6000000006467-55-tps-32-32.svg",
+        name: "打赏骑士",
+        scheme: `https://chocobo-rush.ele.me/riderinfo/index.html#/?order_id=${orderId}&knight_id=&tracking_id=&from=eleme`,
+        user_track_map: {
+            exposure: {
+                bizParams: { order_status: "SUCCESS", orderstatus: "SUCCESS", order_id: orderId },
+                exposure_name: "Exposure_button_appreciaterider",
+                spm_c: "appreciaterider",
+                spm_d: "1",
+                ubt_click_id: 0,
+                ubt_expose_id: 0
+            },
+            click: {
+                bizParams: { order_status: "SUCCESS", orderstatus: "SUCCESS", order_id: orderId },
+                control_name: "Page_OrderDetail_button_appreciaterider",
+                spm_c: "appreciaterider",
+                spm_d: "1",
+                ubt_click_id: 0,
+                ubt_expose_id: 0
+            }
+        }
+    };
 }
 
 /**
