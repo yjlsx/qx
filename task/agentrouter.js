@@ -9,6 +9,9 @@ const DEFAULT_HOSTS = [
 ];
 
 const QUOTA_PER_USD = 500000;
+const CHECKIN_LOG_TYPE = 4;
+const RECENT_CHECKIN_SECONDS = 300;
+const TODAY_SECONDS = 86400;
 const USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 " +
   "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -134,20 +137,27 @@ function extractSessionCookie(response) {
   return cookies.join("; ");
 }
 
-function fetchSelfBalance(result, user) {
+function authenticatedHeaders(result, user, refererPath) {
   const cookie = extractSessionCookie(result.response);
-  if (!user.id || !cookie) return Promise.resolve("");
+  if (!user.id || !cookie) return null;
+
+  return {
+    "Accept": "application/json, text/plain, */*",
+    "Cookie": cookie,
+    "New-API-User": String(user.id),
+    "Referer": result.host + refererPath,
+    "User-Agent": USER_AGENT,
+  };
+}
+
+function fetchSelfBalance(result, user) {
+  const headers = authenticatedHeaders(result, user, "/console/personal");
+  if (!headers) return Promise.resolve("");
 
   return request({
     url: result.host + "/api/user/self",
     method: "GET",
-    headers: {
-      "Accept": "application/json, text/plain, */*",
-      "Cookie": cookie,
-      "New-API-User": String(user.id),
-      "Referer": result.host + "/console/personal",
-      "User-Agent": USER_AGENT,
-    },
+    headers: headers,
   }).then(function (response) {
     const parsed = parseBody(response);
     if (!parsed.ok || !parsed.data || !parsed.data.success) return "";
@@ -155,6 +165,85 @@ function fetchSelfBalance(result, user) {
   }).catch(function () {
     return "";
   });
+}
+
+function ageText(seconds) {
+  const age = Math.max(0, seconds);
+  if (age < 60) return age + " 秒前";
+  if (age < 3600) return Math.floor(age / 60) + " 分钟前";
+  if (age < TODAY_SECONDS) return Math.floor(age / 3600) + " 小时前";
+  return Math.floor(age / TODAY_SECONDS) + " 天前";
+}
+
+function verifyCheckin(result, user) {
+  const headers = authenticatedHeaders(result, user, "/console/log");
+  if (!headers) {
+    return Promise.resolve({ level: "error", detail: "缺少 uid 或会话 Cookie" });
+  }
+
+  return request({
+    url: result.host + "/api/log/self/?p=1&page_size=20",
+    method: "GET",
+    headers: headers,
+  }).then(function (response) {
+    if (response.statusCode !== 200) {
+      return { level: "error", detail: "日志接口返回 HTTP " + response.statusCode };
+    }
+
+    const parsed = parseBody(response);
+    if (!parsed.ok || !parsed.data || !parsed.data.success) {
+      return { level: "error", detail: "日志接口返回异常" };
+    }
+
+    const data = parsed.data.data || {};
+    const items = Array.isArray(data.items) ? data.items : [];
+    let newestTimestamp = null;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i] || {};
+      const content = String(item.content || "");
+      const timestamp = Number(item.created_at);
+      const isCheckin = content.indexOf("签到成功") >= 0 || Number(item.type) === CHECKIN_LOG_TYPE;
+      if (isCheckin && isFinite(timestamp) && timestamp > 0) {
+        if (newestTimestamp === null || timestamp > newestTimestamp) {
+          newestTimestamp = timestamp;
+        }
+      }
+    }
+
+    if (newestTimestamp === null) {
+      return { level: "none", detail: "日志中未找到签到记录" };
+    }
+
+    const age = Math.max(0, Math.floor(Date.now() / 1000) - newestTimestamp);
+    if (age <= RECENT_CHECKIN_SECONDS) {
+      return {
+        level: "new",
+        age: ageText(age),
+        detail: "本次运行已生成签到日志，" + ageText(age),
+      };
+    }
+    if (age <= TODAY_SECONDS) {
+      return { level: "today", age: ageText(age), detail: "今日已有签到记录，" + ageText(age) };
+    }
+    return { level: "none", detail: "最近签到日志较旧，" + ageText(age) };
+  }).catch(function (error) {
+    return { level: "error", detail: "日志查询异常：" + describeError(error) };
+  });
+}
+
+function checkinResultText(checkedIn, verification) {
+  if (checkedIn) {
+    if (verification.level === "new" || verification.level === "today") {
+      return "签到成功，日志已确认（" + verification.detail + "）";
+    }
+    return "签到成功，但日志未确认（" + verification.detail + "）";
+  }
+
+  if (verification.level === "new" || verification.level === "today") {
+    return "今日已有签到记录（" + verification.age + "）";
+  }
+  return "登录成功，但日志未确认（" + verification.detail + "）";
 }
 
 function loginOnHost(host, account) {
@@ -174,11 +263,14 @@ function loginOnHost(host, account) {
       password: account.password,
     }),
   }).then(function (response) {
-    if (response.statusCode >= 500 || response.statusCode === 429) {
+    if (response.statusCode >= 400) {
       const parsed = parseBody(response);
+      const message = parsed.ok && parsed.data
+        ? parsed.data.message || parsed.text
+        : parsed.text;
       throw {
-        retry: response.statusCode >= 500,
-        message: "HTTP " + response.statusCode + ": " + parsed.text.slice(0, 120),
+        retry: response.statusCode >= 500 || response.statusCode === 429,
+        message: "HTTP " + response.statusCode + ": " + String(message || "请求失败").slice(0, 120),
       };
     }
     return { host: host, response: response };
@@ -199,8 +291,10 @@ function loginWithFallback(account, index, hosts) {
 }
 
 function formatQuota(quota) {
-  if (typeof quota !== "number" || isNaN(quota)) return "";
-  return "$" + (quota / QUOTA_PER_USD).toFixed(2);
+  if (quota === null || quota === undefined || quota === "") return "";
+  const value = Number(quota);
+  if (!isFinite(value)) return "";
+  return "$" + (value / QUOTA_PER_USD).toFixed(2);
 }
 
 function checkAccount(account, hosts) {
@@ -230,22 +324,22 @@ function checkAccount(account, hosts) {
 
       const user = payload.data || {};
       account.success = true;
-      account.result = user.checked_in
-        ? "签到成功"
-        : "登录成功（本次未触发签到，可能今日已完成）";
+      return verifyCheckin(result, user).then(function (verification) {
+        account.result = checkinResultText(Boolean(user.checked_in), verification);
 
-      const balance = formatQuota(user.quota);
-      if (balance) {
-        account.result += "，余额约 " + balance;
-        return;
-      }
-
-      return fetchSelfBalance(result, user).then(function (fallbackBalance) {
-        if (fallbackBalance) {
-          account.result += "，余额约 " + fallbackBalance;
-        } else {
-          account.result += "，余额未知";
+        const balance = formatQuota(user.quota);
+        if (balance) {
+          account.result += "，余额约 " + balance;
+          return;
         }
+
+        return fetchSelfBalance(result, user).then(function (fallbackBalance) {
+          if (fallbackBalance) {
+            account.result += "，余额约 " + fallbackBalance;
+          } else {
+            account.result += "，余额未知";
+          }
+        });
       });
     },
     function (error) {
