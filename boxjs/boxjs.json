@@ -580,8 +580,10 @@
       "keys": [
         "ksjs_enabled_1",
         "ksjs_cookie_1",
+        "ksjs_kww_1",
         "ksjs_enabled_2",
         "ksjs_cookie_2",
+        "ksjs_kww_2",
         "ksjs_cookie_target"
       ],
       "settings": [
@@ -600,6 +602,13 @@
           "desc": "用于快手极速版签到，支持自动捕获或手动填写。"
         },
         {
+          "id": "ksjs_kww_1",
+          "name": "账号1 kww",
+          "val": "",
+          "type": "text",
+          "desc": "自动捕获的快手请求头，不要手动修改。"
+        },
+        {
           "id": "ksjs_enabled_2",
           "name": "启用账号2",
           "val": true,
@@ -612,6 +621,13 @@
           "val": "",
           "type": "textarea",
           "desc": "用于快手极速版签到，支持自动捕获或手动填写。"
+        },
+        {
+          "id": "ksjs_kww_2",
+          "name": "账号2 kww",
+          "val": "",
+          "type": "text",
+          "desc": "自动捕获的快手请求头，不要手动修改。"
         },
         {
           "id": "ksjs_cookie_target",
@@ -655,6 +671,12 @@
             "rows": 3,
             "input": "password"
           },
+          "ksjs_kww_1": {
+            "type": "text",
+            "label": "账号1 kww",
+            "default": "",
+            "desc": "自动捕获的快手请求头，不要手动修改。"
+          },
           "ksjs_enabled_2": {
             "type": "boolean",
             "label": "启用账号2",
@@ -668,6 +690,12 @@
             "desc": "用于快手极速版签到，支持自动捕获或手动填写。",
             "rows": 3,
             "input": "password"
+          },
+          "ksjs_kww_2": {
+            "type": "text",
+            "label": "账号2 kww",
+            "default": "",
+            "desc": "自动捕获的快手请求头，不要手动修改。"
           },
           "ksjs_cookie_target": {
             "type": "radios",

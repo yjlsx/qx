@@ -2,8 +2,8 @@
  * App : 快手极速版
  * By @yjlsx
  * 脚本功能：签到领取金币.
- * 使用方法：需要配合boxjs使用.
- * Date: 2025.08.13
+ * 使用方法：需要配合BoxJS和Quantumult X请求头脚本规则使用.
+ * Date: 2026.09.24
  * 此脚本仅个人使用，请勿用于非法途径！
  
 *⚠️【免责声明】
@@ -15,6 +15,14 @@
 5、本人对任何脚本引发的问题概不负责，包括但不限于由脚本错误引起的任何损失和损害。
 6、如果任何单位或个人认为此脚本可能涉嫌侵犯其权利，应及时通知并提供身份证明，所有权证明，我们将在收到认证文件确认后删除此脚本。
 7、所有直接或间接使用、查看此脚本的人均应该仔细阅读此声明。本人保留随时更改或补充此声明的权利。一旦您使用或复制了此脚本，即视为您已接受此免责声明。
+
+[rewrite_local]
+^https:\/\/nebula\.kuaishou\.com\/rest\/n\/nebula\/account\/withdraw(?:\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/kuaishoujisu.js
+
+[MITM]
+hostname = %APPEND% nebula.kuaishou.com
+
+
 */
 
 
@@ -27,15 +35,16 @@ const $ = new Env();
 const NOTIFY_TITLE = "快手极速版签到";
 
 const COOKIE_KEYS = ["ksjs_cookie_1", "ksjs_cookie_2"];
+const KWW_KEYS = ["ksjs_kww_1", "ksjs_kww_2"];
 const ENABLE_KEYS = ["ksjs_enabled_1", "ksjs_enabled_2"];
 const COOKIE_TARGET_KEY = "ksjs_cookie_target";
 
 const UA =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ksNebula/13.7.10.3947 ISLP/0 StatusHT/47 KDT/PHONE iosSCH/0 TitleHT/44 NetType/WIFI ISDM/0 ICFO/0 locale/zh-Hans CT/0 Yoda/3.3.8 ISLB/0 CoIS/2 ISLM/0 WebViewType/WK BHT/102 AZPREFIX/az1";
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ksNebula/14.8.30.4411 ISLP/0 StatusHT/47 KDT/PHONE iosSCH/0 TitleHT/44 NetType/lte ISDM/0 ICFO/0 locale/zh-Hans CT/0 Yoda/3.5.8 ISLB/0 CoIS/2 ISLM/0 WebViewType/WK BHT/102 AZPREFIX/az1";
 
 const BASE = "https://nebula.kuaishou.com";
 const API_PATH = {
-  info: "/rest/n/nebula/activity/earn/overview/basicInfo?source=timer",
+  info: "/rest/n/nebula/account/withdraw?source=normal&imei=&oaid=&idfa=",
   sign: "/rest/wd/encourage/unionTask/signIn/report",
   boxInfo: "/rest/wd/encourage/unionTask/treasureBox/info",
   boxOpen: "/rest/wd/encourage/unionTask/treasureBox/report",
@@ -90,16 +99,18 @@ async function main() {
 }
 
 async function processAccount(cookie, accountNum) {
+  const kww = $.read(KWW_KEYS[accountNum - 1]) || "";
+
   console.log("获取用户信息...");
-  const initialInfo = await getAccountInfo(cookie);
+  const initialInfo = await getAccountInfo(cookie, kww);
   console.log(`用户昵称: ${initialInfo.nickname}`);
 
   console.log("执行签到任务...");
-  const checkinRes = await checkIn(cookie);
+  const checkinRes = await checkIn(cookie, kww);
   console.log(`签到结果: ${checkinRes}`);
 
  console.log("尝试获取宝箱信息...");
- const boxRes = await openTreasureBox(cookie);
+  const boxRes = await openTreasureBox(cookie, kww);
  if (boxRes.success) {
   console.log(`宝箱奖励: ${boxRes.reward}金币`);
  } else {
@@ -107,7 +118,7 @@ async function processAccount(cookie, accountNum) {
 }
 
   console.log("获取最新账户数据...");
-  const latestInfo = await getAccountInfo(cookie);
+  const latestInfo = await getAccountInfo(cookie, kww);
   console.log(`当前金币: ${latestInfo.coin}`);
   console.log(`可提现金额: ${latestInfo.cash}元`);
 
@@ -136,41 +147,56 @@ function getAvailableAccountSlot() {
 }
 
 async function handleCookieCapture() {
-  var headers = $request && $request.headers;
-  var cookie = headers && (headers.Cookie || headers.cookie);
+  if (!$request || !/\/rest\/n\/nebula\/account\/withdraw(?:\?|$)/.test($request.url || "")) {
+    return;
+  }
+
+  const headers = $request.headers || {};
+  const cookie = getHeader(headers, "cookie");
+  const kww = getHeader(headers, "kww");
   if (!cookie) {
     console.log("未找到Cookie信息");
     return;
   }
-  cookie = String(cookie).trim();
 
   let accountNum = getAvailableAccountSlot();
   if (!accountNum) accountNum = 1;
 
-  $.write(cookie, COOKIE_KEYS[accountNum - 1]);
-  console.log(`成功保存账号${accountNum} Cookie: ${cookie}`);
+  $.write(String(cookie).trim(), COOKIE_KEYS[accountNum - 1]);
+  if (kww) $.write(String(kww).trim(), KWW_KEYS[accountNum - 1]);
+  console.log(`成功保存账号${accountNum} Cookie${kww ? "和kww" : ""}`);
   $.notify(NOTIFY_TITLE, `✅ 账号${accountNum} Cookie保存成功`, "可在 BoxJS 中查看或修改");
+}
+
+function getHeader(headers, name) {
+  const key = Object.keys(headers).find((item) => item.toLowerCase() === name.toLowerCase());
+  return key ? headers[key] : "";
 }
 
 /*********************
  * 业务接口 *
  *********************/
-function ksHeaders(cookie) {
-  return {
+function ksHeaders(cookie, kww) {
+  const headers = {
     Host: "nebula.kuaishou.com",
     Connection: "keep-alive",
     Accept: "*/*",
     "Accept-Language": "zh-CN,zh;q=0.9",
     "User-Agent": UA,
-    Referer: "https://nebula.kuaishou.com/",
+    Referer: "https://nebula.kuaishou.com/nebula/task/cash?layoutType=4",
     Cookie: cookie,
   };
+  if (kww) headers.kww = kww;
+  return headers;
 }
 
-async function getAccountInfo(cookie) {
+async function getAccountInfo(cookie, kww) {
   const { statusCode, body } = await $.get({
     url: BASE + API_PATH.info,
-    headers: ksHeaders(cookie),
+    headers: {
+      ...ksHeaders(cookie, kww),
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
   });
 
   const data = safeJSON(body, "账户信息");
@@ -181,17 +207,21 @@ async function getAccountInfo(cookie) {
   }
 
   return {
-    uid: data.data?.userData?.uid || "",
-    nickname: data.data?.userData?.nickname || "未知用户",
-    coin: data.data?.totalCoin != null ? String(data.data.totalCoin) : "0",
-    cash: data.data?.totalCash != null ? String(data.data.totalCash) : "0.00",
+    uid: data.data?.uid || data.data?.userData?.uid || "",
+    nickname: data.data?.nickname || data.data?.userData?.nickname || "未知用户",
+    coin: data.data?.coinAmount != null
+      ? String(data.data.coinAmount)
+      : (data.data?.totalCoin != null ? String(data.data.totalCoin) : "0"),
+    cash: data.data?.enWithdrawAmount != null
+      ? String(data.data.enWithdrawAmount)
+      : (data.data?.totalCash != null ? String(data.data.totalCash) : "0.00"),
   };
 }
 
-async function checkIn(cookie) {
+async function checkIn(cookie, kww) {
   const { statusCode, body } = await $.get({
     url: BASE + API_PATH.sign,
-    headers: ksHeaders(cookie),
+    headers: ksHeaders(cookie, kww),
   });
 
   const res = safeJSON(body, "签到");
@@ -203,11 +233,12 @@ async function checkIn(cookie) {
 }
 
 
-async function openTreasureBox(cookie) {
+async function openTreasureBox(cookie, kww) {
   const url = "https://nebula.kuaishou.com/rest/wd/encourage/unionTask/treasureBox/report";
   const headers = {
     'User-Agent': UA,
     'Cookie': cookie,
+    ...(kww ? { 'kww': kww } : {}),
     'Content-Type': 'application/json',
     'Host': 'nebula.kuaishou.com',
     'Origin': 'https://nebula.kuaishou.com',
