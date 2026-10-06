@@ -1,0 +1,24 @@
+#!name = 优酷
+#!desc = 优酷去广告，需配合对应重写一起使用
+#!author = RuCu6
+#!date = 2023-12-6 21:30
+
+HOST, acs4baichuan.m.taobao.com, reject
+HOST, adsmind.ugdtimg.com, reject
+HOST, amdc.m.youku.com, reject
+HOST, api.sm.cn, reject
+HOST, apiv4-iyes.youku.com, reject
+HOST, baichuan-sdk.alicdn.com, reject
+HOST, cad.youku.com, reject
+HOST, huichuan-mc.sm.cn, reject
+HOST, huichuan.sm.cn, reject
+HOST, iyes.youku.com, reject
+HOST, m-vali.cp31.ott.cibntv.net, reject
+HOST, mc.atm.youku.com, reject
+HOST, nbsdk-baichuan.alicdn.com, reject
+HOST, pre-acs.youku.com, reject
+HOST, vali-g1.cp31.ott.cibntv.net, reject
+HOST, vali-ugc.cp31.ott.cibntv.net, reject
+HOST, yk-ssp.ad.youku.com, reject
+HOST, ykad-data.youku.com, reject
+HOST, youku-acs.m.taobao.com, reject

@@ -36,8 +36,12 @@ payload:
 
 # > Google AI (Gemini/Bard)
   - DOMAIN,ai.google.dev
+  - DOMAIN,accounts.google.com
+  - DOMAIN,alkalimakersuite-pa.clients6.google.com
   - DOMAIN,makersuite.google.com
+  - DOMAIN,gemini.googleusercontent.com
   - DOMAIN-SUFFIX,gemini.google.com
+  - DOMAIN-SUFFIX,generativelanguage.googleapis.com
   - DOMAIN-SUFFIX,apis.google.com
   - DOMAIN-SUFFIX,clients6.google.com
   - DOMAIN-SUFFIX,clients4.google.com

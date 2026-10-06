@@ -1,0 +1,23 @@
+# NAME: ChatGPT Rules
+# UPDATED: 2025-01-29
+HOST-SUFFIX,openai.com
+HOST-SUFFIX,pay.openai.com
+HOST-SUFFIX,chat.openai.com
+HOST-SUFFIX,ios.chat.openai.com
+HOST-SUFFIX,auth0.openai.com
+HOST-SUFFIX,platform.openai.com
+HOST-SUFFIX,identrust.com
+HOST-SUFFIX,challenges.cloudflare.com
+HOST-SUFFIX,chat.openai.com.cdn.cloudflare.net
+HOST-SUFFIX,openaiapi-site.azureedge.net
+HOST-SUFFIX,ai.com
+HOST-SUFFIX,intercom.io
+HOST-SUFFIX,featuregates.org
+HOST-SUFFIX,arkoselabs.com
+HOST-SUFFIX,statsigapi.net
+HOST-SUFFIX,cloudflare.com
+HOST-SUFFIX,invoice.stripe.com
+HOST-SUFFIX,stripe.com
+HOST-SUFFIX,stripecdn.com
+HOST-SUFFIX,stripe.network
+HOST-SUFFIX,sentry.io
