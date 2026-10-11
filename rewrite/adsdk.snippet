@@ -1,0 +1,18 @@
+#!name=广告SDK拦截
+#!desc=基于 2026-10-08 Quantumult X 抓包：拦截个推/AnyThink/美团点评 CatFront 等 SDK 的广告与埋点上报（URL 级，需 MITM 的仅 catfront）
+#!author=yjlsx
+#!date=2026-10-11
+
+# 个推 SDK 初始化/环境检测
+^https?:\/\/ido\.getui\.net(:\d+)?\/sdk\/v2\/ued(\?.*)?$ url reject-200
+
+# AnyThink/TopOn 广告上报
+^https?:\/\/tk\.anythinktech\.com\/v1\/open\/tk(\?.*)?$ url reject-200
+
+# AnyThink/TopOn 设备/广告数据上报
+^https?:\/\/ujoy\.anythinktech\.com\/v1\/open\/da(\?.*)?$ url reject-200
+
+# 美团点评 CatFront 前端监控
+^https?:\/\/catfront\.dianping\.com\/batch(\?.*)?$ url reject-200
+
+hostname = catfront.dianping.com
