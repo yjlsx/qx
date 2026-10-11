@@ -1,0 +1,47 @@
+# NAME: AdSDK
+# DESC: 2026-10-08 Quantumult X 抓包补充，覆盖现有订阅未包含的广告/埋点 SDK 域名
+# NOTE: 全部为 host 级 reject，无需 MITM；来源 App：大师兄影视、霸王餐、营数记、爱奇艺、看看电影
+# UPDATED: 2026-10-11
+
+# > 掌语互动广告 SDK 上报 (sdklog / sdk.zhangyuyidong.cn)
+host-suffix, zhangyuyidong.cn, reject
+
+# > TopOn / AnyThink 广告聚合 SDK (tk / ujoy / api.anythinktech.com)
+host-suffix, anythinktech.com, reject
+
+# > Sigmob 广告 SDK (tm / adservice / dc.sigmob.cn)
+host-suffix, sigmob.cn, reject
+
+# > 友盟统计补漏 (qx.list 未含这两个子域)
+host, cnlogs.umeng.com, reject
+host, utoken.umeng.com, reject
+
+# > MobTech dutils 设备信息与配置上报 (api-c / api-d / devs-data / m.mpl.dutils.com)
+host-suffix, dutils.com, reject
+
+# > 伪装成百度云 CDN 的广告参数下发 (/UpdateADD)
+host, log-alibaba-taobao-douyin.cdn.bcebos.com, reject
+
+# > 秒针广告监测 (爱奇艺等)
+host-suffix, m.cn.miaozhen.com, reject
+
+# > 爱奇艺广告/行为回传专线
+host, i.qchannel03.cn, reject
+host, www.qchannel01.cn, reject
+host, kjp.cupid.iqiyi.com, reject
+
+# > 爱奇艺播放行为上报 (仅 4 个上报域；cmsg.qy.net 为核心消息通道，保留)
+host, amsg.qy.net, reject
+host, bmsg.qy.net, reject
+host, livemsg.qy.net, reject
+host, qmsg.qy.net, reject
+
+# > 疑似广告回传 (百度 sofire/tcbox)
+host, sofire.baidu.com, reject
+host, tcbox.baidu.com, reject
+
+# > 美团点评埋点监控
+host, catfront.dianping.com, reject
+
+# > 个推 SDK 环境检测
+host, ido.getui.net, reject

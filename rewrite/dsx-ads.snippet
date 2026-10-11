@@ -1,0 +1,12 @@
+#!name=大师兄影视去广告
+#!desc=基于 2026-10-08 抓包：拦截 app2.dsx.ac 的 advert 广告位下发与 logs 行为上报；替代已失效的 ddgksf2013 DaShiXiongAds.conf
+#!author=yjlsx
+#!date=2026-10-11
+
+# 广告位下发 (position=1/2/8/9 开屏、贴片、横幅)
+^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/advert url reject-200
+
+# 行为日志上报
+^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/logs url reject-200
+
+hostname = app2.dsx.ac
