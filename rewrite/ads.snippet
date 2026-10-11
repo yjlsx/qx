@@ -1,0 +1,23 @@
+#!name=去广告
+#!desc=基于 2026-10-08 Quantumult X 抓包：大师兄影视 app2.dsx.ac 广告位/上报拦截，以及个推、AnyThink/TopOn、美团点评 CatFront 等广告 SDK 上报拦截
+#!author=yjlsx
+#!homepage=https://github.com/yjlsx/qx
+#!date=2026-10-11
+
+[rewrite_local]
+# 大师兄影视：广告位下发(开屏/贴片/横幅)与行为日志上报
+^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/advert(\?.*)?$ url reject-200
+^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/logs(\?.*)?$ url reject-200
+
+# 个推 SDK 初始化/环境检测
+^https?:\/\/ido\.getui\.net(:\d+)?\/sdk\/v2\/ued(\?.*)?$ url reject-200
+
+# AnyThink/TopOn 广告上报
+^https?:\/\/tk\.anythinktech\.com\/v1\/open\/tk(\?.*)?$ url reject-200
+^https?:\/\/ujoy\.anythinktech\.com\/v1\/open\/da(\?.*)?$ url reject-200
+
+# 美团点评 CatFront 前端监控
+^https?:\/\/catfront\.dianping\.com\/batch(\?.*)?$ url reject-200
+
+[mitm]
+hostname = app2.dsx.ac, catfront.dianping.com
