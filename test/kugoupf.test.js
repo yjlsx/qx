@@ -209,3 +209,113 @@ test("both import rule blocks route live lists and selection checks to the cache
     }
   }
 });
+
+test("an observed newer version prevents stale pages from resurrecting an obsolete package", async () => {
+  const store = {};
+  await run({ store });
+  await run({ store, response: listing(9001, 3, ""), now: NOW + 1000 });
+  await run({ store, response: listing(9001, 2), now: NOW + 2000 });
+  const result = await run({ store, url: SET + "?record_rack_id=9001", response: rejected(), now: NOW + 3000 });
+  assert.deepEqual(result.data, rejected());
+});
+
+test("selection version and rack identity cannot be overwritten by an older or different cache", async () => {
+  for (const data of [
+    { record_rack_id: 9001, record_rack_version: 3 },
+    { record_rack_id: 9002, record_rack_version: 2 },
+  ]) {
+    const store = {}; await run({ store });
+    const original = { ...rejected(), data };
+    const result = await run({ store, url: SET + "?record_rack_id=9001", response: original });
+    assert.deepEqual(result.data, original);
+  }
+});
+
+test("repeated observations cannot extend the lifetime of the same signed URL", async () => {
+  const store = {}, response = listing(9001, 2, ZIP + "?token=short-lived-secret");
+  await run({ store, response });
+  await run({ store, response, now: NOW + 59 * 60000 });
+  const result = await run({ store, url: SET + "?record_rack_id=9001", response: rejected(), now: NOW + 61 * 60000 });
+  assert.deepEqual(result.data, rejected());
+});
+
+test("native unrecognized or expired resources pass through instead of being replaced with an old ZIP", async () => {
+  for (const record_rack_url of [
+    "https://new-cdn.example/skin.zip", ZIP.replace(".zip", ".pag"),
+    ZIP + "?expires=" + (NOW / 1000 - 1),
+  ]) {
+    const store = {}; await run({ store });
+    const original = { ...rejected(), data: { record_rack_url, record_rack_version: 3 } };
+    const result = await run({ store, url: SET + "?record_rack_id=9001", response: original });
+    assert.deepEqual(result.data, original);
+  }
+});
+
+test("non-object JSON and redirects remain byte-for-byte passthroughs", async () => {
+  for (const options of [{ response: 1 }, { response: [] }, { response: listing(), statusCode: 302 }]) {
+    const result = await run(options);
+    assert.equal(result.output.body, undefined);
+    assert.equal(result.writes.length, 0);
+  }
+});
+
+test("bounded cache retains recently observed low IDs rather than sorting by numeric ID", async () => {
+  const store = {};
+  const entries = Array.from({ length: 300 }, (_, i) => ({ record_rack_id: 1000 + i, record_rack_url: ZIP, record_rack_version: 2 }));
+  await run({ store, response: { status: 1, data: { list: entries } } });
+  await run({ store, response: listing(1), now: NOW + 1000 });
+  const result = await run({ store, url: SET + "?record_rack_id=1", response: rejected(), now: NOW + 2000 });
+  assert.equal(result.data.data.record_rack_url, ZIP);
+  const evicted = await run({ store, url: SET + "?record_rack_id=1000", response: rejected(), now: NOW + 2000 });
+  assert.deepEqual(evicted.data, rejected());
+});
+
+test("import rules include direct rack selection but do not match unrelated path prefixes", () => {
+  for (const filename of ["rewrite/kugou.js", "rewrite/kg/kugoupf.js"]) {
+    const content = fs.readFileSync(path.join(ROOT, filename), "utf8");
+    const rules = content.split(/\r?\n/).filter(line => line.startsWith("^") && line.endsWith("/kg/kugoupf.js"));
+    const matches = url => rules.some(line => new RegExp(line.split(" url " )[0]).test(url));
+    assert.ok(matches("https://vipdress.kugou.com/v1/record_rack/set_user_record_rack?id=9001"));
+    for (const url of [LIST + "_unrelated", SET + "_unrelated", "https://kugou.com.evil.example/player/v1/model/list"]) {
+      assert.equal(matches(url), false);
+    }
+  }
+});
+
+test("cache fallback keeps the existing selection flags and clears all blocking popups", async () => {
+  const store = {}; await run({ store });
+  const original = { ...rejected(), data: { need_popup: 1, popup_type: 2, popup_content: "buy",
+    popup_button: "buy", jump_url: "https://example.com/buy", popup_info: { popup_type: 2 }, free_type: 0, vip_type: 1 } };
+  const result = await run({ store, url: SET + "?record_rack_id=9001", response: original });
+  assert.equal(result.data.data.record_rack_url, ZIP);
+  assert.equal(result.data.data.popup_type, 0);
+  assert.equal(result.data.data.popup_info.popup_type, 0);
+  assert.equal(result.data.data.jump_url, "");
+  assert.equal(result.data.data.free_type, 3);
+  assert.equal(result.data.data.vip_type, 0);
+});
+
+test("version-only observations do not claim a usable resource was cached", async () => {
+  const result = await run({ response: listing(9001, 3, "") });
+  assert.ok(!result.logs.includes("已缓存实时皮肤资源"));
+  assert.match(result.logs, /无.*地址|只.*版本/);
+});
+
+test("failed list responses cannot seed cache or change their display fields", async () => {
+  for (const flags of [{ status: 0 }, { status: 1, errcode: 2001 }]) {
+    const store = {}, response = { ...listing(), ...flags };
+    const result = await run({ store, response });
+    assert.equal(result.output.body, undefined);
+    assert.equal(result.writes.length, 0);
+    const selected = await run({ store, url: SET + "?record_rack_id=9001", response: rejected() });
+    assert.deepEqual(selected.data, rejected());
+  }
+});
+
+test("malformed selection data passes through without reporting a resource-less success", async () => {
+  const store = {}; await run({ store });
+  const response = { ...rejected(), data: [] };
+  const result = await run({ store, url: SET + "?record_rack_id=9001", response });
+  assert.equal(result.output.body, undefined);
+  assert.deepEqual(result.data, response);
+});
