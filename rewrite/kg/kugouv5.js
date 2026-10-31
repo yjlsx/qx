@@ -27,8 +27,10 @@ const STRICT_SCORE_BASE = 200;
 const LOOSE_SCORE_BASE = 100;
 // 宽松匹配默认关闭，宁可不换源也不匹错
 const ENABLE_LOOSE_MATCH = false;
-// QX script_timeout 默认 5 秒，留 1 秒余量主动收工
+// 搜索并发执行，单次请求与元数据探测共用此总预算，留出重写返回余量。
 const TIME_BUDGET_MS = 4000;
+const RETURN_MARGIN_MS = 100;
+const CACHE_BUDGET_MS = 1000;
 const QQ_API_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg";
 const QQ_REFERER = "https://y.qq.com/";
 const QQ_HEADERS = {
@@ -74,7 +76,7 @@ const JOOX_FUZZY_MUSIC_QUALITIES = [
 const JOOX_SNIPPET_PATTERN = /preview|refrain|chorus|clip|snippet|trial/i;
 const JOOX_MUSIC_QUALITIES = JOOX_FUZZY_MUSIC_QUALITIES.filter(key => !JOOX_SNIPPET_PATTERN.test(key));
 
-console.log("🧭 当前请求 URL：" + url);
+console.log("🧭 当前请求路径：" + String(url).split(/[?#]/)[0]);
 
 function buildUrl(base, params) {
     return base + "?" + Object.keys(params)
@@ -90,6 +92,66 @@ function getQueryParam(requestUrl, name) {
 
 function isDeadlineExceeded(deadline) {
     return !!deadline && Date.now() >= deadline;
+}
+
+function requestFailure(code) {
+    const error = new Error(code);
+    error.requestCode = code;
+    return error;
+}
+
+function isTimeout(error) {
+    return error && (error.requestCode === "TIMEOUT" || error.requestCode === "DEADLINE");
+}
+
+function sourceLog(budget, message) {
+    if (!budget.state.done) console.log(message);
+}
+
+// Settle the wrapper on timeout; QX fetch itself may still finish later.
+function budgetFetch(options, budget) {
+    if (budget.state.done) return Promise.reject(requestFailure("CANCELLED"));
+    const remaining = budget.deadline - Date.now();
+    if (remaining <= 0) return Promise.reject(requestFailure("DEADLINE"));
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (error, response) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            budget.state.pending.delete(cancel);
+            if (error) reject(error);
+            else resolve(response);
+        };
+        const cancel = () => finish(requestFailure("CANCELLED"));
+        const timer = setTimeout(() => finish(requestFailure("TIMEOUT")), remaining);
+        budget.state.pending.add(cancel);
+        Promise.resolve().then(() => {
+            if (settled || budget.state.done) throw requestFailure("CANCELLED");
+            return $task.fetch(options);
+        }).then(response => {
+            if (isDeadlineExceeded(budget.deadline)) finish(requestFailure("DEADLINE"));
+            else finish(null, response);
+        }, () => finish(requestFailure("NETWORK")));
+    });
+}
+
+function stopRequests(budget) {
+    budget.state.done = true;
+    Array.from(budget.state.pending).forEach(cancel => cancel());
+}
+
+function firstUsable(promises) {
+    return new Promise(resolve => {
+        let remaining = promises.length;
+        if (!remaining) resolve(null);
+        promises.forEach(promise => promise.then(result => {
+            if (result) resolve(result);
+            if (--remaining === 0) resolve(null);
+        }, () => {
+            if (--remaining === 0) resolve(null);
+        }));
+    });
 }
 
 function getOtterBrForQuality(quality) {
@@ -235,35 +297,39 @@ function scoreLooseCandidate(songName, artists, item, index) {
     return score;
 }
 
-function fetchJson(requestUrl) {
-    return $task.fetch({
+function fetchJson(requestUrl, budget) {
+    return budgetFetch({
         url: requestUrl,
         method: "GET",
         headers: GENERIC_AUDIO_HEADERS
-    }).then(resp => JSON.parse(resp.body || "{}"));
+    }, budget).then(resp => {
+        const statusCode = Number(resp.statusCode || resp.status || 200);
+        if (statusCode >= 400) throw requestFailure("HTTP_" + statusCode);
+        return JSON.parse(resp.body || "{}");
+    });
 }
 
-function fetchText(requestUrl, requestHeaders) {
-    return $task.fetch({
+function fetchText(requestUrl, requestHeaders, budget) {
+    return budgetFetch({
         url: requestUrl,
         method: "GET",
         headers: requestHeaders || {}
-    }).then(resp => {
+    }, budget).then(resp => {
         const statusCode = Number(resp.statusCode || resp.status || 200);
-        if (statusCode >= 400) throw new Error("HTTP " + statusCode);
+        if (statusCode >= 400) throw requestFailure("HTTP_" + statusCode);
         return resp.body || "";
     });
 }
 
-function fetchPostJson(requestUrl, requestBody, requestHeaders) {
-    return $task.fetch({
+function fetchPostJson(requestUrl, requestBody, requestHeaders, budget) {
+    return budgetFetch({
         url: requestUrl,
         method: "POST",
         headers: requestHeaders || { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody || {})
-    }).then(resp => {
+    }, budget).then(resp => {
         const statusCode = Number(resp.statusCode || resp.status || 200);
-        if (statusCode >= 400) throw new Error("HTTP " + statusCode);
+        if (statusCode >= 400) throw requestFailure("HTTP_" + statusCode);
         return JSON.parse(resp.body || "{}");
     });
 }
@@ -305,7 +371,7 @@ function parseAudioMetadata(headers) {
     };
 }
 
-async function fetchAudioMetadata(audioUrl, baseHeaders) {
+async function fetchAudioMetadata(audioUrl, baseHeaders, budget) {
     const base = baseHeaders || GENERIC_AUDIO_HEADERS;
     const attempts = [
         { method: "HEAD", headers: base },
@@ -314,16 +380,18 @@ async function fetchAudioMetadata(audioUrl, baseHeaders) {
 
     for (const attempt of attempts) {
         try {
-            const resp = await $task.fetch({
+            const resp = await budgetFetch({
                 url: audioUrl,
                 method: attempt.method,
                 headers: attempt.headers
-            });
+            }, budget);
             const statusCode = Number(resp.statusCode || resp.status || 200);
             if (statusCode >= 400) continue;
             const metadata = parseAudioMetadata(resp.headers || {});
             if (metadata.hash || metadata.weakHash || metadata.size > 0) return metadata;
-        } catch (_) {}
+        } catch (error) {
+            if (isTimeout(error) || error.requestCode === "CANCELLED") throw error;
+        }
     }
 
     return null;
@@ -359,7 +427,7 @@ function normalizeQqSearchItem(song) {
     };
 }
 
-async function searchDirectQq(keyword) {
+async function searchDirectQq(keyword, budget) {
     const searchBody = {
         req_1: {
             method: "DoSearchForQQMusicDesktop",
@@ -372,7 +440,7 @@ async function searchDirectQq(keyword) {
             }
         }
     };
-    const searchResult = await fetchPostJson(QQ_API_URL, searchBody, QQ_HEADERS);
+    const searchResult = await fetchPostJson(QQ_API_URL, searchBody, QQ_HEADERS, budget);
     const list = searchResult && searchResult.req_1 && searchResult.req_1.data && searchResult.req_1.data.body && searchResult.req_1.data.body.song && searchResult.req_1.data.body.song.list || [];
     return list.map(normalizeQqSearchItem).filter(Boolean);
 }
@@ -428,20 +496,20 @@ function extractQqVkeyUrl(data) {
     return null;
 }
 
-async function fetchDirectQqPlayInfo(match, targetBr) {
+async function fetchDirectQqPlayInfo(match, targetBr, budget) {
     if (!match || !match.id) return null;
     const songmid = String(match.id).replace(/^qq_/, "");
     const mediaMid = String(match.media_mid || songmid).replace(/^qq_/, "");
     const qualityKeys = getQqQualityKeys(targetBr);
-    const playInfo = await fetchPostJson(QQ_API_URL, buildQqVkeyRequestBody(songmid, mediaMid, qualityKeys), QQ_HEADERS);
+    const playInfo = await fetchPostJson(QQ_API_URL, buildQqVkeyRequestBody(songmid, mediaMid, qualityKeys), QQ_HEADERS, budget);
     const vkey = extractQqVkeyUrl(playInfo);
     if (!vkey) return null;
     const audioUrl = vkey.url;
 
     // QQ 播放地址不含 md5，必须从响应头取
-    const metadata = await fetchAudioMetadata(audioUrl, QQ_AUDIO_HEADERS);
+    const metadata = await fetchAudioMetadata(audioUrl, QQ_AUDIO_HEADERS, budget);
     if (!metadata || !metadata.hash || !metadata.size) {
-        console.log("⚠️ QQ 音源缺少真实 MD5 或文件大小，跳过。");
+        sourceLog(budget, "⚠️ QQ 音源缺少真实 MD5 或文件大小，跳过。");
         return null;
     }
 
@@ -477,14 +545,14 @@ function normalizeJooxSearchItem(rawItem) {
     };
 }
 
-async function searchDirectJoox(keyword) {
+async function searchDirectJoox(keyword, budget) {
     const searchUrl = buildUrl("https://cache.api.joox.com/openjoox/v2/search_type", {
         country: "hk",
         lang: "zh_TW",
         key: keyword,
         type: "0"
     });
-    const searchResult = JSON.parse(await fetchText(searchUrl, JOOX_HEADERS));
+    const searchResult = JSON.parse(await fetchText(searchUrl, JOOX_HEADERS, budget));
     return (searchResult.tracks || []).map(normalizeJooxSearchItem).filter(Boolean);
 }
 
@@ -510,7 +578,7 @@ function inferJooxBr(fieldName, targetBr) {
     return targetBr || DEFAULT_OTTER_BR;
 }
 
-async function fetchDirectJooxPlayInfo(match, targetBr) {
+async function fetchDirectJooxPlayInfo(match, targetBr, budget) {
     if (!match || !match.id) return null;
 
     const infoUrl = buildUrl("https://api.joox.com/web-fcgi-bin/web_get_songinfo", {
@@ -518,14 +586,14 @@ async function fetchDirectJooxPlayInfo(match, targetBr) {
         lang: "zh_TW",
         country: "hk"
     });
-    const songInfo = parseJsonp(await fetchText(infoUrl, JOOX_HEADERS), "MusicInfoCallback");
+    const songInfo = parseJsonp(await fetchText(infoUrl, JOOX_HEADERS, budget), "MusicInfoCallback");
     const candidateKeys = getJooxCandidateKeys(targetBr);
 
     for (const key of candidateKeys) {
         const audioUrl = songInfo[key];
         if (!audioUrl || String(audioUrl).indexOf("http") !== 0) continue;
         if (JOOX_SNIPPET_PATTERN.test(String(audioUrl))) {
-            console.log(`ℹ️ Joox ${key} 指向试听片段，跳过。`);
+            sourceLog(budget, `ℹ️ Joox ${key} 指向试听片段，跳过。`);
             continue;
         }
 
@@ -542,7 +610,7 @@ async function fetchDirectJooxPlayInfo(match, targetBr) {
     return null;
 }
 
-async function fetchOtterPlayInfo(match, targetBr) {
+async function fetchOtterPlayInfo(match, targetBr, budget) {
     if (!match || !match.source || !match.id) return null;
 
     const playUrl = buildUrl(OTTER_API, {
@@ -551,7 +619,7 @@ async function fetchOtterPlayInfo(match, targetBr) {
         br: targetBr,
         source: match.source
     });
-    const playInfo = await fetchJson(playUrl);
+    const playInfo = await fetchJson(playUrl, budget);
     const audioUrl = playInfo && (playInfo.url || (playInfo.data && playInfo.data.url));
     if (!audioUrl) return null;
     const normalizedAudioUrl = String(Array.isArray(audioUrl) ? audioUrl[0] : audioUrl).replace(/&amp;/g, "&");
@@ -566,7 +634,7 @@ async function fetchOtterPlayInfo(match, targetBr) {
 
 // 补探真实 size 与 MD5：download 校验文件 MD5，用错就整首失败。
 // 强 MD5（server-md5 / 腾讯 COS 单段 ETag）优先，探不到才回退酷狗原 hash。
-async function enrichWithRealMetadata(match) {
+async function enrichWithRealMetadata(match, budget) {
     if (!match || !match.url) return match;
     // 只有已经拿到合法 32 位 MD5 时才跳过补探
     const existingHash = String(match.fileHash || "").toLowerCase();
@@ -574,7 +642,7 @@ async function enrichWithRealMetadata(match) {
     if (hasStrongHash && match.size) return match;
 
     const audioUrl = Array.isArray(match.url) ? match.url[0] : match.url;
-    const metadata = await fetchAudioMetadata(audioUrl, GENERIC_AUDIO_HEADERS);
+    const metadata = await fetchAudioMetadata(audioUrl, GENERIC_AUDIO_HEADERS, budget);
     if (!metadata) return match;
 
     // 探到的强 hash 比来路不明的 fileHash 更可信，优先采用
@@ -600,7 +668,7 @@ function readCachedTrackInfo(hash) {
             quality: info.quality || ""
         };
     } catch (e) {
-        console.log("⚠️ 读取酷狗歌曲缓存失败：" + (e.message || e));
+        console.log("⚠️ 读取酷狗歌曲缓存失败：缓存格式无效。");
         return null;
     }
 }
@@ -625,16 +693,16 @@ function saveCachedMatch(hash, targetBr, match) {
     } catch (_) {}
 }
 
-async function fetchSourcePlayInfo(match, targetBr) {
+async function fetchSourcePlayInfo(match, targetBr, budget) {
     if (!match || !match.source) return null;
-    if (match.source === JOOX_DIRECT_SOURCE) return fetchDirectJooxPlayInfo(match, targetBr);
-    if (match.source === QQ_DIRECT_SOURCE) return fetchDirectQqPlayInfo(match, targetBr);
-    return fetchOtterPlayInfo(match, targetBr);
+    if (match.source === JOOX_DIRECT_SOURCE) return fetchDirectJooxPlayInfo(match, targetBr, budget);
+    if (match.source === QQ_DIRECT_SOURCE) return fetchDirectQqPlayInfo(match, targetBr, budget);
+    return fetchOtterPlayInfo(match, targetBr, budget);
 }
 
-async function searchSource(source, keyword) {
-    if (source === JOOX_DIRECT_SOURCE) return searchDirectJoox(keyword);
-    if (source === QQ_DIRECT_SOURCE) return searchDirectQq(keyword);
+async function searchSource(source, keyword, budget) {
+    if (source === JOOX_DIRECT_SOURCE) return searchDirectJoox(keyword, budget);
+    if (source === QQ_DIRECT_SOURCE) return searchDirectQq(keyword, budget);
     const searchUrl = buildUrl(OTTER_API, {
         types: "search",
         name: keyword,
@@ -642,7 +710,7 @@ async function searchSource(source, keyword) {
         pages: 1,
         source: source
     });
-    return fetchJson(searchUrl);
+    return fetchJson(searchUrl, budget);
 }
 
 function pickCandidate(target, list, strict) {
@@ -658,150 +726,143 @@ function pickCandidate(target, list, strict) {
         .sort((a, b) => b.score - a.score)[0] || null;
 }
 
-async function hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline) {
+async function hydrateMatch(matchInfo, fallbackBrList, budget) {
     for (const br of fallbackBrList) {
-        if (isDeadlineExceeded(deadline)) {
-            console.log("⏱️ 时间预算用尽，停止尝试更低音质。");
-            return null;
-        }
+        if (budget.state.done) throw requestFailure("CANCELLED");
+        if (isDeadlineExceeded(budget.deadline)) throw requestFailure("DEADLINE");
         const tryMatchInfo = Object.assign({}, matchInfo, { br: br });
-        const hydratedMatch = await fetchSourcePlayInfo(tryMatchInfo, br);
+        sourceLog(budget, `🎚️ ${matchInfo.source} 请求 ${br}k 播放地址`);
+        const hydratedMatch = await fetchSourcePlayInfo(tryMatchInfo, br, budget);
         if (isUsablePlayInfo(hydratedMatch)) return { match: hydratedMatch, br: br };
-        console.log(`ℹ️ ${matchInfo.source} ${br}k 无可用 URL，继续尝试更低音质。`);
+        sourceLog(budget, `ℹ️ ${matchInfo.source} ${br}k 未返回可用 URL`);
     }
     return null;
 }
 
 async function resolveOtterMusicUrl(hash, targetBr) {
     const startedAt = Date.now();
-    const deadline = startedAt + TIME_BUDGET_MS;
-    // 记录每个源的结局，失败时汇总成一行方便判断根因
+    const budget = { deadline: startedAt + TIME_BUDGET_MS - RETURN_MARGIN_MS, state: { done: false, pending: new Set() } };
     const diag = { sources: [], timedOut: false };
     const target = readCachedTrackInfo(hash);
-
     if (!target || !target.name || target.artists.length === 0) {
         console.log("⚠️ 未找到 get_res_privilege/lite 缓存，无法自动换源。");
         return null;
     }
 
     const keyword = `${target.name} ${target.artists[0]}`;
-    console.log(`🔎 Otter 自动匹配：${keyword}`);
-
+    console.log(`🔎 Otter 自动匹配：${keyword}｜总预算 ${TIME_BUDGET_MS}ms`);
     const fallbackBrList = getFallbackBrList(targetBr);
-    // 已失败的候选宽松轮不再重试
     const triedCandidates = new Set();
-    const cachedMatch = readCachedMatch(hash, targetBr);
-    if (cachedMatch && cachedMatch.source && cachedMatch.id) {
-        console.log(`♻️ 使用已缓存音源：${cachedMatch.source}，匹配歌曲：${formatMatchTitle(cachedMatch)}，优先请求 ${targetBr}k`);
-        const cachedResult = await hydrateMatch(cachedMatch, fallbackBrList, targetBr, deadline);
-        if (cachedResult) {
-            if (cachedResult.br !== targetBr) {
-                console.log(`↘️ 缓存音源 ${targetBr}k 不可用，自动降到 ${cachedResult.match.br || cachedResult.br}k`);
-            }
-            return enrichWithRealMetadata(cachedResult.match);
-        }
-        triedCandidates.add(cachedMatch.source + "|" + cachedMatch.id);
-        diag.sources.push("缓存(" + cachedMatch.source + "):URL失效");
-        console.log("⚠️ 缓存音源 URL 失效或所需音质不可用，重新搜索。");
+    const searchResults = {};
+
+    function record(label, stage, error) {
+        if (budget.state.done) return;
+        const timedOut = isTimeout(error);
+        if (timedOut) diag.timedOut = true;
+        const httpStatus = String(error && error.requestCode || "").match(/^HTTP_(\d{3})$/);
+        const reason = timedOut ? "超时，结果未确认" : "失败" + (httpStatus ? `（HTTP ${httpStatus[1]}）` : "");
+        diag.sources.push(label + ":" + stage + reason);
+        console.log(`⚠️ ${label} ${stage}${reason}｜已用 ${Date.now() - startedAt}ms`);
     }
 
-    // 搜索结果两轮间复用
-    const searchResults = {};
-    const searchFailed = {};
-    const matchRounds = ENABLE_LOOSE_MATCH ? [true, false] : [true];
-
-    for (const strict of matchRounds) {
-        if (isDeadlineExceeded(deadline)) {
-            diag.timedOut = true;
-            console.log("⏱️ 时间预算用尽，放弃换源。");
-            break;
+    async function trySource(source, strict) {
+        let stage = "搜索";
+        try {
+            if (!Object.prototype.hasOwnProperty.call(searchResults, source)) {
+                sourceLog(budget, `🔍 ${source} 开始搜索`);
+                searchResults[source] = searchSource(source, keyword, budget);
+            }
+            const list = await searchResults[source];
+            if (budget.state.done) return null;
+            if (!Array.isArray(list) || !list.length) {
+                if (strict) diag.sources.push(source + ":搜索无结果");
+                sourceLog(budget, `ℹ️ ${source} 搜索无结果｜已用 ${Date.now() - startedAt}ms`);
+                return null;
+            }
+            const candidate = pickCandidate(target, list, strict);
+            if (!candidate) {
+                if (strict) diag.sources.push(source + ":" + list.length + "条均不匹配");
+                sourceLog(budget, `🔒 ${source} ${list.length}条均不匹配｜已用 ${Date.now() - startedAt}ms`);
+                return null;
+            }
+            const candidateId = candidate.item.id || candidate.item.url_id;
+            const candidateKey = source + "|" + candidateId;
+            if (triedCandidates.has(candidateKey)) return null;
+            const matchInfo = {
+                source: source,
+                id: candidateId,
+                media_mid: candidate.item.media_mid || "",
+                br: targetBr,
+                name: candidate.item.name,
+                artist: Array.isArray(candidate.item.artist) ? candidate.item.artist.join("/") : candidate.item.artist
+            };
+            sourceLog(budget, `🎵 ${source} 匹配到 ${formatMatchTitle(candidate.item)}｜已用 ${Date.now() - startedAt}ms`);
+            stage = "播放地址查询";
+            const result = await hydrateMatch(matchInfo, fallbackBrList, budget);
+            if (!result) {
+                triedCandidates.add(candidateKey);
+                diag.sources.push(source + ":匹配到但无可用URL");
+                return null;
+            }
+            stage = "音频信息查询";
+            sourceLog(budget, `📦 ${source} 查询文件大小和 MD5`);
+            const enriched = await enrichWithRealMetadata(result.match, budget);
+            if (budget.state.done) return null;
+            return { match: enriched, matchInfo: matchInfo, strict: strict };
+        } catch (error) {
+            record(source, stage, error);
+            return null;
         }
-        if (!strict) console.log("🪶 严格匹配全部落空，改用宽松匹配（歌名相同 + 歌手有交集）。");
+    }
 
-        for (const source of OTTER_SOURCES) {
-            if (isDeadlineExceeded(deadline)) {
+    try {
+        const cachedMatch = readCachedMatch(hash, targetBr);
+        if (cachedMatch && cachedMatch.source && cachedMatch.id) {
+            const cacheBudget = { deadline: Math.min(budget.deadline, Date.now() + CACHE_BUDGET_MS), state: budget.state };
+            console.log(`♻️ 检查已缓存音源：${cachedMatch.source}｜最多 ${CACHE_BUDGET_MS}ms`);
+            try {
+                const result = await hydrateMatch(cachedMatch, fallbackBrList, cacheBudget);
+                if (result) {
+                    const enriched = await enrichWithRealMetadata(result.match, cacheBudget);
+                    console.log(`✅ 缓存音源可用｜耗时 ${Date.now() - startedAt}ms`);
+                    return enriched;
+                }
+                triedCandidates.add(cachedMatch.source + "|" + cachedMatch.id);
+                diag.sources.push("缓存(" + cachedMatch.source + "):无可用URL");
+            } catch (error) {
+                record("缓存(" + cachedMatch.source + ")", "查询", error);
+            }
+            console.log("ℹ️ 缓存未就绪，转为并发搜索。");
+        }
+
+        const matchRounds = ENABLE_LOOSE_MATCH ? [true, false] : [true];
+        for (const strict of matchRounds) {
+            if (isDeadlineExceeded(budget.deadline)) {
                 diag.timedOut = true;
-                console.log("⏱️ 时间预算用尽，放弃剩余音源。");
                 break;
             }
-
-            if (!Object.prototype.hasOwnProperty.call(searchResults, source)) {
-                try {
-                    searchResults[source] = await searchSource(source, keyword);
-                } catch (e) {
-                    searchResults[source] = [];
-                    searchFailed[source] = true;
-                    diag.sources.push(source + ":搜索报错");
-                    console.log(`⚠️ ${source} 搜索失败：${e.message || e}`);
-                }
-            }
-
-            const list = searchResults[source];
-            if (!Array.isArray(list) || list.length === 0) {
-                if (strict && !searchFailed[source]) diag.sources.push(source + ":搜索无结果");
-                continue;
-            }
-
-            const match = pickCandidate(target, list, strict);
-            if (!match) {
-                if (strict) diag.sources.push(source + ":" + list.length + "条均不匹配");
-                continue;
-            }
-
-            const candidateId = match.item.id || match.item.url_id;
-            const candidateKey = source + "|" + candidateId;
-            if (triedCandidates.has(candidateKey)) continue;
-
-            try {
-                const matchInfo = {
-                    source: source,
-                    id: candidateId,
-                    media_mid: match.item.media_mid || "",
-                    br: targetBr,
-                    name: match.item.name,
-                    artist: Array.isArray(match.item.artist) ? match.item.artist.join("/") : match.item.artist
-                };
-
-                const result = await hydrateMatch(matchInfo, fallbackBrList, targetBr, deadline);
-                if (!result) {
-                    triedCandidates.add(candidateKey);
-                    diag.sources.push(source + ":匹配到但无可用URL");
-                    continue;
-                }
-
-                const actualBr = Number(result.match.br) > 0 ? Number(result.match.br) : result.br;
-                const modeLabel = strict ? "" : "（宽松匹配）";
-                if (actualBr === targetBr) {
-                    console.log(`✅ 已切换到 ${source} ${targetBr}k 音源${modeLabel}，匹配歌曲：${formatMatchTitle(match.item)}`);
-                } else {
-                    console.log(`✅ 已切换到 ${source} 音源${modeLabel}，匹配歌曲：${formatMatchTitle(match.item)}，请求 ${targetBr}k，实际 ${actualBr}k`);
-                }
-                console.log(`⏱️ 耗时 ${Date.now() - startedAt}ms`);
-
-                // 只有严格命中才写缓存
-                if (strict) {
-                    saveCachedMatch(hash, targetBr, matchInfo);
-                } else {
-                    console.log("ℹ️ 宽松匹配结果不写入缓存，下次仍会重新确认。");
-                }
-                return enrichWithRealMetadata(result.match);
-            } catch (e) {
-                triedCandidates.add(candidateKey);
-                diag.sources.push(source + ":异常");
-                console.log(`⚠️ ${source} 音源匹配失败：${e.message || e}`);
+            if (!strict) console.log("🪶 严格匹配全部落空，改用宽松匹配（歌名相同 + 歌手有交集）。");
+            console.log(`🚀 并发搜索 ${OTTER_SOURCES.length} 个音源｜剩余 ${budget.deadline - Date.now()}ms`);
+            const winner = await firstUsable(OTTER_SOURCES.map(source => trySource(source, strict)));
+            if (winner) {
+                stopRequests(budget);
+                const actualBr = Number(winner.match.br) > 0 ? Number(winner.match.br) : targetBr;
+                console.log(`✅ 已切换到 ${winner.match.source} ${actualBr}k 音源${strict ? "" : "（宽松匹配）"}，匹配歌曲：${formatMatchTitle(winner.match)}`);
+                if (strict) saveCachedMatch(hash, targetBr, winner.matchInfo);
+                console.log(`⏱️ 耗时 ${Date.now() - startedAt}/${TIME_BUDGET_MS}ms`);
+                return winner.match;
             }
         }
-        if (diag.timedOut) break;
+        console.log(`📋 换源失败诊断｜耗时 ${Date.now() - startedAt}/${TIME_BUDGET_MS}ms｜${diag.sources.join("，") || "无源可试"}`);
+        if (diag.timedOut) {
+            console.log("⏱️ 部分请求超时中断，音源结果未确认；保留原响应，可稍后重试。");
+        } else if (!ENABLE_LOOSE_MATCH) {
+            console.log("🔒 本轮未取得严格匹配的可用音源，保留原响应（宽松匹配已关闭）。");
+        }
+        return null;
+    } finally {
+        stopRequests(budget);
     }
-
-    const elapsed = Date.now() - startedAt;
-    console.log(`📋 换源失败诊断｜耗时 ${elapsed}/${TIME_BUDGET_MS}ms｜${diag.sources.join("，") || "无源可试"}`);
-    if (diag.timedOut) {
-        console.log(`⏱️ 本次是【超时中断】，不是真的没找到。网络慢或源响应慢，重试可能就成功——想减少这种情况就把 TIME_BUDGET_MS 调大（需同时调大 QX 的 script_timeout）。`);
-    } else if (!ENABLE_LOOSE_MATCH) {
-        console.log("🔒 严格匹配未找到同名同歌手的音源，保留原响应（宽松匹配已关闭）。");
-    }
-    return null;
 }
 
 function inferAudioFormat(audioUrl) {
@@ -984,7 +1045,7 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
 
     resolveOtterMusicUrl(hash, targetBr).then(match => {
         if (!match || !match.url) {
-            console.log("⚠️ Otter 未找到可用音源，保留原响应。");
+            console.log("⚠️ Otter 本轮未取得可用音源，保留原响应；原因见换源诊断。");
             passThroughOriginal();
             return;
         }
@@ -992,7 +1053,7 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
         const newBody = JSON.stringify(buildTrackerResponse(hash, match));
         console.log("✅ Tracker 响应已替换为 Otter/GD 音源。");
         console.log("🎵 下载音源歌曲：" + formatMatchTitle(match));
-        console.log("🎯 音频 URL：" + match.url);
+        console.log("🎯 音频地址已取得（不记录签名参数）");
 
         $done({
             status: "HTTP/1.1 200 OK",
@@ -1000,7 +1061,7 @@ if (url.includes("/v5/url?") || url.includes("/tracker/v5/url?") || url.includes
             body: newBody
         });
     }).catch(e => {
-        console.log("⚠️ Otter 自动换源异常：" + (e.message || e));
+        console.log("⚠️ Otter 自动换源异常，保留原响应。");
         passThroughOriginal();
     });
     return;
@@ -1018,7 +1079,7 @@ if (url.includes("/vipcenter/ios")) {
       let newUrl = url.replace(/user_label=[^&]*/, `user_label=${newUserLabelEncoded}`);
 
       console.log("重写后 user_label 长度: " + newUserLabelEncoded.length);
-      console.log("重写新 URL: " + newUrl);
+      console.log("user_label 已截取，完整请求地址不写入日志");
 
       $done({
         url: newUrl,
