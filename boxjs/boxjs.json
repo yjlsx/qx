@@ -1301,6 +1301,85 @@
       }
     },
     {
+      "id": "readify",
+      "name": "Readify七天打卡",
+      "author": "@yjlsx",
+      "repo": "https://github.com/yjlsx/qx",
+      "icons": [
+        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/readify.png"
+      ],
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/readify.js",
+      "keys": [
+        "readify_enabled",
+        "readify_auth",
+        "readify_campaign_id",
+        "readify_auto_claim"
+      ],
+      "settings": [
+        {
+          "id": "readify_enabled",
+          "name": "启用签到",
+          "val": true,
+          "type": "boolean",
+          "desc": "控制是否执行 Readify 七天读书打卡。"
+        },
+        {
+          "id": "readify_auth",
+          "name": "请求头凭证 JSON",
+          "val": "",
+          "type": "text",
+          "input": "password",
+          "desc": "打开 Readify 七天读书打卡活动页自动获取，通常无需手填。包含 x-user-id、x-token、x-device-id；单账号，新账号替换旧账号。请勿公开或分享。"
+        },
+        {
+          "id": "readify_campaign_id",
+          "name": "活动 ID",
+          "val": "reading-streak-7d-202607",
+          "type": "text",
+          "desc": "从活动状态请求自动更新。活动变更后重新打开打卡页面抓取。"
+        },
+        {
+          "id": "readify_auto_claim",
+          "name": "自动领取七天奖励",
+          "val": true,
+          "type": "boolean",
+          "desc": "按活动页流程在 canClaim=true 时自动领奖；关闭后只签到并提示待领奖。"
+        }
+      ],
+      "boxjs": {
+        "hosts": [
+          "readifyapp.voiceclub.cn"
+        ],
+        "schema": {
+          "readify_enabled": {
+            "type": "boolean",
+            "label": "启用签到",
+            "default": true,
+            "desc": "控制是否执行 Readify 七天读书打卡。"
+          },
+          "readify_auth": {
+            "type": "text",
+            "label": "请求头凭证 JSON",
+            "default": "",
+            "input": "password",
+            "desc": "打开 Readify 七天读书打卡活动页自动获取，通常无需手填。包含 x-user-id、x-token、x-device-id；单账号，新账号替换旧账号。请勿公开或分享。"
+          },
+          "readify_campaign_id": {
+            "type": "text",
+            "label": "活动 ID",
+            "default": "reading-streak-7d-202607",
+            "desc": "从活动状态请求自动更新。活动变更后重新打开打卡页面抓取。"
+          },
+          "readify_auto_claim": {
+            "type": "boolean",
+            "label": "自动领取七天奖励",
+            "default": true,
+            "desc": "按活动页流程在 canClaim=true 时自动领奖；关闭后只签到并提示待领奖。"
+          }
+        }
+      }
+    },
+    {
       "id": "agentrouter",
       "name": "AgentRouter签到",
       "author": "@yjlsx",
