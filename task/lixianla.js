@@ -1,427 +1,367 @@
 /*
- * lxian自动 OCR 签到
+ * 离线啦论坛自动签到
+ *
+ * [使用说明]
+ * 1. 开启 Quantumult X 重写功能，访问 https://lixianla.com/ 自动抓取 Cookie
+ * 2. 抓取到 Cookie 后会自动通知，之后每天自动签到并通知结果
+ *
+ * [BoxJS 配置]
+ * lixianla_cookie: 存储网站 Cookie，自动抓取，也可手动填写
  *
  * [rewrite_local]
-^https?:\/\/lixianla\.com\/ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/task/lixianla.js
-
+ * ^https?:\/\/lixianla\.com\/ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/task/lixianla.js
+ *
+ * [task_local]
+ * 0 9 * * * https://raw.githubusercontent.com/yjlsx/qx/main/task/lixianla.js, tag=离线啦签到, img-url=https://raw.githubusercontent.com/yjlsx/qx/main/icon/lixianla.png, enabled=true
+ *
  * [mitm]
-hostname = lixianla.com
-
+ * hostname = lixianla.com
  */
 
-
+const BASE_URL = "https://lixianla.com";
+const ENTRY_URL = BASE_URL + "/sg_sign.htm";
 const COOKIE_KEY = 'lixianla_cookie';
-const OCR_KEY_NAME = 'lixianla_ocr_key';
+const USER_AGENT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) " +
+  "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
-let OCR_KEY = readData(OCR_KEY_NAME) || '';
+let currentCookie = readData(COOKIE_KEY) || "";
 
-let currentCookie = readData(COOKIE_KEY) || '';
-
-const MAX_RETRY = 10;
-
-const mainReferer = 'https://lixianla.com/index-4-5.htm';
-
-if (typeof $request !== 'undefined') {
-    captureCookie();
+if (typeof $request !== "undefined") {
+  captureCookie();
 } else {
-    startSign();
+  startSign();
 }
 
 async function startSign() {
-
-    try {
-
-        if (!currentCookie) {
-
-            $notify("离线啦签到", "停止 ❌", "缺少 Cookie，请先开启重写访问 lixianla.com 自动抓取");
-
-            $done();
-
-            return;
-
-        }
-
-        if (!OCR_KEY) {
-
-            $notify("离线啦签到", "停止 ❌", "缺少 OCR Key，请先在 BoxJS 填写 lixianla_ocr_key");
-
-            $done();
-
-            return;
-
-        }
-
-        const now = new Date();
-
-        const hour = now.getHours();
-
-        const minute = now.getMinutes();
-
-        if (hour === 0 && minute === 0) {
-
-            console.log(`⏰ 当前时间 ${hour}:${minute}，检测为凌晨准点启动，静默等待 18 秒...`);
-
-            await new Promise(r => setTimeout(r, 18000));
-
-        } else {
-
-            console.log(`🚀 当前时间 ${hour}:${minute}，非凌晨准点，直接开始执行...`);
-
-        }
-
-        console.log("【1/4】探测动态签到接口...");
-
-        let entry = await request('https://lixianla.com/sg_sign.htm', 'GET', 'https://lixianla.com/');
-
-        let actionMatch = entry.body?.match(/sg_sign-lx-\d+\.htm/);
-
-        if (!actionMatch && !entry.body?.includes("已经签到")) {
-
-            console.log("⚠️ 接口仍未就绪，缓冲 5 秒后重试探测...");
-
-            await new Promise(r => setTimeout(r, 5000));
-
-            entry = await request('https://lixianla.com/sg_sign.htm', 'GET', 'https://lixianla.com/');
-
-            actionMatch = entry.body?.match(/sg_sign-lx-\d+\.htm/);
-
-        }
-
-        if (!actionMatch) {
-
-            if (entry.body?.includes("已经签到")) {
-
-                console.log("检测到今日已签到，直接获取积分...");
-
-                const info = await fetchCredits();
-
-                $notify("离线啦", "成功 ✅", `今天已签过！\n${info}`);
-
-                $done();
-
-                return;
-
-            }
-
-            throw "Cookie失效或未找到接口";
-
-        }
-
-        const fullSignUrl = `https://lixianla.com/${actionMatch[0]}`;
-
-        console.log(`✅ 接口地址: ${fullSignUrl}`);
-
-        for (let i = 1; i <= MAX_RETRY; i++) {
-
-            console.log(`\n--- [第 ${i} 次尝试] ---`);
-
-            await request(fullSignUrl, 'GET', mainReferer);
-
-            const vcodeUrl = `https://lixianla.com/vcode.htm?${Math.random()}`;
-
-            console.log(`【2/4】正在获取验证码... \n🔗 地址: ${vcodeUrl}`);
-
-            const vcodeRes = await request(vcodeUrl, 'GET', mainReferer, null, true);
-
-            console.log(`验证码状态码: ${vcodeRes.statusCode}`);
-
-            console.log(`bodyBytes: ${vcodeRes.bodyBytes ? vcodeRes.bodyBytes.byteLength : "无"}`);
-
-            if (!vcodeRes.bodyBytes || vcodeRes.bodyBytes.byteLength < 100) {
-
-                console.log("⚠️ 验证码图片获取失败，准备重试...");
-
-                await new Promise(r => setTimeout(r, 1000));
-
-                continue;
-
-            }
-
-            const code = await doOCR(iArrayBufferToBase64(vcodeRes.bodyBytes));
-
-            console.log(`OCR识别结果: [${code}]`);
-
-            if (!code || code.length < 3) {
-
-                console.log("⚠️ 识别结果异常，准备重试...");
-
-                await new Promise(r => setTimeout(r, 1000));
-
-                continue;
-
-            }
-
-            console.log("【3/4】提交签到请求...");
-
-            const postRes = await request(
-
-                fullSignUrl,
-
-                'POST',
-
-                mainReferer,
-
-                `vcode=${encodeURIComponent(code)}`
-
-            );
-
-            let resMsg = String(postRes.body || "");
-
-            try {
-
-                const parsed = JSON.parse(postRes.body);
-
-                resMsg = String(parsed.message || postRes.body || "");
-
-            } catch (e) {}
-
-            console.log(`📩 响应: ${resMsg}`);
-
-            if (resMsg.includes("成功") || resMsg.includes("恭喜") || resMsg.includes("已经签过")) {
-
-                const info = await fetchCredits();
-
-                $notify("离线啦签到", "🎉成功 ✅", `${resMsg}\n${info}`);
-
-                $done();
-
-                return;
-
-            }
-
-            if (!resMsg.includes("验证码错误")) {
-
-                throw resMsg;
-
-            }
-
-            await new Promise(r => setTimeout(r, 1000));
-
-        }
-
-        $notify("离线啦签到", "停止 ❌", "重试次数已达上限");
-
-    } catch (e) {
-
-        console.log(`❌ 程序出错: ${e}`);
-
-        $notify("离线啦签到", "停止 ❌", String(e).substring(0, 50));
-
+  try {
+    if (!currentCookie) {
+      log("❌ 缺少 Cookie");
+      safeNotify("离线啦签到", "停止 ❌", "缺少 Cookie，请先开启重写访问 lixianla.com 自动抓取");
+      return;
     }
 
-    $done();
+    log("🚀 开始执行离线啦签到任务");
+    log("【1/3】读取签到页面并探测动态接口...");
 
+    let entry = await request(ENTRY_URL, "GET", BASE_URL + "/");
+    ensureResponse(entry, "读取签到页面");
+
+    let entryState = classifyText(entry.body);
+    if (entryState === "login") {
+      throw new Error("Cookie 已失效，请重新开启重写访问 lixianla.com");
+    }
+    if (entryState === "already") {
+      await finishAlreadySigned();
+      return;
+    }
+
+    let signPath = extractSignPath(entry.body);
+    if (!signPath) {
+      log("⚠️ 首次未找到签到接口，等待 5 秒后重试...");
+      await sleep(5000);
+      entry = await request(ENTRY_URL, "GET", BASE_URL + "/");
+      ensureResponse(entry, "重试读取签到页面");
+      entryState = classifyText(entry.body);
+      if (entryState === "login") {
+        throw new Error("Cookie 已失效，请重新开启重写访问 lixianla.com");
+      }
+      if (entryState === "already") {
+        await finishAlreadySigned();
+        return;
+      }
+      signPath = extractSignPath(entry.body);
+    }
+
+    if (!signPath) {
+      throw new Error(
+        "未找到签到接口 | 状态:" + getStatus(entry) + " | 响应前200字符:" + compactPreview(entry.body)
+      );
+    }
+
+    const signUrl = toAbsoluteUrl(signPath);
+    log("✅ 动态接口: " + signUrl);
+    log("【2/3】提交签到请求...");
+
+    const signRes = await request(signUrl, "GET", ENTRY_URL);
+    ensureResponse(signRes, "提交签到请求");
+    const result = classifyText(signRes.body);
+
+    if (result === "login") {
+      throw new Error("Cookie 已失效，请重新开启重写访问 lixianla.com");
+    }
+    if (result === "already") {
+      await finishAlreadySigned();
+      return;
+    }
+    if (result !== "success") {
+      const message = parseSignMessage(signRes.body);
+      throw new Error(message || "签到接口未返回成功结果");
+    }
+
+    log("✅ 签到响应: " + parseSignMessage(signRes.body));
+    log("【3/3】获取积分信息...");
+    const credits = await fetchCredits();
+    const message = parseSignMessage(signRes.body);
+    safeNotify("离线啦签到", "签到成功 ✅", message + "\n" + credits);
+  } catch (error) {
+    const message = describeError(error);
+    log("❌ 程序出错: " + message);
+    safeNotify("离线啦签到", "停止 ❌", message);
+  } finally {
+    $done();
+  }
+}
+
+async function finishAlreadySigned() {
+  log("🟡 今日已经签到，正在获取积分信息...");
+  log("【3/3】获取积分信息...");
+  const credits = await fetchCredits();
+  safeNotify("离线啦签到", "今日已签到 🟡", credits);
+}
+
+function extractSignPath(body) {
+  const text = String(body || "");
+  const match = text.match(/(?:https?:\/\/lixianla\.com\/)?([^"'\s<>]*sg_sign-lx-\d+\.htm)/i);
+  return match ? match[1] : "";
+}
+
+function toAbsoluteUrl(path) {
+  const value = String(path || "").trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  return BASE_URL + "/" + value.replace(/^\/+/, "");
+}
+
+function classifyText(body) {
+  const text = plainText(body);
+  if (!text) return "unknown";
+  if (/(请登录|登录后(?:再)?签到|尚未登录|未登录)/i.test(text)) return "login";
+  if (/(已经签到|今日已签到|今天已签到|已签过|签到过)/i.test(text)) return "already";
+
+  const payload = parseJson(body);
+  if (payload && payload.code !== undefined && String(payload.code) === "0") return "success";
+  if (/(签到成功|签到完成|恭喜|获得\s*\d+\s*(?:经验|金币))/i.test(text)) return "success";
+  if (/(验证码错误|签到失败|操作失败|请求失败|错误|禁止|无权|非法)/i.test(text)) return "failure";
+  return "unknown";
+}
+
+function parseSignMessage(body) {
+  const text = String(body || "").trim();
+  if (!text) return "签到接口未返回内容";
+
+  const payload = parseJson(text);
+  if (payload) {
+    const candidates = [
+      payload.message,
+      payload.msg,
+      payload.data && payload.data.message,
+      payload.data && payload.data.msg,
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      if (candidates[i] !== undefined && candidates[i] !== null && String(candidates[i]).trim()) {
+        return plainText(String(candidates[i])).trim();
+      }
+    }
+    if (payload.code !== undefined && String(payload.code) === "0") return "签到成功";
+  }
+
+  const messageMatch = text.match(/<(?:div|p|span)[^>]*(?:message|alert|tips)[^>]*>([\s\S]*?)<\//i);
+  if (messageMatch) return plainText(messageMatch[1]).trim() || "签到完成";
+  const cleaned = plainText(text).replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 120) return cleaned;
+  if (/(成功|恭喜)/.test(cleaned)) return "签到成功";
+  return "签到完成";
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(String(text || ""));
+  } catch (_) {
+    return null;
+  }
+}
+
+function plainText(value) {
+  return String(value || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function fetchCredits() {
+  try {
+    const response = await request(BASE_URL + "/my-credits.htm", "GET", BASE_URL + "/my.htm");
+    ensureResponse(response, "读取积分页面");
+    const body = String(response.body || "");
+    if (classifyText(body) === "login") throw new Error("Cookie 已失效");
 
-    console.log("【4/4】正在抓取积分信息...");
-
-    try {
-
-        const res = await request(
-
-            'https://lixianla.com/my-credits.htm',
-
-            'GET',
-
-            'https://lixianla.com/my.htm'
-
-        );
-
-        const exp = res.body.match(/经验.*?value="(\d+)"/)?.[1] || "未知";
-
-        const coin = res.body.match(/金币.*?value="(\d+)"/)?.[1] || "未知";
-
-        const result = `经验: ${exp} | 金币: ${coin}`;
-
-        console.log(`✅ 获取成功: ${result}`);
-
-        return result;
-
-    } catch (e) {
-
-        console.log("❌ 积分信息获取失败");
-
-        return "积分信息获取失败";
-
-    }
-
+    const exp = extractCredit(body, "经验");
+    const coin = extractCredit(body, "金币");
+    const result = "经验: " + exp + " | 金币: " + coin;
+    log("✅ 积分信息: " + result);
+    return result;
+  } catch (error) {
+    log("⚠️ 积分信息获取失败: " + describeError(error));
+    return "积分信息获取失败";
+  }
 }
 
-async function request(url, method, referer, body = null, isBinary = false) {
+function extractCredit(body, label) {
+  const text = String(body || "");
+  const patterns = [
+    new RegExp(label + "[\\s\\S]{0,160}?value=[\\\"'](\\d+)", "i"),
+    new RegExp(label + "[\\s\\S]{0,100}?>(\\d+)<", "i"),
+    new RegExp(label + "[^0-9]{0,80}(\\d+)", "i"),
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    const match = text.match(patterns[i]);
+    if (match) return match[1];
+  }
+  return "未知";
+}
 
-    const headers = {
+async function request(url, method, referer, body, responseType) {
+  const headers = {
+    Cookie: currentCookie,
+    "User-Agent": USER_AGENT,
+    Accept: "text/html,application/json;q=0.9,*/*;q=0.8",
+    "X-Requested-With": "XMLHttpRequest",
+    Referer: referer || BASE_URL + "/",
+  };
+  if (method === "POST") headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
 
-        'Cookie': currentCookie,
+  const options = {
+    url: url,
+    method: method,
+    headers: headers,
+    opts: { policy: "DIRECT", "insecure-skip-verify": true },
+  };
+  if (body !== undefined && body !== null) options.body = body;
+  if (responseType) options.opts.responseType = responseType;
 
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  const response = await $task.fetch(options);
+  const setCookie = getHeader(response, "set-cookie");
+  if (setCookie) updateCookie(setCookie);
+  return response;
+}
 
-        'X-Requested-With': 'XMLHttpRequest',
+function ensureResponse(response, action) {
+  if (!response) throw new Error(action + "无响应");
+  const status = getStatus(response);
+  if (status >= 400) throw new Error(action + "失败，HTTP " + status);
+}
 
-        'Referer': referer
+function getStatus(response) {
+  const value = response && (response.statusCode || response.status);
+  return value ? Number(value) : 0;
+}
 
-    };
-
-    if (method === 'POST') {
-
-        headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
-
-    }
-
-    const req = {
-
-        url,
-
-        method,
-
-        headers
-
-    };
-
-    if (body !== null) {
-
-        req.body = body;
-
-    }
-
-    if (isBinary) {
-
-        req.opts = {
-
-            responseType: 'arraybuffer'
-
-        };
-
-    }
-
-    const response = await $task.fetch(req);
-
-    const sc = response.headers?.['Set-Cookie'] || response.headers?.['set-cookie'];
-
-    if (sc) updateCookie(sc);
-
-    return response;
-
+function getHeader(response, wantedName) {
+  const headers = (response && response.headers) || {};
+  const names = Object.keys(headers);
+  for (let i = 0; i < names.length; i++) {
+    if (names[i].toLowerCase() === wantedName.toLowerCase()) return headers[names[i]];
+  }
+  return "";
 }
 
 function updateCookie(setCookie) {
+  const jar = {};
+  String(currentCookie || "").split(";").forEach(function (part) {
+    const index = part.indexOf("=");
+    if (index > 0) jar[part.slice(0, index).trim()] = part.slice(index + 1).trim();
+  });
 
-    const parts = setCookie.split(/,(?=[^;]+=[^;]+)/);
+  const values = Array.isArray(setCookie) ? setCookie : [setCookie];
+  values.forEach(function (value) {
+    String(value || "")
+      .split(/,(?=\s*[^;,=\s]+=[^;,]+)/)
+      .forEach(function (item) {
+        const cookie = item.split(";")[0].trim();
+        const index = cookie.indexOf("=");
+        if (index > 0) jar[cookie.slice(0, index).trim()] = cookie.slice(index + 1).trim();
+      });
+  });
 
-    parts.forEach(p => {
-
-        const cookie = p.split(';')[0].trim();
-
-        const [key] = cookie.split('=');
-
-        if (key && currentCookie.includes(key + "=")) {
-
-            currentCookie = currentCookie.replace(new RegExp(`${key}=[^;]+`), cookie);
-
-        } else if (key) {
-
-            currentCookie += `; ${cookie}`;
-
-        }
-
-    });
-
-    writeData(currentCookie, COOKIE_KEY);
-
+  currentCookie = Object.keys(jar)
+    .filter(function (key) { return jar[key] !== ""; })
+    .map(function (key) { return key + "=" + jar[key]; })
+    .join("; ");
+  if (currentCookie) writeData(currentCookie, COOKIE_KEY);
 }
 
 function captureCookie() {
-
-    const cookie = $request.headers?.Cookie || $request.headers?.cookie || "";
-
-    if (cookie && /bbs_(token|sid)=/.test(cookie)) {
-
-        const oldCookie = readData(COOKIE_KEY) || "";
-
-        if (oldCookie !== cookie) {
-
-            writeData(cookie, COOKIE_KEY);
-
-            $notify("离线啦", "Cookie 已写入 BoxJS ✅", "lixianla_cookie");
-
-        } else {
-
-            console.log("离线啦 Cookie 未变化，跳过写入");
-
-        }
-
+  const headers = ($request && $request.headers) || {};
+  const cookie = headers.Cookie || headers.cookie || "";
+  if (cookie && /(?:^|;)\s*bbs_(?:token|sid)=[^;\s]+/i.test(cookie)) {
+    const oldCookie = readData(COOKIE_KEY) || "";
+    if (oldCookie !== cookie) {
+      writeData(cookie, COOKIE_KEY);
+      log("✅ Cookie 已更新");
+      safeNotify("离线啦", "Cookie 已抓取 ✅", "Cookie 已写入 lixianla_cookie");
     } else {
-
-        console.log("未找到离线啦 Cookie");
-
+      log("Cookie 未变化，跳过写入");
     }
-
-    $done({});
-
+  } else {
+    log("未找到离线啦 Cookie");
+  }
+  $done({});
 }
 
-async function doOCR(base64) {
-
-    try {
-
-        const res = await $task.fetch({
-
-            url: "https://api.ocr.space/parse/image",
-
-            method: "POST",
-
-            headers: {
-
-                "Content-Type": "application/x-www-form-urlencoded"
-
-            },
-
-            body: `apikey=${encodeURIComponent(OCR_KEY)}&base64Image=data:image/png;base64,${encodeURIComponent(base64)}&OCREngine=2&scale=true&isOverlayRequired=false`
-
-        });
-
-        const resJson = JSON.parse(res.body);
-
-        const text = resJson.ParsedResults?.[0]?.ParsedText || "";
-
-        return text.replace(/[^a-zA-Z0-9]/g, "").trim();
-
-    } catch (e) {
-
-        console.log(`❌ OCR请求失败: ${e}`);
-
-        return "";
-
-    }
-
-}
-
-function iArrayBufferToBase64(buffer) {
-
-    let binary = '';
-
-    const bytes = new Uint8Array(buffer);
-
-    for (let i = 0; i < bytes.byteLength; i++) {
-
-        binary += String.fromCharCode(bytes[i]);
-
-    }
-
-    return btoa(binary);
-
+function safeNotify(title, subtitle, body) {
+  if (typeof $notify !== "function") return;
+  try {
+    $notify(title, subtitle || "", body || "", { "open-url": BASE_URL + "/" });
+  } catch (_) {
+    // 通知失败不应阻止签到流程结束。
+  }
 }
 
 function readData(key) {
-
-    return typeof $prefs !== 'undefined' ? $prefs.valueForKey(key) : "";
-
+  try {
+    if (typeof $prefs !== "undefined" && $prefs.valueForKey) return $prefs.valueForKey(key) || "";
+    if (typeof $persistentStore !== "undefined" && $persistentStore.read) return $persistentStore.read(key) || "";
+  } catch (_) {}
+  return "";
 }
 
 function writeData(value, key) {
-
-    return typeof $prefs !== 'undefined' ? $prefs.setValueForKey(value, key) : false;
-
+  try {
+    if (typeof $prefs !== "undefined" && $prefs.setValueForKey) return $prefs.setValueForKey(value, key);
+    if (typeof $persistentStore !== "undefined" && $persistentStore.write) return $persistentStore.write(value, key);
+  } catch (_) {}
+  return false;
 }
 
+function describeError(error) {
+  if (!error) return "未知错误";
+  if (typeof error === "string") return error;
+  if (error.message) return String(error.message);
+  return String(error);
+}
+
+function compactPreview(value) {
+  const text = plainText(value).replace(/[\r\n]+/g, " ");
+  return text.slice(0, 200) || "空响应";
+}
+
+function sleep(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
+function log(message) {
+  console.log("[" + formatTime() + "] " + message);
+}
+
+function formatTime(date) {
+  const value = date || new Date();
+  const pad = function (number) { return String(number).padStart(2, "0"); };
+  return value.getFullYear() + "-" + pad(value.getMonth() + 1) + "-" + pad(value.getDate()) +
+    " " + pad(value.getHours()) + ":" + pad(value.getMinutes()) + ":" + pad(value.getSeconds());
+}
