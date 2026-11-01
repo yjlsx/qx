@@ -1,7 +1,7 @@
 /*
 
 [rewrite_local]
-^https:\/\/gw\.xiaocantech\.com\/rpc url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocanrpc.js
+^https:\/\/gw\.xiaocantech\.com\/rpc url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/xiaocanrpc.js
 ^https?:\/\/inner\.baihemob\.com\/ad2 url reject
 
 

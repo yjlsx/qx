@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https:\/\/app\.candashi\.cn\/api\/api\/v2\/user\/api_user_info_one url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/candada.js
+^https:\/\/app\.candashi\.cn\/api\/api\/v2\/user\/api_user_info_one url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/task/candada.js
 
 [mitm]
 hostname = app.candashi.cn

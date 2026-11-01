@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail|manager\/v3\/status) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt2.js
+^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail|manager\/v3\/status) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/mt2.js
 
 [mitm]
 hostname = i.waimai.meituan.com, wx-shangou.meituan.com

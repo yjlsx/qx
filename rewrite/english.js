@@ -1,7 +1,7 @@
 /*
 [rewrite_local]
 
-^https:\/\/en\.mobilecleverapps\.com\/app-portal\/userConfiguration url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/english.js
+^https:\/\/en\.mobilecleverapps\.com\/app-portal\/userConfiguration url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/english.js
 
 [mitm]
 hostname = rtvt-cn-app.ilivedata.com, en.mobilecleverapps.com, firebase-settings.crashlytics.com

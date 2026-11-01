@@ -13,7 +13,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/youtube.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/youtube.response.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/youtube.response.js",
       "keys": [
         "YouTubeEnhance.tabs",
         "YouTubeEnhance.showHistory",
@@ -385,7 +385,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/kuaishou.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/kuaishou.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/kuaishou.js",
       "keys": [
         "ks_enabled_1",
         "ks_cookie_1",
@@ -523,7 +523,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/lixian.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/lixianla.js",
       "keys": [
         "lixianla_cookie",
         "lixianla_ocr_key"
@@ -576,7 +576,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/kuaishou.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/kuaishoujisu.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/kuaishoujisu.js",
       "keys": [
         "ksjs_enabled_1",
         "ksjs_cookie_1",
@@ -728,7 +728,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/iqiyi.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/iQIYI.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/iQIYI.js",
       "keys": [
         "CookieQY",
         "iQIYI_LogDetails",
@@ -793,7 +793,7 @@
       "icons": [
         "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/icon/box/nytimes.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/nytimes.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/nytimes.js",
       "keys": [
         "nysb_rss_url",
         "nysb_max_items",
@@ -1174,7 +1174,7 @@
       "icons": [
         "https://economistnew.buzzing.cc/icon.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/economist.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/economist.js",
       "keys": [
         "econ_ai_api_key",
         "econ_ai_base_url",
@@ -1306,9 +1306,9 @@
       "author": "@yjlsx",
       "repo": "https://github.com/yjlsx/qx",
       "icons": [
-        "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/readify.png"
+        "https://raw.githubusercontent.com/yjlsx/qx/main/icon/readify.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/readify.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/readify.js",
       "keys": [
         "readify_enabled",
         "readify_auth",
@@ -1387,7 +1387,7 @@
       "icons": [
         "https://raw.githubusercontent.com/yjlsx/qx/main/icon/qwe.png"
       ],
-      "script": "https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/agentrouter.js",
+      "script": "https://raw.githubusercontent.com/yjlsx/qx/main/task/agentrouter.js",
       "keys": [
         "ar_enabled_1",
         "ar_name_1",

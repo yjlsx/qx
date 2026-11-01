@@ -25,7 +25,7 @@ IP-CIDR, 111.206.99.202/32, REJECT, no-resolve
 [Script]
 
 
-酷狗_K歌 = type=http-response, pattern=^https?:\/\/(nacsing\.kugou\.com|acsing\.service\.kugou\.com|vipos\.kugou\.com|gateway\.kugou\.com|gamecenter\.kugou\.com|acsing\.tx\.kugou\.com)\/(sing7\/json\/v2\/user\/login|ccktv\/v1\/ktv_room\/room\/room_config|fxsing\/vip\/member\/info|sing7\/homepage\/json\/v3\/vip\/tip|v4\/price\/get_tips|vipenergy\/v2\/entrance\/vip_center_user_info|fxsing\/vip\/user\/info|sing7\/homepage\/json\/v3\/cdn\/kroom_tab_enter|v1\/home\/member_game|sing7\/homepage\/json\/v3\/cdn\/kroom_tab\/banners), requires-body=true, max-size=0, script-path=https://raw.githubusercontent.com/Yu9191/Rewrite/refs/heads/main/kugouksong.js
+酷狗_K歌 = type=http-response, pattern=^https?:\/\/(nacsing\.kugou\.com|acsing\.service\.kugou\.com|vipos\.kugou\.com|gateway\.kugou\.com|gamecenter\.kugou\.com|acsing\.tx\.kugou\.com)\/(sing7\/json\/v2\/user\/login|ccktv\/v1\/ktv_room\/room\/room_config|fxsing\/vip\/member\/info|sing7\/homepage\/json\/v3\/vip\/tip|v4\/price\/get_tips|vipenergy\/v2\/entrance\/vip_center_user_info|fxsing\/vip\/user\/info|sing7\/homepage\/json\/v3\/cdn\/kroom_tab_enter|v1\/home\/member_game|sing7\/homepage\/json\/v3\/cdn\/kroom_tab\/banners), requires-body=true, max-size=0, script-path=https://raw.githubusercontent.com/Yu9191/Rewrite/main/kugouksong.js
 
 [MITM]
 hostname = %APPEND% *.kugou.com, *.*.kugou.com

@@ -1,7 +1,7 @@
 /*
 [rewrite_local]
 
-^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
+^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg.js
 
 [mitm]
 hostname =  gateway.kugou.com, 

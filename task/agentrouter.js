@@ -2,7 +2,7 @@
 // Credentials are managed by BoxJS keys declared in boxjs/boxjs.json:
 //   ar_name_N / ar_enabled_N / ar_username_N / ar_password_N  (N = 1, 2),  ar_hosts (可选, 逗号/空格分隔)
 // Add the following line to Quantumult X [task_local] after pushing this file:
-// 0 9 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/agentrouter.js, tag=AgentRouter签到, enabled=true
+// 0 9 * * * https://raw.githubusercontent.com/yjlsx/qx/main/task/agentrouter.js, tag=AgentRouter签到, enabled=true
 //
 // ===== 原理 (与 agentrouter_checkin.py 保持一致) =====
 // 本站"签到" = 每日完成一次账号密码登录:

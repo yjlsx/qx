@@ -1,7 +1,7 @@
 /*
 [rewrite_local]
 # 美团外卖订单列表（改时间 + 店铺名）
-^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail|manager\/v3\/status) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/mt1.js
+^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/detail|manager\/v3\/status) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/mt1.js
 
 
 [mitm]

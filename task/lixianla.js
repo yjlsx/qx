@@ -2,7 +2,7 @@
  * lxian自动 OCR 签到
  *
  * [rewrite_local]
-^https?:\/\/lixianla\.com\/ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/lixianla.js
+^https?:\/\/lixianla\.com\/ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/task/lixianla.js
 
  * [mitm]
 hostname = lixianla.com

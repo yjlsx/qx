@@ -1,7 +1,7 @@
 /*
 
 [rewrite_local]
-^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xc_rpc.js
+^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/xc_rpc.js
 
 [mitm]
 hostname = gw.xiaocantech.com

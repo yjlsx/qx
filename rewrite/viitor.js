@@ -1,7 +1,7 @@
 /*
 [rewrite_local]
 
-^https:\/\/rtvt-cn-app\.ilivedata\.com\/service\/account\/get_user_info url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/viitor.js
+^https:\/\/rtvt-cn-app\.ilivedata\.com\/service\/account\/get_user_info url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/viitor.js
 
 [mitm]
 hostname = rtvt-cn-app.ilivedata.com

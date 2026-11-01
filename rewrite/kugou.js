@@ -1,33 +1,33 @@
 /**
 [rewrite_local]
 # --- 下载接口 ---
-^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugouv5.js
-^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-^https?:\/\/music-api\.gdstudio\.xyz\/api\.php\?.*kg_otter=1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
-^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/tracker\/v5(?:\/url)?(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/kugouv5.js
+^https?:\/\/kg\.zzxu\.de\/api\/v5url\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou.js
+^https?:\/\/music-api\.gdstudio\.xyz\/api\.php\?.*kg_otter=1 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou.js
+^https?:\/\/openapicdn\.kugou\.com\/v\d\/audio\/client_bg url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou.js
 
 # --- 核心权限分流---
-^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
-^https?:\/\/gateway\.kugou\.com\/(?!(vip\/))v\d\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/gateway\.kugou\.com\/vip\/v1\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou1.js
+^https?:\/\/gateway\.kugou\.com\/(?!(vip\/))v\d\/fusion\/userinfo url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou.js
 
 # --- 皮肤、唱机、名牌等装扮类 ---
-^https?:\/\/.*\.kugou\.com\/.*(all_theme_skin|album\/check_buy|pendant|popup\/v1\/info|ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/(get_dress_authority_list|check_user_dress)|favor\/list|search\/mixed|vip_level\/welfare_list|playerPreview) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou1.js
+^https?:\/\/.*\.kugou\.com\/.*(all_theme_skin|album\/check_buy|pendant|popup\/v1\/info|ocean\/v6\/theme|tools\.mobile\/v2\/theme\/info|dress_sales|authority\/(get_dress_authority_list|check_user_dress)|favor\/list|search\/mixed|vip_level\/welfare_list|playerPreview) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou1.js
 
-^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/(?:player\/v1\/model\/list|vipdress\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check)))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugoupf.js
-^https?:\/\/vipdress\.kugou\.com\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugoupf.js
+^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/(?:player\/v1\/model\/list|vipdress\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check)))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/kugoupf.js
+^https?:\/\/vipdress\.kugou\.com\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/kugoupf.js
 
-^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/(get_nameplate_list|set_user_nameplate) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/nameplate.js
+^https?:\/\/welfare\.kugou\.com\/nameplate\/v1\/(get_nameplate_list|set_user_nameplate) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/nameplate.js
 
 
 # --- 基础信息、资产、余额类 ---
-^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail|wallet\/balance|vocal_style\/selected|pay\/wallet_pay|songs\/buy|aisinger\/v1\/hub_user\/asset) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugou.js
+^https?:\/\/.*\.kugou\.com\/.*(login_by_token|get_my_info|vipinfoV2|get_login_extend_info|user\/vipinfo|userinfo|get_dev_user|follow_list|get_res_privilege|get_remain_quota|get_b_info|get_buy_info|consumption|coupon_package|userbalance|audio\/get_buy_info|getSongInfo|get_kg_bg_pics|vip_center_user_info|welfare\/diy\/v1|vip_level\/detail|wallet\/balance|vocal_style\/selected|pay\/wallet_pay|songs\/buy|aisinger\/v1\/hub_user\/asset) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugou.js
 
 
 
 # --- K歌与订单修正 ---
 ^https?:\/\/gateway\.kugou\.com\/vipcenter\/ios url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
-^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
-^https?:\/\/(nacsing|acsing|vipos|gateway|gamecenter)\.kugou\.com\/.*(sing7|ktv_room|member\/info|member_game|kroom_tab) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugousong.js
+^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg.js
+^https?:\/\/(nacsing|acsing|vipos|gateway|gamecenter)\.kugou\.com\/.*(sing7|ktv_room|member\/info|member_game|kroom_tab) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugousong.js
 
 # --- 广告与报错拦截  ---
 ^https?:\/\/(sentry|nbcollect)\.kugou\.com\/api url reject

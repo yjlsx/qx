@@ -21,27 +21,27 @@
 【Surge】
 -----------------
 [Script]
-GLaDOS签到 = type=cron,cronexp=5 0 * * *,wake-system=1,timeout=20,script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+GLaDOS签到 = type=cron,cronexp=5 0 * * *,wake-system=1,timeout=20,script-path=https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
 
-获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin), script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+获取GLaDOS_Cookie = type=http-request, pattern=https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin), script-path=https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
 【Loon】
 -----------------
 [Script]
-cron "5 0 * * *" tag=GLaDOS签到, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+cron "5 0 * * *" tag=GLaDOS签到, script-path=https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
-http-request https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+http-request https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) tag=获取GLaDOS_Cookie, script-path=https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
 
 【Quantumult X】
 -----------------
 [rewrite_local]
-https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+https:\/\/(railgun\.info|glados\.network|glados\.vip|glados\.one|glados\.space)\/(console\/account|api\/user\/checkin) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
 
 [task_local]
-1 0 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/glados.js
+1 0 * * * https://raw.githubusercontent.com/yjlsx/qx/main/task/glados.js
 
 
 【All App MitM】

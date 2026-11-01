@@ -1,8 +1,8 @@
 /**
 [rewrite_local]
 # 酷狗唱片机皮肤净化与本地资源缓存（不再请求 GitHub 皮肤库）
-^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/(?:player\/v1\/model\/list|vipdress\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check)))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugoupf.js
-^https?:\/\/vipdress\.kugou\.com\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg/kugoupf.js
+^https?:\/\/(?:gateway(?:retry|\d+)?|qgw)\.kugou\.com\/(?:player\/v1\/model\/list|vipdress\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check)))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/kugoupf.js
+^https?:\/\/vipdress\.kugou\.com\/v1\/record_rack\/(?:get_record_rack_list|set_(?:user_record_rack|record_rack_check))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg/kugoupf.js
 
 
 [mitm]

@@ -17,7 +17,7 @@ host, sniper.huya.com, reject
 
 [rewrite_local]
 # 拦截直播间广告配置、启动广告及 Banner
-^https?:\/\/zt\.huya\.com\/.*\/mobile\/index\.html url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/huya.js
+^https?:\/\/zt\.huya\.com\/.*\/mobile\/index\.html url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/huya.js
 ^https?+:\/\/business\.msstatic\.com\/advertiser\/ - reject-200
 ^https?:\/\/cdnfile1\.msstatic\.com\/cdnfile\/appad\/ - reject-img
 

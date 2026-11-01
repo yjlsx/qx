@@ -6,7 +6,7 @@
  *
  * 免责声明：此脚本仅供学习与交流，请勿用于商业用途或非法用途，使用过程中产生的任何后果与本人无关。
 [rewrite_local]
-^https?:\/\/(nacsing\.kugou\.com|acsing\.service\.kugou\.com|vipos\.kugou\.com|gateway\.kugou\.com|gamecenter\.kugou\.com|acsing\.tx\.kugou\.com)\/(sing7\/json\/v2\/user\/login|ccktv\/v1\/ktv_room\/room\/room_config|fxsing\/vip\/member\/info|sing7\/homepage\/json\/v3\/vip\/tip|v4\/price\/get_tips|vipenergy\/v2\/entrance\/vip_center_user_info|fxsing\/vip\/user\/info|sing7\/homepage\/json\/v3\/cdn\/kroom_tab_enter|v1\/home\/member_game|sing7\/homepage\/json\/v3\/cdn\/kroom_tab\/banners) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugousong.js
+^https?:\/\/(nacsing\.kugou\.com|acsing\.service\.kugou\.com|vipos\.kugou\.com|gateway\.kugou\.com|gamecenter\.kugou\.com|acsing\.tx\.kugou\.com)\/(sing7\/json\/v2\/user\/login|ccktv\/v1\/ktv_room\/room\/room_config|fxsing\/vip\/member\/info|sing7\/homepage\/json\/v3\/vip\/tip|v4\/price\/get_tips|vipenergy\/v2\/entrance\/vip_center_user_info|fxsing\/vip\/user\/info|sing7\/homepage\/json\/v3\/cdn\/kroom_tab_enter|v1\/home\/member_game|sing7\/homepage\/json\/v3\/cdn\/kroom_tab\/banners) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugousong.js
 
 [mitm]
 hostname = nacsing.kugou.com, acsing.service.kugou.com, vipos.kugou.com, gateway.kugou.com, gamecenter.kugou.com, acsing.tx.kugou.com

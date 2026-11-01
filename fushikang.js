@@ -6,7 +6,7 @@
 
 [rewrite_local]
 # 匹配课程搜索接口
-^https?:\/\/ieduapi\.foxconn\.com\/v1\/v3\/myservlet4\/CourseSearch2 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/fushikang.js
+^https?:\/\/ieduapi\.foxconn\.com\/v1\/v3\/myservlet4\/CourseSearch2 url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/fushikang.js
 
 
 

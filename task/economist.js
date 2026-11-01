@@ -3,7 +3,7 @@
  *
  * Quantumult X 配置示例：
  * [task_local]
- * 0 8,12,18,22 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/economist.js, tag=经济学人快讯, img-url=https://economistnew.buzzing.cc/icon.png
+ * 0 8,12,18,22 * * * https://raw.githubusercontent.com/yjlsx/qx/main/task/economist.js, tag=经济学人快讯, img-url=https://economistnew.buzzing.cc/icon.png
  *
  * BoxJs / QX 持久化配置：
  * econ_ai_api_key       OpenAI 或兼容接口 API Key；不填则只生成英文聚合页

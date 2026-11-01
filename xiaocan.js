@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/xiaocan.js
+^https:\/\/gw\.xiaocantech\.com\/rpc$ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/xiaocan.js
 
 # 广告接口全部拒绝
 ^https?:\/\/de\.ad\.gameley\.com\/delivery\/request\/getad\/adn url reject-200

@@ -35,7 +35,7 @@
 ^https://gateway\.kugou\.com/updateservice/v1/get_dev_user url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou.js
 ^https://gateway\.kugou\.com/v3/search/mixed url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https:\/\/gateway\.kugou\.com\/vipcenter\/ios url script-request-header https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kg1.js
-^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kugouv5.js
+^https?:\/\/gateway\.kugou\.com\/tracker\/v5\/url(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kugouv5.js
 
 
 //^https:\/\/gateway\.kugou\.com\/vipcenter\/ios url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou2.js
@@ -54,7 +54,7 @@
 ^https:\/\/gateway\.kugou\.com\/player\/v1\/model\/list url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https:\/\/gateway\.kugou\.com\/media\.store\/v1\/album\/check_buy url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https:\/\/gateway\.kugou\.com\/vipdress\/v1\/favor\/list\? url script-response-body https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
-^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/kg.js
+^https?:\/\/gateway\.kugou\.com\/v3\/external\/order\/query_latest url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/kg.js
 //图标
 ^https?:\/\/(gateway|vipdress)\.kugou\.com\/.*(get_dress_authority_list|check_user_dress) url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js
 ^https?:\/\/gateway\.kugou\.com\/.*(model\/list|set_record_rack_check|set_user_record_rack)  url script-response-body  https://raw.githubusercontent.com/yjlsx/quantumult-x/master/ceshi/111/kugou1.js

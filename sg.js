@@ -5,10 +5,10 @@
 
 [rewrite_local]
 # 1. 订单列表接口（淘宝闪购/饿了么）
-^https:\/\/waimai-guide\.ele\.me\/h5\/mtop\.alsc\.order\.fulfillment\.queryorderlist.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/sg.js
+^https:\/\/waimai-guide\.ele\.me\/h5\/mtop\.alsc\.order\.fulfillment\.queryorderlist.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/sg.js
 
 # 2. 订单详情接口
-^https:\/\/alsc-buy2\.ele\.me\/h5\/mtop\.alsc\.eleme\.order\.detail\.miniapp\.build.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/sg.js
+^https:\/\/alsc-buy2\.ele\.me\/h5\/mtop\.alsc\.eleme\.order\.detail\.miniapp\.build.* url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/sg.js
 
 
 [mitm]

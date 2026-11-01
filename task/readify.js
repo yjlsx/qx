@@ -11,11 +11,11 @@
  * 不需要密码登录，不要把 HAR 内的真实凭证写入脚本或公开配置。
  *
  * [rewrite_local]
- * ^https:\/\/readifyapp\.voiceclub\.cn\/api\/(users|campaigns\/streaks\/status)(?:\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/readify.js
- * ^https:\/\/readifyapp\.voiceclub\.cn\/api\/campaigns\/streaks(?:\/reward-claims)?(?:\?|$) url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/readify.js
+ * ^https:\/\/readifyapp\.voiceclub\.cn\/api\/(users|campaigns\/streaks\/status)(?:\?|$) url script-request-header https://raw.githubusercontent.com/yjlsx/qx/main/task/readify.js
+ * ^https:\/\/readifyapp\.voiceclub\.cn\/api\/campaigns\/streaks(?:\/reward-claims)?(?:\?|$) url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/task/readify.js
  *
  * [task_local]
- * 5 9 * * * https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/task/readify.js, tag=Readify签到, img-url=https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/icon/readify.png, enabled=true
+ * 5 9 * * * https://raw.githubusercontent.com/yjlsx/qx/main/task/readify.js, tag=Readify签到, img-url=https://raw.githubusercontent.com/yjlsx/qx/main/icon/readify.png, enabled=true
  *
  * [mitm]
  * hostname = readifyapp.voiceclub.cn

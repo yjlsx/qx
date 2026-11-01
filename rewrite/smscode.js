@@ -15,8 +15,8 @@
  * 请使用同目录 smscode.conf，或把下面两段合并进主配置：
  *
  [rewrite_local]
- ^https?:\/\/api\.get-sms-code\.com\/v1\/ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
- ^https?:\/\/api\.get-sms-code\.com\/v1\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/refs/heads/main/rewrite/smscode.js
+ ^https?:\/\/api\.get-sms-code\.com\/v1\/ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/smscode.js
+ ^https?:\/\/api\.get-sms-code\.com\/v1\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/rewrite/smscode.js
  *
  [MITM]
  hostname = api.get-sms-code.com
