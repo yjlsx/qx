@@ -87,7 +87,8 @@ async function processAccount(cookie, accountNum) {
 
   // 执行签到
   console.log("执行签到任务...");
-  const checkinRes = await checkIn(cookie);
+  const signInContext = await getSignInContext(cookie);
+  const checkinRes = await checkIn(cookie, signInContext);
   console.log(`签到结果: ${checkinRes}`);
 
   // 开启宝箱
@@ -185,16 +186,74 @@ async function getAccountInfo(cookie) {
   };
 }
 
-async function checkIn(cookie) {
+async function getSignInContext(cookie) {
+  const url = "https://encourage.kuaishou.com/rest/wd/encourage/task/list?searchWidgetStatus=false&rankWidgetStatus=false&source=pendant&encourageDesktopWidgetStatus=false&imei=&idfa=&oaid=";
+
+  try {
+    const { statusCode, body } = await $.get({
+      url,
+      headers: {
+        ...ksHeaders(cookie),
+        Referer: "https://encourage.kuaishou.com/kwai/task?layoutType=4&source=pendant&hyId=encourage_earning"
+      }
+    });
+
+    ensureJSONOrThrow(statusCode, body, "签到任务信息");
+    const res = safeJSON(body, "签到任务信息");
+    if (!res || res.result !== 1 || !res.data) return null;
+
+    const tasks = [
+      ...(res.data.dailyTasks?.taskList || []),
+      ...(res.data.finishedTaskList || [])
+    ];
+    const task = tasks.find(item => Number(item.taskId) === 20022);
+    if (!task) return null;
+
+    const extra = task.extra || {};
+    const eventTrackingLogInfo = task.eventTrackingLogInfo || extra.eventTrackingLogInfo;
+    return {
+      todaySigned: extra.todaySigned === true || extra.todaySigned === "true" || Number(task.status) === 5,
+      thresholdType: Number(extra.signInThresholdTaskType || 0),
+      eventTrackingLogInfo: eventTrackingLogInfo ? {
+        ...eventTrackingLogInfo,
+        extParams: {
+          ...(eventTrackingLogInfo.extParams || {}),
+          source: "pendant"
+        }
+      } : null
+    };
+  } catch (e) {
+    console.log(`获取签到任务信息失败，将使用兼容模式: ${e.message}`);
+    return null;
+  }
+}
+
+async function checkIn(cookie, signInContext) {
+  if (signInContext?.todaySigned) return "⏳ 已签到";
+
+  let url = "https://encourage.kuaishou.com/rest/wd/encourage/unionTask/signIn/report";
+  if (signInContext?.eventTrackingLogInfo) {
+    url += `?eventTrackingLogInfo=${encodeURIComponent(JSON.stringify(signInContext.eventTrackingLogInfo))}&reportSource=1`;
+  }
+
   const { statusCode, body } = await $.get({
-    url: "https://encourage.kuaishou.com/rest/wd/encourage/unionTask/signIn/report",
-    headers: ksHeaders(cookie)
+    url,
+    headers: {
+      ...ksHeaders(cookie),
+      Referer: "https://encourage.kuaishou.com/kwai/task?layoutType=4&source=pendant&hyId=encourage_earning"
+    }
   });
 
   ensureJSONOrThrow(statusCode, body, "签到");
   const res = safeJSON(body, "签到");
   if (res.result === 1) return "✅ 签到成功";
   if (res.result === 102006) return "⏳ 已签到";
+  if (/视频|广告|前置|门槛|秒/.test(res.error_msg || "")) {
+    return `⏳ ${res.error_msg}`;
+  }
+  if (signInContext?.thresholdType > 0) {
+    return `⏳ 签到前置任务未完成（门槛类型 ${signInContext.thresholdType}）`;
+  }
   throw new Error(res.error_msg || "未知错误");
 }
 

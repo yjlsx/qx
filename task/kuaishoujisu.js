@@ -106,7 +106,8 @@ async function processAccount(cookie, accountNum) {
   console.log(`用户昵称: ${initialInfo.nickname}`);
 
   console.log("执行签到任务...");
-  const checkinRes = await checkIn(cookie, kww);
+  const signInContext = await getSignInContext(cookie, kww);
+  const checkinRes = await checkIn(cookie, kww, signInContext);
   console.log(`签到结果: ${checkinRes}`);
 
  console.log("尝试获取宝箱信息...");
@@ -218,10 +219,62 @@ async function getAccountInfo(cookie, kww) {
   };
 }
 
-async function checkIn(cookie, kww) {
+async function getSignInContext(cookie, kww) {
+  const url = BASE + "/rest/wd/encourage/task/list?searchWidgetStatus=false&rankWidgetStatus=false&source=pendant&encourageDesktopWidgetStatus=false&imei=&idfa=&oaid=";
+
+  try {
+    const { statusCode, body } = await $.get({
+      url,
+      headers: {
+        ...ksHeaders(cookie, kww),
+        Referer: "https://nebula.kuaishou.com/nebula/task/cash?layoutType=4"
+      }
+    });
+
+    ensureJSONOrThrow(statusCode, body, "签到任务信息");
+    const res = safeJSON(body, "签到任务信息");
+    if (!res || res.result !== 1 || !res.data) return null;
+
+    const tasks = [
+      ...(res.data.dailyTasks?.taskList || []),
+      ...(res.data.finishedTaskList || [])
+    ];
+    const task = tasks.find(item => Number(item.taskId) === 20022);
+    if (!task) return null;
+
+    const extra = task.extra || {};
+    const eventTrackingLogInfo = task.eventTrackingLogInfo || extra.eventTrackingLogInfo;
+    return {
+      todaySigned: extra.todaySigned === true || extra.todaySigned === "true" || Number(task.status) === 5,
+      thresholdType: Number(extra.signInThresholdTaskType || 0),
+      eventTrackingLogInfo: eventTrackingLogInfo ? {
+        ...eventTrackingLogInfo,
+        extParams: {
+          ...(eventTrackingLogInfo.extParams || {}),
+          source: "pendant"
+        }
+      } : null
+    };
+  } catch (e) {
+    console.log(`获取签到任务信息失败，将使用兼容模式: ${e.message}`);
+    return null;
+  }
+}
+
+async function checkIn(cookie, kww, signInContext) {
+  if (signInContext?.todaySigned) return "⏳ 已签到";
+
+  let url = BASE + API_PATH.sign;
+  if (signInContext?.eventTrackingLogInfo) {
+    url += `?eventTrackingLogInfo=${encodeURIComponent(JSON.stringify(signInContext.eventTrackingLogInfo))}&reportSource=1`;
+  }
+
   const { statusCode, body } = await $.get({
-    url: BASE + API_PATH.sign,
-    headers: ksHeaders(cookie, kww),
+    url,
+    headers: {
+      ...ksHeaders(cookie, kww),
+      Referer: "https://nebula.kuaishou.com/nebula/task/cash?layoutType=4"
+    },
   });
 
   const res = safeJSON(body, "签到");
@@ -229,6 +282,12 @@ async function checkIn(cookie, kww) {
 
   if (res && res.result === 1) return "✅ 签到成功";
   if (res && res.result === 102006) return "⏳ 已签到";
+  if (/视频|广告|前置|门槛|秒/.test((res && res.error_msg) || "")) {
+    return `⏳ ${res.error_msg}`;
+  }
+  if (signInContext?.thresholdType > 0) {
+    return `⏳ 签到前置任务未完成（门槛类型 ${signInContext.thresholdType}）`;
+  }
   throw new Error((res && res.error_msg) || "未知错误");
 }
 

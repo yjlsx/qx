@@ -1,23 +1,244 @@
 #!name=去广告
-#!desc=基于 2026-10-08 Quantumult X 抓包：大师兄影视 app2.dsx.ac 广告位/上报拦截，以及个推、AnyThink/TopOn、美团点评 CatFront 等广告 SDK 上报拦截
+#!desc=大师兄影视、酷狗音乐、快手、前程无忧、拼多多、爱奇艺等 App 广告拦截，以及个推、AnyThink/TopOn、美团点评 CatFront 等广告 SDK 上报拦截
 #!author=yjlsx
 #!homepage=https://github.com/yjlsx/qx
 #!date=2026-10-11
 
 [rewrite_local]
-# 大师兄影视：广告位下发(开屏/贴片/横幅)与行为日志上报
+# =====================
+# 大师兄影视
+# =====================
+# 广告位下发(开屏/贴片/横幅)与行为日志上报
 ^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/advert(\?.*)?$ url reject-200
 ^https?:\/\/app2\.dsx\.ac\/(?:dsx|ndsx)\.php\/v\d+\/logs(\?.*)?$ url reject-200
 
+# =====================
+# 通用广告 SDK
+# =====================
 # 个推 SDK 初始化/环境检测
 ^https?:\/\/ido\.getui\.net(:\d+)?\/sdk\/v2\/ued(\?.*)?$ url reject-200
-
 # AnyThink/TopOn 广告上报
 ^https?:\/\/tk\.anythinktech\.com\/v1\/open\/tk(\?.*)?$ url reject-200
 ^https?:\/\/ujoy\.anythinktech\.com\/v1\/open\/da(\?.*)?$ url reject-200
-
 # 美团点评 CatFront 前端监控
 ^https?:\/\/catfront\.dianping\.com\/batch(\?.*)?$ url reject-200
 
+# =====================
+# 酷狗音乐
+# =====================
+# 开屏广告图片
+^https?:\/\/splashimgretrybssdl\.cloud\.kugou\.com\/ url reject-img
+# 广告统计日志
+^http:\/\/log\.stat\.kugou\.com\/mobile\/ad\.html url reject-200
+# 酷狗直播广告
+^https:\/\/fx\.service\.kugou\.com\/mfx-kugoulive\/ad\/ url reject-dict
+# 广告平台下发
+^https:\/\/gateway(retry)?\.kugou\.com\/adp\/ad\/ url reject-dict
+# 广告网关
+^https:\/\/gateway(retry)?\.kugou\.com\/ads\.gateway\/ url reject-dict
+# 关注页信息流广告
+^https:\/\/gateway(retry)?\.kugou\.com\/v\d\/feeds\/follow_feed_fallback url reject-dict
+# 个人页音乐符号推广
+^https:\/\/gateway(retry)?\.kugou\.com\/mstc\/musicsymbol\/v\d\/system\/profile url reject-dict
+# 搜索框热词推广
+^https:\/\/gateway(retry)?\.kugou\.com\/searchnofocus\/v\d\/search_no_focus_word url reject-dict
+# 播放页气泡广告
+^https:\/\/gateway(retry)?\.kugou\.com\/adp\/bubble\/v\d\/song_play url reject-dict
+# 评论区广告入口
+^https:\/\/gateway(retry)?\.kugou\.com\/singerdiscuss\/v\d\/entrance\/comment url reject-dict
+# 通用推广广告
+^https:\/\/gateway(retry)?\.kugou\.com\/r\/v\d\/general\/putin\/midad url reject-dict
+# 音效页横幅广告
+^https:\/\/gateway(retry)?\.kugou\.com\/ocean\/v\d\/sound\/banner url reject-dict
+# 繁星直播间列表
+^https:\/\/gzacshow\.kugou\.com\/mfanxing-home\/cdn\/room\/index\/list_v2 url reject-dict
+# 繁星秀场头条
+^https:\/\/gzacshow\.kugou\.com\/mfx-rt-show\/cdn\/mo\/show\/headline url reject-dict
+# 一起唱信息推广
+^https:\/\/m1fxgroup\.kugou\.com\/fxsing\/yqc\/alongInfo\/getUserAlongInfo url reject-dict
+# 商城入口数据
+^https:\/\/hwstore\.kugou\.com\/v\d\/get_store_data url reject-dict
+# 专辑商城入口
+^https:\/\/ep\.kugou\.com\/v\d\/album_shop\/get_entrance_info url reject-dict
+# 标签页精简 - 移除 "AI帮唱"、"长相思2"、"K歌"、"小说"、"游戏"
+^https:\/\/gateway(retry)?\.kugou\.com\/ocean\/v\d\/tab\/list_v\d url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuGou_tab_remove.js
+
+# =====================
+# 快手
+# =====================
+# 广告请求拦截
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/ad\/ url reject-dict
+# 附近页悬浮推广
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/nearby\/widget\/info\? url reject-dict
+# 任务中心上报
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/taskCenter\/task\/report\? url reject-dict
+# 直播卡片推广
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/live\/feed\/info\/simplelive\/card\? url reject-dict
+# 启动配置精简 - 移除换肤/侧边栏推广/精简我的页面
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/system\/startup\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuaiShou_startup.js
+# 直播广场横幅移除
+^https:\/\/(apissl|az\d-live|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/live\/feed\/square\/refresh\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuaiShou_live_banner.js
+# 信息流广告过滤
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/feed\/(selection|selectionFast)\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuaiShou_feed_ad.js
+# 用户主页推荐移除
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/n\/user\/profile\/v2\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuaiShou_profile.js
+# 私信页运营推荐移除
+^https:\/\/(apissl|az\d-api(-js|-idc)?)\.(gifshow|ksapisrv)\.com\/rest\/im\/wd\/top\/navigation\/getRecommendedSession\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuaiShou_im_recommend.js
+
+# =====================
+# 前程无忧
+# =====================
+# 开屏广告
+^https:\/\/appapi\.51jobapp\.com\/api\/market\/get_launch\.php\? url reject-dict
+# 横幅广告
+^https:\/\/cupid\.51jobapp\.com\/open\/operation\/get\/latest\/banner-list\? url reject-dict
+# 首页二级配置推广
+^https:\/\/cupid\.51jobapp\.com\/open\/51job-activities\/secJob\/queryHomeSecondConfigV2\? url reject-dict
+# 职位详情页竞品推广
+^https:\/\/cupid\.51jobapp\.com\/open\/noauth\/jobs\/detail\/sesame-competitive\/ url reject-dict
+# 职位详情页用户权益推广
+^https:\/\/cupid\.51jobapp\.com\/open\/noauth\/jobs\/job-detail\/user-rights\? url reject-dict
+# 简历优化推广
+^https:\/\/cupid\.51jobapp\.com\/open\/resume\/strategy\/resume-build\? url reject-dict
+# 首页弹窗
+^https:\/\/cupid\.51jobapp\.com\/launch-hub\/open\/noauth\/popUp\/ url reject-dict
+# 职位推荐页信息流广告
+^https:\/\/cupid\.51jobapp\.com\/open\/noauth\/recommend\/job-tab-dynamic\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/51Job_recommend.js
+# 用户任务推广
+^https:\/\/cupid\.51jobapp\.com\/open\/user-task\/user\/task\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/51Job_task.js
+# 好职位页横幅
+^https:\/\/cupid\.51jobapp\.com\/open\/tab\/good-job\/modules\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/51Job_banner.js
+
+# =====================
+# 拼多多
+# =====================
+# 未评价订单推广
+^https:\/\/api\.pinduoduo\.com\/api\/aristotle\/unrated_order_for_unreceived_tab\? url reject-dict
+# 订单列表标签推广
+^https:\/\/api\.pinduoduo\.com\/api\/aristotle\/query_order_list_tabs_element\? url reject-dict
+# 首页会场入口
+^https:\/\/api\.pinduoduo\.com\/api\/aquarius\/hungary\/global\/homepage\? url reject-dict
+# 订单快递推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/order_express_group\? url reject-dict
+# 搜索热词
+^https:\/\/api\.pinduoduo\.com\/search_hotquery\? url reject-dict
+# 聊天页资源推广
+^https:\/\/api\.pinduoduo\.com\/api\/zaire_biz\/chat\/resource\/get_list_data\? url reject-dict
+# 聊天页新消息推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/new_chat_group\? url reject-dict
+# 商品详情页备选推荐
+^https:\/\/api\.pinduoduo\.com\/api\/alexa\/goods\/back_up\? url reject-dict
+# 个人中心推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/personal\? url reject-dict
+# 商品详情页引导
+^https:\/\/api\.pinduoduo\.com\/api\/brand-olay\/goods_detail\/bybt_guide\? url reject-dict
+# 追评推广
+^https:\/\/api\.pinduoduo\.com\/api\/engels\/reviews\/require\/append\? url reject-dict
+# 我的订单推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/my_order_group\? url reject-dict
+# 猜你喜欢推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/likes\? url reject-dict
+# 额外推广信息
+^https:\/\/api\.pinduoduo\.com\/api\/phantom\/gbdbpdv\/extra\? url reject-dict
+# 制造商快捷入口
+^https:\/\/api\.pinduoduo\.com\/api\/manufacturer\/cross\/shortcut\/list\? url reject-dict
+# 直播活动推送上报
+^https:\/\/api\.pinduoduo\.com\/api\/dunkirk\/liveactivity\/push\/create\/url\/report\? url reject-dict
+# 成长活动聚合推广
+^https:\/\/api\.pinduoduo\.com\/api\/growth\/nagato\/app\/index\/gather\? url reject-dict
+# 待收货评价推广
+^https:\/\/api\.pinduoduo\.com\/api\/engels\/wait\/receive\/review\? url reject-dict
+# 推荐推广
+^https:\/\/api\.pinduoduo\.com\/api\/buffon\/nasus\/recommend\? url reject-dict
+# 商品详情标签推广
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v2\/query\/goods_detail_with_tags\? url reject-dict
+# 首页精简 - 移除横幅/图标/热词/精简底栏
+^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_homepage.js
+# 搜索结果推广
+^https:\/\/api\.pinduoduo\.com\/search\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_search.js
+# 个人中心精简
+^https:\/\/api\.pinduoduo\.com\/api\/philo\/personal\/hub\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_personal.js
+# 商品详情页底部推广
+^https:\/\/api\.pinduoduo\.com\/api\/oak\/integration\/render\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_oak.js
+# 订单详情页商品推荐
+^https:\/\/api\.pinduoduo\.com\/api\/caterham\/v3\/query\/order_detail_group\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_order_detail.js
+# 订单页营销横幅
+^https:\/\/api\.pinduoduo\.com\/order\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_order.js
+# 订单列表增长提示
+^https:\/\/api\.pinduoduo\.com\/api\/aristotle\/order_list_v4\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/PDD_order_list.js
+# 扫码取件页商品推荐及弹窗
+^https:\/\/m\.pinduoduo\.net\/mdkd\/package\?from_app_scan url script-response-body https://raw.githubusercontent.com/fkingikelee/fkikelee/main/Resource/kelee/JavaScript/PinDuoDuo/PinDuoDuo_remove_ads.js
+
+# =====================
+# 爱奇艺
+# =====================
+# 青少年弹窗/初始化代理
+^https?:\/\/iface2\.iqiyi\.com\/control\/3\.0\/init_proxy\? url reject-dict
+# VIP互动弹窗
+^https?:\/\/act\.vip\.iqiyi\.com\/interact\/api\/v2\/show\? url reject-dict
+# 视频互动数据
+^https?:\/\/iface2\.iqiyi\.com\/ivos\/interact\/video\/data\? url reject-dict
+# 视频接口代理
+^https?:\/\/iface2\.iqiyi\.com\/video\/3\.0\/v_interface_proxy\? url reject-dict
+# 弹窗控制
+^https?:\/\/iface2\.iqiyi\.com\/views_pop\/3\.0\/pop_control\? url reject-dict
+# 首页精简 - 移除焦点图/信息流广告/统计
+^https:\/\/cards\.iqiyi\.com\/views_home\/3\.0\/qy_home\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_home.js
+# 分类页广告移除
+^https:\/\/cards\.iqiyi\.com\/views_category\/3\.0\/category_home\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_category.js
+# 瀑布流广告移除
+^https:\/\/cards\.iqiyi\.com\/waterfall(-plt)?\/3\.0\/feed\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_waterfall.js
+# 播放器标签页精简
+^https:\/\/cards\.iqiyi\.com\/views_plt\/3\.0\/player_tabs_v2\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_player_tabs.js
+# 评论区广告移除
+^https?:\/\/comment-card\.iqiyi\.com\/views_comment\/3\.0\/long_video_comments\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_comments.js
+# 搜索页广告移除
+^https:\/\/cards\.iqiyi\.com\/views_search\/3\.0\/hot_query_search\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_search.js
+# 底栏精简
+^https?:\/\/iface2\.iqiyi\.com\/views_menus\/3\.0\/bottom_theme\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_bottom.js
+# 顶部导航精简
+^https?:\/\/iface2\.iqiyi\.com\/views_menus\/3\.0\/home_top_menu\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_top_menu.js
+# 通用广告开关禁用
+^https?:\/\/iface2\.iqiyi\.com\/fusion\/3\.0\/common_switch\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_switch.js
+# 广告混合器拦截
+^https?:\/\/(kjp|t7z)\.cupid\.iqiyi\.com\/mixer\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_mixer.js
+# 搜索建议广告
+^https?:\/\/search\.video\.iqiyi\.com\/q\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_search_suggest.js
+# 我的页面精简
+^https?:\/\/iface2\.iqiyi\.com\/aggregate\/3\.0\/getMyMenus\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/iQiYi_myMenus.js
+
+[filter_local]
+# 酷狗音乐 - 广告域名拦截
+host, ads.service.kugou.com, reject
+host, adstats.tencentmusic.com, reject
+host, adsmind.gdtimg.com, reject
+host, adserviceretry.kugou.com, reject
+host, adserviceretry.kglink.cn, reject
+host, ad.tencentmusic.com, reject
+host, adservice.kugou.com, reject
+host, splashimgretrybssdl.cloud.kugou.com, reject
+# 拼多多 - 广告域名拦截
+host, titan.pinduoduo.com, reject
+host, xg.pinduoduo.com, reject
+host, cdl-1.pddpic.com, reject
+host, cdl-p2.pddpic.com, reject
+host, cd-1.pddpic.com, reject
+host, apm.pinduoduo.com, reject
+host, th-b.pinduoduo.com, reject
+host, ta.pinduoduo.com, reject
+host, th.pinduoduo.com, reject
+host, th-a.pinduoduo.com, reject
+host, ta-a.pinduoduo.com, reject
+host, meta.pinduoduo.com, reject
+host, apm-a.pinduoduo.com, reject
+# 爱奇艺 - 广告域名拦截
+ip-cidr, 103.44.59.54/32, reject, no-resolve
+ip-cidr, 111.63.147.158/32, reject, no-resolve
+ip-cidr, 116.211.198.237/32, reject, no-resolve
+host, api.iqiyi.com, reject
+host, access.if.iqiyi.com, reject
+# 爱奇艺 - cupid 广告域走直连(避免 MitM 冲突)
+host-suffix, cupid.iqiyi.com, direct
+
 [mitm]
-hostname = app2.dsx.ac, catfront.dianping.com
+hostname = app2.dsx.ac, catfront.dianping.com, gateway.kugou.com, gatewayretry.kugou.com, fx.service.kugou.com, hwstore.kugou.com, ep.kugou.com, gzacshow.kugou.com, m1fxgroup.kugou.com, log.stat.kugou.com, splashimgretrybssdl.cloud.kugou.com, apissl.gifshow.com, apissl.ksapisrv.com, az*-api.ksapisrv.com, az*-api-js.gifshow.com, az*-api-idc.ksapisrv.com, az*-live.ksapisrv.com, appapi.51jobapp.com, cupid.51jobapp.com, api.pinduoduo.com, m.pinduoduo.net, -i.vip.iqiyi.com, *.iqiyi.com

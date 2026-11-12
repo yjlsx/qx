@@ -1,0 +1,65 @@
+#!name=酷狗音乐去广告
+#!desc=移除开屏广告、应用各类弹窗、各类横幅广告、评论区广告和播放器界面广告。
+#!openUrl=https://apps.apple.com/app/id472208016
+#!author=可莉🅥[https://github.com/luestr/ProxyResource/blob/main/README.md]
+#!tag=去广告
+#!homepage=https://hub.kelee.one
+#!icon=https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/KuGou.png
+#!date=2026-10-02 13:57:49
+
+[rewrite_local]
+# ===== 广告域名拦截 (REJECT) =====
+# 开屏广告图片
+^https?:\/\/splashimgretrybssdl\.cloud\.kugou\.com\/ url reject-img
+# 广告统计日志
+^http:\/\/log\.stat\.kugou\.com\/mobile\/ad\.html url reject-200
+
+# ===== 广告请求拦截 (reject-dict) =====
+# 酷狗直播广告
+^https:\/\/fx\.service\.kugou\.com\/mfx-kugoulive\/ad\/ url reject-dict
+# 广告平台下发
+^https:\/\/gateway(retry)?\.kugou\.com\/adp\/ad\/ url reject-dict
+# 广告网关
+^https:\/\/gateway(retry)?\.kugou\.com\/ads\.gateway\/ url reject-dict
+# 关注页信息流广告
+^https:\/\/gateway(retry)?\.kugou\.com\/v\d\/feeds\/follow_feed_fallback url reject-dict
+# 个人页音乐符号推广
+^https:\/\/gateway(retry)?\.kugou\.com\/mstc\/musicsymbol\/v\d\/system\/profile url reject-dict
+# 搜索框热词推广
+^https:\/\/gateway(retry)?\.kugou\.com\/searchnofocus\/v\d\/search_no_focus_word url reject-dict
+# 播放页气泡广告
+^https:\/\/gateway(retry)?\.kugou\.com\/adp\/bubble\/v\d\/song_play url reject-dict
+# 评论区广告入口
+^https:\/\/gateway(retry)?\.kugou\.com\/singerdiscuss\/v\d\/entrance\/comment url reject-dict
+# 通用推广广告
+^https:\/\/gateway(retry)?\.kugou\.com\/r\/v\d\/general\/putin\/midad url reject-dict
+# 音效页横幅广告
+^https:\/\/gateway(retry)?\.kugou\.com\/ocean\/v\d\/sound\/banner url reject-dict
+# 繁星直播间列表
+^https:\/\/gzacshow\.kugou\.com\/mfanxing-home\/cdn\/room\/index\/list_v2 url reject-dict
+# 繁星秀场头条
+^https:\/\/gzacshow\.kugou\.com\/mfx-rt-show\/cdn\/mo\/show\/headline url reject-dict
+# 一起唱信息推广
+^https:\/\/m1fxgroup\.kugou\.com\/fxsing\/yqc\/alongInfo\/getUserAlongInfo url reject-dict
+# 商城入口数据
+^https:\/\/hwstore\.kugou\.com\/v\d\/get_store_data url reject-dict
+# 专辑商城入口
+^https:\/\/ep\.kugou\.com\/v\d\/album_shop\/get_entrance_info url reject-dict
+
+# ===== 标签页精简 (脚本处理) =====
+# 移除 "AI帮唱"、"长相思2"、"K歌"、"小说"、"游戏" 等标签页
+^https:\/\/gateway(retry)?\.kugou\.com\/ocean\/v\d\/tab\/list_v\d url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/scripts/KuGou_tab_remove.js
+
+[filter_local]
+# ===== 广告域名拦截 =====
+host, ads.service.kugou.com, reject
+host, adstats.tencentmusic.com, reject
+host, adsmind.gdtimg.com, reject
+host, adserviceretry.kugou.com, reject
+host, adserviceretry.kglink.cn, reject
+host, ad.tencentmusic.com, reject
+host, adservice.kugou.com, reject
+host, splashimgretrybssdl.cloud.kugou.com, reject
+
+[mitm]
+hostname = gateway.kugou.com, gatewayretry.kugou.com, fx.service.kugou.com, hwstore.kugou.com, ep.kugou.com, gzacshow.kugou.com, m1fxgroup.kugou.com, log.stat.kugou.com, splashimgretrybssdl.cloud.kugou.com
