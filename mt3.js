@@ -1,6 +1,6 @@
 /*
 [rewrite_local]
-^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(?:list|manager\/v3\/(?:detail|status))(?:\?|$) url script-response-body mt3.js
+^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(?:list|manager\/v3\/(?:detail|status))(?:\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/mt3.js
 
 [mitm]
 hostname = i.waimai.meituan.com
