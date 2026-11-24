@@ -6,7 +6,7 @@
 hostname = i.waimai.meituan.com
 */
 
-const CUSTOM_POI_NAME = "小鼎锅 · 现炒 · 长沙盖码饭（石龙店）";
+const CUSTOM_POI_NAME = "小鼎锅·现炒·长沙盖码饭（石龙店）";
 
 function rewriteShopName(url, body) {
   const route = /^https?:\/\/i\.waimai\.meituan\.com\/openh5\/order\/(list|manager\/v3\/(?:detail|status))(?:\?|$)/.exec(url);
