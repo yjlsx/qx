@@ -10,29 +10,59 @@
 
 ## 0. 远程引用（推荐）
 
-所有 QX 脚本已托管 GitHub raw，直接用远程引用，不用手动拷贝文件。
+**关键：远程脚本不能写在 `[rewrite_local]` 里。**
 
-完整配置见 [gemini-remote.conf](D:\GitHub\qx\goog\gemini-remote.conf)，核心片段：
+QX 官方 sample.conf 明确写：
+
+> The scripts for script-request-header, script-request-body, script-response-header, script-response-body, script-echo-response and script-analyze-echo-response **should be saved in local** "On My iPhone - Quantumult X - Scripts" or "iCloud Drive - Quantumult X - Scripts".
+
+即 `[rewrite_local]` 的脚本参数期望是**裸文件名**（`g1-acq.qx.js`）。直接写 `https://…` 会被判为格式错误，配置加载就报红。
+
+远程脚本的正确位置是两个地方：
+
+| 位置 | 形式 | 用途 |
+|---|---|---|
+| `[rewrite_remote]` | 引用 `.snippet` / `.conf` 文件 | 规则 + 远程脚本地址一起远程化 |
+| `[task_local]` | 直接写 `https://…js` | 定时任务脚本 |
+
+所以本工装把 rewrite 规则单独做成 [gemini-rewrite.snippet](D:\GitHub\qx\goog\gemini-rewrite.snippet)，用 `[rewrite_remote]` 引入。
+
+完整配置见 [gemini-remote.conf](D:\GitHub\qx\goog\gemini-remote.conf)，核心只有三句话：
 
 ```ini
 [mitm]
 hostname = %APPEND% one.google.com, applecommerce-pa.googleapis.com, play.googleapis.com, accounts.google.com, www.googleapis.com, ogads-pa.clients6.google.com
 
-[rewrite_local]
-# ② 管理页（必须先于 ①）
-^https:\/\/one\.google\.com\/g1-sku-report\/?(\?.*)?$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-sku-report.qx.js reject
-# ① 映射引擎
-^https:\/\/one\.google\.com\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-acq.qx.js
-# ③ 交易创建
-^https:\/\/applecommerce-pa\.googleapis\.com\/v1\/transactions:prepare url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_prepare_capture.js reject-200
-# ④ SKU 目录
-^https:\/\/applecommerce-pa\.googleapis\.com\/\$rpc\/google\.subscriptions\.apple\.commerce\.v1\.AppleCommerceService\/ListProducts url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_sku_probe.js
-# ⑤ 激活 RPC 探测
-^https:\/\/one\.google\.com\/_\/SubscriptionsManagementUi\/data\/batchexecute url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_activate_capture.js
+[rewrite_remote]
+https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini-rewrite.snippet, tag=Gemini-GoogleOne, opt-parser=true, update-interval=86400, enabled=true
 
 [task_local]
 */6 * * * * https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_adv_replay.js, tag=Gemini高级商务重放, enabled=false
 ```
+
+`gemini-rewrite.snippet` 内部是这样（5 条规则）：
+
+```ini
+^https:\/\/one\.google\.com\/g1-sku-report\/?(\?.*)?$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-sku-report.qx.js reject
+^https:\/\/one\.google\.com\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-acq.qx.js
+^https:\/\/applecommerce-pa\.googleapis\.com\/v1\/transactions:prepare url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_prepare_capture.js reject-200
+^https:\/\/applecommerce-pa\.googleapis\.com\/\$rpc\/google\.subscriptions\.apple\.commerce\.v1\.AppleCommerceService\/ListProducts url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_sku_probe.js
+^https:\/\/one\.google\.com\/_\/SubscriptionsManagementUi\/data\/batchexecute url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_activate_capture.js
+```
+
+> 注意：snippet 文件里**不能有 `[section]` 头**，只写规则行。
+
+### 全本地替代方案
+
+不想用 remote，就把 7 个脚本拷到 `文件 App → On My iPhone → Quantumult X → Scripts`，然后 `[rewrite_local]` 里脚本参数只写文件名：
+
+```ini
+[rewrite_local]
+^https:\/\/one\.google\.com\/g1-sku-report\/?(\?.*)?$ url script-request-body g1-sku-report.qx.js reject
+^https:\/\/one\.google\.com\/ url script-response-body g1-acq.qx.js
+```
+
+本地版完整配置见 [quantumultx-g1acq.conf](D:\GitHub\qx\goog\quantumultx-g1acq.conf) 与 [quantumultx.conf](D:\GitHub\qx\goog\quantumultx.conf)。
 
 ### 7 个运行时脚本对应的 raw URL
 
@@ -46,11 +76,12 @@ hostname = %APPEND% one.google.com, applecommerce-pa.googleapis.com, play.google
 | `gemini_activate_capture.js` | `…/main/goog/gemini_activate_capture.js` |
 | `gemini_adv_replay.js` | `…/main/goog/gemini_adv_replay.js` |
 
-**7 个脚本全部自包含**：无 `require`、无 ES `import`、无 `fs`、无 `Buffer`、无 `__dirname`、无 `$httpClient`、无动态加载、不引用其它脚本。每个都只依赖 QX 原生全局（`$request` `$response` `$done` `$prefs` `$notify` `$task`），可以单独远程拉取。
+**7 个脚本全部自包含**：无 `require`、无 ES `import`、无 `fs`、无 `Buffer`、无 `__dirname`、无 `$httpClient`、无动态加载、不引用其它脚本。每个都只依赖 QX 原生全局（`$request` `$response` `$done` `$prefs` `$notify` `$task`）。
 
 ### 推送前自检
 
 ```bash
+node validate_qx_syntax.js      # QX 语法合规（rewrite_local 参数形态 / section 名 / snippet）
 node final_gate.js              # 发布闸门：纯沙箱启动 / $done 形态 / BOM / 交叉引用
 node publish_check.js           # 自包含性 / 语法 / 配置引用 / 占位符残留
 node verify_remote_manifest.js  # raw URL ↔ 本地文件一一对应
@@ -62,11 +93,13 @@ node qx_simulate_test.js        # QX 运行时行为模拟
 
 | 测试 | 结果 | 覆盖 |
 |---|---|---|
+| `validate_qx_syntax.js` | **17 / 17** | `[rewrite_local]` 脚本参数必须是裸文件名、section 名合法、snippet 无 section 头、正则可编译 |
 | `final_gate.js` | **48 / 48** | 7 脚本纯沙箱启动、`$done` 形态、正则可编译、UTF-8 无 BOM、以 LF 换行、无交叉引用 |
 | `publish_check.js` | **20 / 20** | 自包含性（无 require/fs/Buffer/import）、语法、配置↔文件对应、占位符残留 |
 | `verify_remote_manifest.js` | **8 / 8** | raw URL 全部落在 `…/yjlsx/qx/main/goog/` 下、文件存在、含 `$done` |
 | `qx_parity_test.js` | **8 / 8** | 请求体与 HAR 原始报文逐字节一致 |
 | `qx_simulate_test.js` | **52 / 52** | 映射引擎与管理页在模拟 QX 沙箱里的真实行为 |
+
 
 **已修的两个上线级问题：**
 

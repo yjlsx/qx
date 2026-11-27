@@ -16,7 +16,24 @@ const crypto = require("crypto");
 const DIR = __dirname;
 const REPO_ROOT = path.resolve(DIR, "..");          // D:\GitHub\qx
 const SUBDIR = path.basename(DIR);                    // goog
-const RAW_PREFIX = "https://raw.githubusercontent.com/yjlsx/qx/main/" + SUBDIR + "/";
+
+/**
+ * 支持的远程前缀，任一即可。
+ * raw 在国内下载常超时（QX 会误报 404），所以配置默认用 jsDelivr。
+ */
+const PREFIXES = [
+  { name: "raw", base: "https://raw.githubusercontent.com/yjlsx/qx/main/" + SUBDIR + "/" },
+  { name: "jsdelivr", base: "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/" + SUBDIR + "/" },
+  { name: "ghproxy", base: "https://ghproxy.net/https://raw.githubusercontent.com/yjlsx/qx/main/" + SUBDIR + "/" }
+];
+
+/** 兼容旧代码里的 RAW_PREFIX 引用 */
+const RAW_PREFIX = PREFIXES[0].base;
+
+function matchPrefix(url) {
+  for (const p of PREFIXES) if (url.indexOf(p.base) === 0) return p;
+  return null;
+}
 
 let pass = 0, fail = 0;
 const out = [];
@@ -26,8 +43,9 @@ function bad(n, d) { out.push("FAIL  " + n + (d ? "   [" + d + "]" : "")); fail+
 // ---------------------------------------------------------------- 1. raw URL → 本地文件映射
 
 function urlToLocal(url) {
-  if (!url.startsWith(RAW_PREFIX)) return null;
-  const name = url.slice(RAW_PREFIX.length);
+  const p = matchPrefix(url);
+  if (!p) return null;
+  const name = url.slice(p.base.length);
   if (name.includes("/")) return null;   // 只支持单层
   return path.join(DIR, name);
 }
@@ -41,8 +59,12 @@ function collectScriptUrls() {
     src.split("\n").forEach(line => {
       const trimmed = line.trim();
       if (trimmed.startsWith("#") || !trimmed) return;
-      const m = trimmed.match(/https:\/\/raw\.githubusercontent\.com\/[^\s,]+/g);
-      if (m) m.forEach(u => urls.push({ conf, url: u.replace(/[,)]$/, "") }));
+      // 抓任意 https URL，后面再按白名单前缀过滤
+      const m = trimmed.match(/https:\/\/[^\s,]+/g);
+      if (m) m.forEach(u => {
+        const clean = u.replace(/[,)]+$/, "");
+        if (matchPrefix(clean)) urls.push({ conf, url: clean });
+      });
     });
   });
   return urls;
@@ -60,8 +82,9 @@ function verifyUrls() {
     if (seen.has(url)) return;
     seen.add(url);
 
-    if (!url.startsWith(RAW_PREFIX)) {
-      bad("URL 前缀正确: " + url.slice(-40), "不是 " + RAW_PREFIX);
+    const pfx = matchPrefix(url);
+    if (!pfx) {
+      bad("URL 前缀: " + url.slice(-40), "不在允许的三种前缀内");
       return;
     }
     const local = urlToLocal(url);
@@ -72,9 +95,19 @@ function verifyUrls() {
     const hash = crypto.createHash("sha256").update(src).digest("hex").slice(0, 12);
     const size = Buffer.byteLength(src, "utf8");
 
+    // 只有 .js 脚本才要求 $done；.snippet / .conf 是配置片段，不含 JS
+    const isJs = /\.js$/.test(local);
+    if (!isJs) {
+      // 配置片段：校验不是空的、且第一行非空
+      const hasRule = src.split("\n").some(l => l.trim() && !/^[#;]/.test(l.trim()));
+      ok("URL 有效: " + path.basename(local), `${size}B sha ${hash} via ${pfx.name} ${hasRule ? "规则 ✓" : "空文件 ✗"}`);
+      if (!hasRule) bad("  ↑ 内容", path.basename(local) + " 无可执行规则");
+      return;
+    }
+
     // QX 可执行性粗检：必须调用 $done
     const hasDone = /\$done\s*\(/.test(src);
-    ok("URL 有效: " + path.basename(local), `${size}B sha ${hash} ${hasDone ? "$done ✓" : "无 $done ✗"}`);
+    ok("URL 有效: " + path.basename(local), `${size}B sha ${hash} via ${pfx.name} ${hasDone ? "$done ✓" : "无 $done ✗"}`);
     if (!hasDone) bad("  ↑ 可执行性", path.basename(local) + " 缺 $done");
   });
 }
@@ -106,6 +139,7 @@ const PUSH = [
   "gemini_adv_replay.js",
   // 配置
   "gemini-remote.conf",
+  "gemini-rewrite.snippet",
   "quantumultx.conf",
   "quantumultx-g1acq.conf",
   // 文档与工具（可选，建议一并推）
@@ -116,6 +150,7 @@ const PUSH = [
   "qx_parity_test.js",
   "qx_simulate_test.js",
   "final_gate.js",
+  "validate_qx_syntax.js",
   "publish_check.js",
   "verify_remote_manifest.js"
 ];

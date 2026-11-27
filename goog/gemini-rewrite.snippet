@@ -1,0 +1,40 @@
+# ============================================================
+# Gemini / Google One — rewrite 规则片段（snippet）
+# ============================================================
+# 用途：给 QX 的 [rewrite_remote] 引用
+#
+#   [rewrite_remote]
+#   https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini-rewrite.snippet, tag=Gemini, opt-parser=true, update-interval=86400, enabled=true
+#
+# 说明：snippet 里只写规则，不写 section 头。
+#      脚本路径写全 URL 是 QX rewrite_remote 支持的形式。
+#
+# ⚠ QUIC 必须关，否则 one.google.com 走 HTTP/3，MITM 看不到明文。
+# ────────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════
+# 一、G1 ACQ Plus 映射引擎
+# ══════════════════════════════════════════════════════════
+
+# 管理页 + TXT/JSON 导出（必须排在下面那条之前）
+^https:\/\/one\.google\.com\/g1-sku-report\/?(\?.*)?$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-sku-report.qx.js reject
+
+# SKU 映射改写
+^https:\/\/one\.google\.com\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-acq.qx.js
+
+
+# ══════════════════════════════════════════════════════════
+# 二、高级商务交易链（可选，只做映射可整段删）
+# ══════════════════════════════════════════════════════════
+
+# 交易创建：拦请求
+^https:\/\/applecommerce-pa\.googleapis\.com\/v1\/transactions:prepare url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_prepare_capture.js reject-200
+
+# 交易创建：抓响应（与上面二选一，需注释掉上面那条再启用）
+# ^https:\/\/applecommerce-pa\.googleapis\.com\/v1\/transactions:prepare url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_prepare_response.js
+
+# SKU 目录解析
+^https:\/\/applecommerce-pa\.googleapis\.com\/\$rpc\/google\.subscriptions\.apple\.commerce\.v1\.AppleCommerceService\/ListProducts url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_sku_probe.js
+
+# 激活写入 RPC 探测
+^https:\/\/one\.google\.com\/_\/SubscriptionsManagementUi\/data\/batchexecute url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini_activate_capture.js

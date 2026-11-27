@@ -18,7 +18,21 @@ const path = require("path");
 const vm = require("vm");
 
 const DIR = __dirname;
-const RAW_PREFIX = "https://raw.githubusercontent.com/yjlsx/qx/main/goog/";
+
+/**
+ * 允许的脚本来源前缀。
+ * raw.githubusercontent.com 在国内下载极慢（实测 30s 只下 4KB），QX 会超时报 404，
+ * 因此默认配置使用 jsDelivr CDN。三个前缀都算合法，但必须落在其中之一。
+ */
+const ALLOWED_PREFIXES = [
+  "https://raw.githubusercontent.com/yjlsx/qx/main/goog/",
+  "https://cdn.jsdelivr.net/gh/yjlsx/qx@main/goog/",
+  "https://ghproxy.net/https://raw.githubusercontent.com/yjlsx/qx/main/goog/"
+];
+
+function isAllowedUrl(u) {
+  return ALLOWED_PREFIXES.some(p => u.indexOf(p) === 0);
+}
 
 const QX_SCRIPTS = [
   "g1-acq.qx.js",
@@ -122,16 +136,16 @@ function checkConfRegex() {
       // 正则可编译性
       try { new RegExp(m[1]); } catch (e) { badRegex++; }
 
-      // 脚本目标：本地文件名 或 raw URL，且必须是 7 个之一
+      // 脚本目标：本地文件名 或 远程 URL，且必须是 7 个之一
       const target = m[2];
       const name = target.startsWith("http")
         ? target.slice(target.lastIndexOf("/") + 1)
         : target;
       if (QX_SCRIPTS.indexOf(name) < 0) unknownScript++;
 
-      // raw URL 必须落在指定前缀
-      if (target.startsWith("http") && !target.startsWith(RAW_PREFIX)) {
-        bad(conf + " raw 前缀", target.slice(0, 70));
+      // 远程 URL 必须落在允许的前缀下
+      if (target.startsWith("http") && !isAllowedUrl(target)) {
+        bad(conf + " 脚本来源前缀", target.slice(0, 70));
       }
     });
 
@@ -152,8 +166,8 @@ function checkConfRegex() {
       if (fields.length !== 5) bad(conf + " cron 字段数", cron + " → " + fields.length);
       else ok(conf + " cron 合法", cron);
       const target = tm[2];
-      if (target.startsWith("http") && !target.startsWith(RAW_PREFIX)) {
-        bad(conf + " task raw 前缀", target.slice(0, 70));
+      if (target.startsWith("http") && !isAllowedUrl(target)) {
+        bad(conf + " task 脚本来源前缀", target.slice(0, 70));
       }
     });
   });
