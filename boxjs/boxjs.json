@@ -1397,7 +1397,15 @@
         "ar_name_2",
         "ar_username_2",
         "ar_password_2",
-        "ar_hosts"
+        "ar_hosts",
+        "anyrouter_enabled_1",
+        "anyrouter_name_1",
+        "anyrouter_username_1",
+        "anyrouter_password_1",
+        "anyrouter_enabled_2",
+        "anyrouter_name_2",
+        "anyrouter_username_2",
+        "anyrouter_password_2"
       ],
       "settings": [
         {
@@ -1462,6 +1470,62 @@
           "val": "https://agentrouter.org,https://ps.air-outer.com",
           "type": "text",
           "desc": "英文逗号分隔，按顺序尝试；留空使用默认域名。"
+        },
+        {
+          "id": "anyrouter_enabled_1",
+          "name": "启用 AnyRouter 账号1",
+          "val": false,
+          "type": "boolean",
+          "desc": "控制是否执行 anyrouter.top 账号1签到。"
+        },
+        {
+          "id": "anyrouter_name_1",
+          "name": "AnyRouter账号1备注",
+          "val": "AnyRouter账号1",
+          "type": "text",
+          "desc": "仅用于通知展示。"
+        },
+        {
+          "id": "anyrouter_username_1",
+          "name": "AnyRouter账号1用户名",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AnyRouter 用户名或邮箱。"
+        },
+        {
+          "id": "anyrouter_password_1",
+          "name": "AnyRouter账号1密码",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AnyRouter 站点密码。"
+        },
+        {
+          "id": "anyrouter_enabled_2",
+          "name": "启用 AnyRouter 账号2",
+          "val": false,
+          "type": "boolean",
+          "desc": "控制是否执行 anyrouter.top 账号2签到。"
+        },
+        {
+          "id": "anyrouter_name_2",
+          "name": "AnyRouter账号2备注",
+          "val": "AnyRouter账号2",
+          "type": "text",
+          "desc": "仅用于通知展示。"
+        },
+        {
+          "id": "anyrouter_username_2",
+          "name": "AnyRouter账号2用户名",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AnyRouter 用户名或邮箱。"
+        },
+        {
+          "id": "anyrouter_password_2",
+          "name": "AnyRouter账号2密码",
+          "val": "",
+          "type": "text",
+          "desc": "填写 AnyRouter 站点密码。"
         }
       ],
       "boxjs": {
@@ -1525,6 +1589,56 @@
             "label": "站点域名列表",
             "default": "https://agentrouter.org,https://ps.air-outer.com",
             "desc": "英文逗号分隔，按顺序尝试；留空使用默认域名。"
+          },
+          "anyrouter_enabled_1": {
+            "type": "boolean",
+            "label": "启用 AnyRouter 账号1",
+            "default": false,
+            "desc": "控制是否执行 anyrouter.top 账号1签到。"
+          },
+          "anyrouter_name_1": {
+            "type": "text",
+            "label": "AnyRouter账号1备注",
+            "default": "AnyRouter账号1",
+            "desc": "仅用于通知展示。"
+          },
+          "anyrouter_username_1": {
+            "type": "text",
+            "label": "AnyRouter账号1用户名",
+            "default": "",
+            "desc": "填写 AnyRouter 用户名或邮箱。"
+          },
+          "anyrouter_password_1": {
+            "type": "text",
+            "label": "AnyRouter账号1密码",
+            "default": "",
+            "desc": "填写 AnyRouter 站点密码。",
+            "input": "password"
+          },
+          "anyrouter_enabled_2": {
+            "type": "boolean",
+            "label": "启用 AnyRouter 账号2",
+            "default": false,
+            "desc": "控制是否执行 anyrouter.top 账号2签到。"
+          },
+          "anyrouter_name_2": {
+            "type": "text",
+            "label": "AnyRouter账号2备注",
+            "default": "AnyRouter账号2",
+            "desc": "仅用于通知展示。"
+          },
+          "anyrouter_username_2": {
+            "type": "text",
+            "label": "AnyRouter账号2用户名",
+            "default": "",
+            "desc": "填写 AnyRouter 用户名或邮箱。"
+          },
+          "anyrouter_password_2": {
+            "type": "text",
+            "label": "AnyRouter账号2密码",
+            "default": "",
+            "desc": "填写 AnyRouter 站点密码。",
+            "input": "password"
           }
         }
       }

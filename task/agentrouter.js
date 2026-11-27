@@ -26,6 +26,7 @@ const DEFAULT_HOSTS = [
   "https://agentrouter.org",
   "https://ps.air-outer.com",
 ];
+const ANYROUTER_HOST = "https://anyrouter.top";
 
 const QUOTA_PER_USD = 500000; // 站点内部额度单位 -> 美元
 const CHECKIN_LOG_TYPE = 4; // 每日签到日志的 type 字段值
@@ -109,6 +110,17 @@ function configuredAccounts() {
       enabled: boolValue("ar_enabled_" + slot, true),
       username: textValue("ar_username_" + slot, ""),
       password: textValue("ar_password_" + slot, ""),
+    };
+  });
+}
+
+function configuredAnyrouterAccounts() {
+  return [1, 2].map(function (slot) {
+    return {
+      name: textValue("anyrouter_name_" + slot, "AnyRouter账号" + slot),
+      enabled: boolValue("anyrouter_enabled_" + slot, false),
+      username: textValue("anyrouter_username_" + slot, ""),
+      password: textValue("anyrouter_password_" + slot, ""),
     };
   });
 }
@@ -380,6 +392,93 @@ function loginWithFallback(account, index, hosts) {
   });
 }
 
+// AnyRouter 使用 New API 登录接口，签到接口为无请求体的 POST /api/user/sign_in。
+function checkAnyrouterAccount(account) {
+  if (!account.enabled) {
+    return Promise.resolve({ name: account.name, status: "skip", message: "账号已停用" });
+  }
+  if (!account.username || !account.password) {
+    return Promise.resolve({ name: account.name, status: "skip", message: "BoxJS 未填写完整凭证" });
+  }
+
+  const host = ANYROUTER_HOST;
+  log("====== 开始处理 AnyRouter 账号: " + account.name + " ======");
+  return loginOnHost(host, account).then(function (result) {
+    const parsed = parseBody(result.response);
+    if (!parsed.ok || !parsed.data || !parsed.data.success) {
+      throw new Error("登录失败: " + (parsed.data && parsed.data.message || String(parsed.text || "响应异常").slice(0, 120)));
+    }
+    const user = parsed.data.data || {};
+    if (!user.id) throw new Error("登录成功但响应中缺少用户 ID");
+
+    return request({
+      url: host + "/api/user/sign_in",
+      method: "POST",
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "New-API-User": String(user.id),
+        "Origin": host,
+        "Referer": host + "/console",
+        "User-Agent": USER_AGENT,
+      },
+    }).then(function (response) {
+      const signIn = parseBody(response);
+      if (response.statusCode < 200 || response.statusCode >= 300 || !signIn.ok || !signIn.data || !signIn.data.success) {
+        throw new Error("签到失败 (HTTP " + response.statusCode + "): " +
+          (signIn.data && signIn.data.message || String(signIn.text || "响应异常").slice(0, 120)));
+      }
+      return {
+        name: account.name,
+        status: "success",
+        message: signIn.data.message || "AnyRouter 签到成功",
+        username: user.username || user.display_name || account.username,
+      };
+    });
+  }).catch(function (error) {
+    return {
+      name: account.name,
+      status: "fail",
+      message: describeError(error),
+      username: "",
+    };
+  }).then(function (result) {
+    log("[AnyRouter " + result.name + "] " + (STATUS_TAG[result.status] || "⏸️ 跳过") + " | " + result.message);
+    return result;
+  });
+}
+
+function runAnyrouter(done) {
+  const accounts = configuredAnyrouterAccounts();
+  const enabled = accounts.filter(function (account) { return account.enabled; });
+  if (!enabled.length) {
+    log("AnyRouter 未启用账号，跳过");
+    done();
+    return;
+  }
+
+  let index = 0;
+  const results = [];
+  function next() {
+    if (index >= enabled.length) {
+      const okCount = results.filter(function (r) { return r.status === "success" || r.status === "already"; }).length;
+      const failCount = results.filter(function (r) { return r.status === "fail"; }).length;
+      const lines = results.map(function (r) {
+        const who = r.username && r.username !== r.name ? r.name + "(" + r.username + ")" : r.name;
+        return (STATUS_ICON[r.status] || "ℹ️") + " " + who + "：" + r.message;
+      });
+      const title = okCount === 0 && failCount > 0 ? "[AnyRouter] 签到失败" : "[AnyRouter] 签到汇总";
+      safeNotify(title, "成功 " + okCount + "/" + results.length + (failCount ? " | 失败 " + failCount : ""), lines.join("\n"));
+      done();
+      return;
+    }
+    checkAnyrouterAccount(enabled[index++]).then(function (result) {
+      results.push(result);
+      next();
+    });
+  }
+  next();
+}
+
 // ---------- 结果 ----------
 function makeResult(name, status, message, username, quota) {
   const res = {
@@ -481,8 +580,12 @@ function main() {
   if (enabled.length === 0) {
     const hint = '未检测到启用的账号: 请在 BoxJS 的 "AgentRouter签到" 中配置 ar_username_N / ar_password_N 并打开启用开关';
     log(hint);
-    safeNotify("[AgentRouter] 未执行", "0/0", hint);
-    if (typeof $done === "function") $done({});
+    if (slots.some(function (account) { return account.enabled; })) {
+      safeNotify("[AgentRouter] 未执行", "0/0", hint);
+    }
+    runAnyrouter(function () {
+      if (typeof $done === "function") $done({});
+    });
     return;
   }
 
@@ -526,9 +629,9 @@ function main() {
       (skipCount ? ", 跳过 " + skipCount : "")
     );
 
-    if (typeof $done === "function") {
-      $done({});
-    }
+    runAnyrouter(function () {
+      if (typeof $done === "function") $done({});
+    });
   });
 }
 

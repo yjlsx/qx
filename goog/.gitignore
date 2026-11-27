@@ -1,0 +1,9 @@
+# goog/ 目录的 git 忽略规则
+# 上游原件含 {{SECRET_xxx}} 脱敏占位符，体积大，且转换器已产出 .qx.js，
+# 无需随仓库分发。本地保留供 convert_sgmodule.js 复跑。
+_upstream/
+
+# 临时诊断脚本
+_diag.js
+_diag*.js
+_tmp*.js
