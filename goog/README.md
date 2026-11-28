@@ -70,13 +70,15 @@ https://raw.githubusercontent.com/yjlsx/qx/main/goog/gemini-rewrite.snippet, tag
 |---|---|
 | `g1-acq.qx.js` | `…/main/goog/g1-acq.qx.js` |
 | `g1-sku-report.qx.js` | `…/main/goog/g1-sku-report.qx.js` |
+| `g1-sku-scan.qx.js` | `…/main/goog/g1-sku-scan.qx.js` |
+| `g1-pro-annual-test.qx.js` | `…/main/goog/g1-pro-annual-test.qx.js` |
 | `gemini_prepare_capture.js` | `…/main/goog/gemini_prepare_capture.js` |
 | `gemini_prepare_response.js` | `…/main/goog/gemini_prepare_response.js` |
 | `gemini_sku_probe.js` | `…/main/goog/gemini_sku_probe.js` |
 | `gemini_activate_capture.js` | `…/main/goog/gemini_activate_capture.js` |
 | `gemini_adv_replay.js` | `…/main/goog/gemini_adv_replay.js` |
 
-**7 个脚本全部自包含**：无 `require`、无 ES `import`、无 `fs`、无 `Buffer`、无 `__dirname`、无 `$httpClient`、无动态加载、不引用其它脚本。每个都只依赖 QX 原生全局（`$request` `$response` `$done` `$prefs` `$notify` `$task`）。
+**9 个脚本全部自包含**：无 `require`、无 ES `import`、无 `fs`、无 `Buffer`、无 `__dirname`、无 `$httpClient`、无动态加载、不引用其它脚本。每个都只依赖 QX 原生全局（`$request` `$response` `$done` `$prefs` `$notify` `$task`）。
 
 ### 推送前自检
 
@@ -256,6 +258,8 @@ JWS 解出来：
 │  ── G1 ACQ Plus（sgmodule 转换而来，QX 运行时必需）──
 ├── g1-acq.qx.js                  ← ① SKU 映射引擎（http-response）
 ├── g1-sku-report.qx.js           ← ② 管理页 + TXT/JSON 导出（http-request）
+├── g1-sku-scan.qx.js             ← 被动采集 SKU（独立测试用）
+├── g1-pro-annual-test.qx.js      ← Pro 年付测试（独立测试用）
 │
 │  ── 高级商务链（QX 运行时必需）──
 ├── gemini_prepare_capture.js     ← ③ 拦 prepare 请求，抽 txId/SKU

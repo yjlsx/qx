@@ -16,15 +16,34 @@
 # 一、G1 ACQ Plus 映射引擎
 # ══════════════════════════════════════════════════════════
 
-# 管理页 + TXT/JSON 导出（必须排在下面那条之前）
+# ① 管理页 + TXT/JSON 导出（必须排最前）
 ^https:\/\/one\.google\.com\/g1-sku-report\/?(\?.*)?$ url script-request-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-sku-report.qx.js reject
 
-# SKU 映射改写
+# ② 主映射引擎：按预设改写 SKU
 ^https:\/\/one\.google\.com\/ url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-acq.qx.js
 
 
 # ══════════════════════════════════════════════════════════
-# 二、高级商务交易链（可选，只做映射可整段删）
+# 二、独立测试脚本（可选，二选一）
+#     这两个都挂在 one.google.com/ai 上，与上面 ② 是同一 URL，
+#     QX 同一 URL 只生效一条 rewrite —— 所以默认全部注释掉。
+#     要用哪个，就把 ② 注释掉，再启用对应的一条。
+# ══════════════════════════════════════════════════════════
+
+# ③ 被动采集页面上所有 SKU（不改写，只记录到 $prefs.g1_acq_sku_scan）
+#    采集结果可在管理页「浏览页面时采集到的候选 SKU」查看
+#    注：主引擎 ② 内部已自带采集，通常不需要单独挂这条
+# ^https:\/\/one\.google\.com\/ai(\?|$) url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-sku-scan.qx.js
+
+# ④ Pro 年付测试：g1.ios.2tb.* → g1.2tb.ai.annual
+#    20TB → g1.20tb.3months_ip_90p.acq
+#    30TB → g1.ai.ultra.3months_ip_90p.acq（无 90p 时回退 75p）
+#    注：比主引擎激进，会改写全部 2TB 档位，适合专门测年付
+# ^https:\/\/one\.google\.com\/ai\? url script-response-body https://raw.githubusercontent.com/yjlsx/qx/main/goog/g1-pro-annual-test.qx.js
+
+
+# ══════════════════════════════════════════════════════════
+# 三、高级商务交易链（可选，只做映射可整段删）
 # ══════════════════════════════════════════════════════════
 
 # 交易创建：拦请求

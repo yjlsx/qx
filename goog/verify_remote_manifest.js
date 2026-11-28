@@ -132,6 +132,8 @@ const PUSH = [
   // QX 运行时必需
   "g1-acq.qx.js",
   "g1-sku-report.qx.js",
+  "g1-sku-scan.qx.js",
+  "g1-pro-annual-test.qx.js",
   "gemini_prepare_capture.js",
   "gemini_prepare_response.js",
   "gemini_sku_probe.js",
@@ -149,6 +151,7 @@ const PUSH = [
   "gemini_checkout_harness.js",
   "qx_parity_test.js",
   "qx_simulate_test.js",
+  "test_new_scripts.js",
   "final_gate.js",
   "validate_qx_syntax.js",
   "publish_check.js",

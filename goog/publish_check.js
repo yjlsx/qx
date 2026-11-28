@@ -33,6 +33,8 @@ function wrn(name, detail) { lines.push("WARN  " + name + (detail ? "   [" + det
 const QX_SCRIPTS = [
   "g1-acq.qx.js",
   "g1-sku-report.qx.js",
+  "g1-sku-scan.qx.js",
+  "g1-pro-annual-test.qx.js",
   "gemini_prepare_capture.js",
   "gemini_prepare_response.js",
   "gemini_sku_probe.js",
